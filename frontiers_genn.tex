@@ -12,12 +12,16 @@
 %%%  NB logo1.jpg is required in the path in order to correctly compile front page header %%%
 
 \documentclass[utf8]{frontiersSCNS} % for Science, Engineering and Humanities and Social Sciences articles
-%\documentclass[utf8]{frontiersHLTH} % for Health articles
-%\documentclass[utf8]{frontiersFPHY} % for Physics and Applied Mathematics and Statistics articles
 
-%\setcitestyle{square} % for Physics and Applied Mathematics and Statistics articles
-\usepackage{url,hyperref,lineno,microtype,subcaption}
+\usepackage{url,hyperref,lineno,listings,microtype,subcaption}
+
+% Automatic formatting of SI units
+\usepackage[binary-units]{siunitx}
+
 \usepackage[onehalfspacing]{setspace}
+
+% Required for 'straight' quotes in code listings
+\usepackage[T1]{fontenc}
 
 \linenumbers
 
@@ -36,8 +40,6 @@
 \def\corrAuthor{James C Knight}
 
 \def\corrEmail{J.C.Knight@sussex.ac.uk}
-
-
 
 
 \begin{document}
@@ -84,7 +86,17 @@ We then verify the correctness of our GPU simulations before comparing the perfo
 
 \section{Material and Methods}
 \subsection{GeNN}
-sss
+\begin{itemize}
+    \item GeNN code generator - while CUDA is relatively simple, efficiently parallelising SNN code is non-trivial
+    \item Does not rely on any sort of domain-specific language - models are described by snippets of serial C-like code
+    \item Walk through example of a neuron model
+\end{itemize}
+
+\lstinputlisting[language=C++,showstringspaces=false,basicstyle=\tiny,upquote=true]{code_snippets/neuron_model.cc}
+
+GeNN uses this same approach for synapse models as well as for initializing variables and synaptic connectivity.
+While the PCI express bus typically used to connect the GPU to the host system is fast compared to, for example, an ethernet connection (up to \SI{16}{\giga\byte\per\second}) 
+
 \subsection{The cell-type specific cortical microcircuit}
 sfa
 \subsection{Balanced random network with power-law STDP}
