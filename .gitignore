@@ -1,0 +1,5 @@
+*.aux
+*.log
+*.out
+/frontiers_genn.pdf
+*-eps-converted-to.pdf
