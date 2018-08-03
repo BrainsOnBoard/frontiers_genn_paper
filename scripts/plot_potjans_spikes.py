@@ -3,9 +3,14 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 import re
+import plot_settings
+import warnings
 
 from os import path
 from scipy.stats import gaussian_kde
+from scipy.stats import iqr
+
+warnings.simplefilter("error", "RuntimeWarning")
 
 N_full = {
   '23': {'E': 20683, 'I': 5834},
@@ -23,51 +28,52 @@ def load_spikes(filename):
     name = match.group(1) + match.group(2)
     num = int(N_full[match.group(1)][match.group(2)] * N_scaling)
 
+    # Load spikes
     spike_path = path.join("potjans_spikes", filename)
+    spikes = np.loadtxt(spike_path, skiprows=1, delimiter=",",
+                        dtype={"names": ("time", "id", ), "formats": (float, int)})
 
-    with open(spike_path, "rb") as spikes_csv_file:
-        spikes_csv_reader = csv.reader(spikes_csv_file, delimiter = ",")
+    # Convert CSV columns to numpy
+    spike_times = spikes["time"]
+    spike_neuron_id = spikes["id"]
 
-        # Skip headers
-        spikes_csv_reader.next()
+    post_transient = (spike_times > 1000.0)
+    spike_times = spike_times[post_transient]
+    spike_neuron_id = spike_neuron_id[post_transient]
 
-        # Read data and zip into columns
-        spikes_data_columns = zip(*spikes_csv_reader)
-
-        # Convert CSV columns to numpy
-        spike_times = np.asarray(spikes_data_columns[0], dtype=float)
-        spike_neuron_id = np.asarray(spikes_data_columns[1], dtype=int)
-
-        post_transient = (spike_times > 1000.0)
-        spike_times = spike_times[post_transient]
-        spike_neuron_id = spike_neuron_id[post_transient]
-
-        return spike_times, spike_neuron_id, name, num
+    return spike_times, spike_neuron_id, name, num
 
 def calc_histogram(data, smoothing):
-    # Calculate rate histogram using Freedman Diaconis Estimator
-    hist, bin_edges = np.histogram(data, bins="fd", density=True)
+    # Calculate bin-size using Freedman-Diaconis rule
+    bin_size = (2.0 * iqr(data)) / (float(len(data)) ** (1.0 / 3.0))
 
-    # Smooth histogram
-    #hist_kde = gaussian_kde(hist, smoothing)
-    #hist_smooth = hist_kde.evaluate(bin_edges[:-1])
-    hist_smooth = hist
+    # Get range of data
+    min_y = np.amin(data)
+    max_y = np.amax(data)
+
+    # Calculate number of bins, rounding up to get right edge
+    num_bins = np.ceil((max_y - min_y) / bin_size)
+
+    # Create range of bin x coordinates
+    bin_x = np.arange(min_y, min_y + (num_bins * bin_size), bin_size)
+
+    # Create kernel density estimator of data
+    data_kde = gaussian_kde(data, smoothing)
+
+    # Use to generate smoothed histogram
+    hist_smooth = data_kde.evaluate(bin_x)
     
-    # Discard empty bins
-    populated_bins = (hist_smooth > 1E-15)
-    hist_smooth = hist_smooth[populated_bins]
-    bin_x = bin_edges[:-1][populated_bins]
-    
+    # Return
     return bin_x, hist_smooth
 
 def calc_rate_hist(spike_times, spike_ids, num, duration):
      # Calculate histogram of spike IDs to get each neuron's firing rate
     rate, _ = np.histogram(spike_ids, bins=range(num + 1))
+    assert len(rate) == num
     rate = np.divide(rate, duration, dtype=float)
     
     return calc_histogram(rate, 0.3)
     
-       
 def calc_cv_isi_hist(spike_times, spike_ids, num, duration):
     # Loop through neurons
     cv_isi = np.empty(num)
@@ -77,14 +83,15 @@ def calc_cv_isi_hist(spike_times, spike_ids, num, duration):
         mask = (spike_ids == n)
         neuron_spike_times = spike_times[mask]
         
-        # Calculate ISI, mean and variance
-        neuron_isi = np.diff(neuron_spike_times)
-        neuron_mean = np.mean(neuron_isi)
-        neuron_std = np.std(neuron_isi)
-        
-        # Calculate CV ISI and add to vector if it's not going to be NaN
-        if neuron_std > 0.0:
-            cv_isi[num_spiking] = neuron_mean / neuron_std
+        # If this neuron spiked more than once i.e. it is possible to calculate ISI!
+        if len(neuron_spike_times) > 1:
+            # Calculate ISI, mean and variance
+            neuron_isi = np.diff(neuron_spike_times)
+            neuron_mean = np.mean(neuron_isi)
+            neuron_std = np.std(neuron_isi)
+
+            # Calculate CV ISI and add to vector if it's not going to be NaN
+            cv_isi[num_spiking] = neuron_std / neuron_mean
             num_spiking += 1
     
     return calc_histogram(cv_isi[:num_spiking], 0.04)
