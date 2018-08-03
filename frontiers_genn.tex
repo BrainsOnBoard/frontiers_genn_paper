@@ -118,7 +118,10 @@ Models can be implemented using the C++ interface described in the preceding sec
 \subsection{The cell-type specific cortical microcircuit}
 sfa
 \subsection{Balanced random network with power-law STDP}
-The type of one-shot, online learning observed in nature is one of the most attractive 
+The type of one-shot, online learning observed in nature is one of the many properties that make spiking neural networks attractive when compared to the approaches typically employed in training artificial neural networks.
+\todo{link between learning and synaptic plasticity}
+However, adding synaptic plasticity to spiking neural network simulations typically increases the computational cost of simulating them significantly. 
+\citet{Morrison2007} reported that adding plasticity to their simulations slowed them down by ``a factor of less than 10'' and \citet{Knight2016b} found that, in the best case, simple STDP plasticity reduced the performance of the SpiNNaker neuromorphic system by approximately $6\times$.
 
 \section{Results}
 \subsection{Model }
