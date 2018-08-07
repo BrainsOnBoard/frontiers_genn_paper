@@ -1,7 +1,7 @@
 import csv
 import itertools
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
+import matplotlib.gridspec as gs
 import numpy as np
 import re
 import plot_settings
@@ -140,21 +140,18 @@ pop_spikes = [load_spikes("6I.csv"),
               load_spikes("23E.csv")]
 
 # Create plot
-main_fig, main_axes = plt.subplots(1, 2)
+fig = plt.figure(figsize=(plot_settings.double_column_width, 90.0 * plot_settings.mm_to_inches),
+                 frameon=False)
+gsp = gs.GridSpec(4, 8)
 
-pop_rate_fig, pop_rate_axes = plt.subplots(4, 2, sharey="row", sharex="col")
-pop_cv_isi_fig, pop_cv_isi_axes = plt.subplots(4, 2, sharey="row", sharex="col")
-pop_corr_fig, pop_corr_axes = plt.subplots(4, 2, sharey="row", sharex="col")
+# Add raster plot axis to figure
+raster_axis = plt.Subplot(fig, gsp[:,:2])
+fig.add_subplot(raster_axis)
 
 start_id = 0
-bar_y = 0.0
 for i, (spike_times, spike_ids, name, num) in enumerate(pop_spikes):
-    print name
     # Plot spikes
-    actor = main_axes[0].scatter(spike_times, spike_ids + start_id, s=1, edgecolors="none")
-
-    # Plot bar showing rate in matching colour
-    main_axes[1].barh(bar_y, len(spike_times) / float(num), align="center", color=actor.get_facecolor(), ecolor="black")
+    raster_axis.scatter(spike_times, spike_ids + start_id, s=1, edgecolors="none")
 
     # Calculate statistics
     rate_bin_x, rate_hist = calc_rate_hist(spike_times, spike_ids, num, duration)
@@ -162,35 +159,38 @@ for i, (spike_times, spike_ids, name, num) in enumerate(pop_spikes):
     corr_bin_x, corr_hist = calc_corellation(spike_times, spike_ids, num, duration)
 
     # Plot rate histogram
-    pop_rate_axis = pop_rate_axes[3 - (i / 2), 1 - (i % 2)]
-    pop_rate_axis.set_title(name)
+    pop_rate_axis = plt.Subplot(fig, gsp[3 - (i / 2), 3 - (i % 2)])
+    fig.add_subplot(pop_rate_axis)
+    #pop_rate_axis.set_title(name)
     pop_rate_axis.plot(rate_bin_x, rate_hist)
     
     # Plot rate histogram
-    pop_cv_isi_axis = pop_cv_isi_axes[3 - (i / 2), 1 - (i % 2)]
-    pop_cv_isi_axis.set_title(name)
+    pop_cv_isi_axis = plt.Subplot(fig, gsp[3 - (i / 2), 5 - (i % 2)])
+    fig.add_subplot(pop_cv_isi_axis)
+    #pop_cv_isi_axis.set_title(name)
     pop_cv_isi_axis.plot(isi_bin_x, isi_hist)
-    
-    pop_corr_axis = pop_corr_axes[3 - (i / 2), 1 - (i % 2)]
-    pop_corr_axis.set_title(name)
+
+    # Plot correlation histogram
+    pop_corr_axis = plt.Subplot(fig, gsp[3 - (i / 2), 7 - (i % 2)])
+    fig.add_subplot(pop_corr_axis)
+    #pop_corr_axis.set_title(name)
     pop_corr_axis.plot(corr_bin_x, corr_hist)
 
     # Update offset
     start_id += num
 
-    # Update bar pos
-    bar_y += 1.0
+#for i in range(2):
+#    pop_rate_axes[-1, i].set_xlim((0.0, 20.0))
+#    pop_cv_isi_axes[-1, i].set_xlim((0.0, 1.5))
 
-for i in range(2):
-    pop_rate_axes[-1, i].set_xlim((0.0, 20.0))
-    pop_cv_isi_axes[-1, i].set_xlim((0.0, 1.5))
+raster_axis.set_xlabel("Time [ms]")
+#raster_axis.set_yticks(np.arange(0.0, len(pop_spikes) * 1.0, 1.0))
+#main_axes[1].set_yticklabels(zip(*pop_spikes)[2])
 
-main_axes[0].set_xlabel("Time [ms]")
-main_axes[0].set_ylabel("Neuron number")
+#main_axes[1].set_xlabel("Mean firing rate [Hz]")
+#
 
-main_axes[1].set_xlabel("Mean firing rate [Hz]")
-main_axes[1].set_yticks(np.arange(0.0, len(pop_spikes) * 1.0, 1.0))
-main_axes[1].set_yticklabels(zip(*pop_spikes)[2])
+fig.tight_layout()
 
 # Show plot
 plt.show()
