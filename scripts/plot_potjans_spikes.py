@@ -1,4 +1,5 @@
 import csv
+import itertools
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
@@ -10,7 +11,13 @@ from os import path
 from scipy.stats import gaussian_kde
 from scipy.stats import iqr
 
-warnings.simplefilter("error", "RuntimeWarning")
+from elephant.conversion import BinnedSpikeTrain
+from elephant.statistics import isi, cv
+from elephant.spike_train_correlation import corrcoef
+
+from neo import SpikeTrain
+from neo.io import PickleIO
+from quantities import s, ms
 
 N_full = {
   '23': {'E': 20683, 'I': 5834},
@@ -73,11 +80,10 @@ def calc_rate_hist(spike_times, spike_ids, num, duration):
     rate = np.divide(rate, duration, dtype=float)
     
     return calc_histogram(rate, 0.3)
-    
+
 def calc_cv_isi_hist(spike_times, spike_ids, num, duration):
     # Loop through neurons
-    cv_isi = np.empty(num)
-    num_spiking = 0
+    cv_isi = []
     for n in range(num):
         # Get mask of spikes from this neuron and use to extract their times
         mask = (spike_ids == n)
@@ -85,17 +91,45 @@ def calc_cv_isi_hist(spike_times, spike_ids, num, duration):
         
         # If this neuron spiked more than once i.e. it is possible to calculate ISI!
         if len(neuron_spike_times) > 1:
-            # Calculate ISI, mean and variance
-            neuron_isi = np.diff(neuron_spike_times)
-            neuron_mean = np.mean(neuron_isi)
-            neuron_std = np.std(neuron_isi)
+            cv_isi.append(cv(isi(neuron_spike_times)))
 
-            # Calculate CV ISI and add to vector if it's not going to be NaN
-            cv_isi[num_spiking] = neuron_std / neuron_mean
-            num_spiking += 1
-    
-    return calc_histogram(cv_isi[:num_spiking], 0.04)
-    
+    return calc_histogram(cv_isi, 0.04)
+
+def calc_corellation(spike_times, spike_ids, num, duration):
+    # Create randomly shuffled indices
+    neuron_indices = np.arange(num)
+    np.random.shuffle(neuron_indices)
+
+    # Loop through indices
+    spike_trains = []
+    for n in neuron_indices:
+        # Extract spike times
+        neuron_spike_times = spike_times[spike_ids == n]
+
+        # If there are any spikes
+        if len(neuron_spike_times) > 0:
+            # Add neo SpikeTrain object
+            spike_trains.append(SpikeTrain(neuron_spike_times * ms, t_start=1*s, t_stop=10*s))
+
+            # If we have found our 200 spike trains, stop
+            if len(spike_trains) == 200:
+                break
+
+    # Check that 200 spike trains containing spikes could be found
+    assert len(spike_trains) == 200
+
+    # Bin spikes using bins corresponding to 2ms refractory period
+    binned_spike_trains = BinnedSpikeTrain(spike_trains, binsize=2.0 * ms)
+
+    # Calculate correlation matrix
+    correlation = corrcoef(binned_spike_trains)
+
+    # Take lower triangle of matrix (minus diagonal)
+    correlation_non_disjoint = correlation[np.tril_indices_from(correlation, k=-1)]
+
+    # Calculate histogram
+    return calc_histogram(correlation_non_disjoint, 0.002)
+
 pop_spikes = [load_spikes("6I.csv"),
               load_spikes("6E.csv"),
               load_spikes("5I.csv"),
@@ -110,10 +144,12 @@ main_fig, main_axes = plt.subplots(1, 2)
 
 pop_rate_fig, pop_rate_axes = plt.subplots(4, 2, sharey="row", sharex="col")
 pop_cv_isi_fig, pop_cv_isi_axes = plt.subplots(4, 2, sharey="row", sharex="col")
+pop_corr_fig, pop_corr_axes = plt.subplots(4, 2, sharey="row", sharex="col")
 
 start_id = 0
 bar_y = 0.0
 for i, (spike_times, spike_ids, name, num) in enumerate(pop_spikes):
+    print name
     # Plot spikes
     actor = main_axes[0].scatter(spike_times, spike_ids + start_id, s=1, edgecolors="none")
 
@@ -123,6 +159,7 @@ for i, (spike_times, spike_ids, name, num) in enumerate(pop_spikes):
     # Calculate statistics
     rate_bin_x, rate_hist = calc_rate_hist(spike_times, spike_ids, num, duration)
     isi_bin_x, isi_hist = calc_cv_isi_hist(spike_times, spike_ids, num, duration)
+    corr_bin_x, corr_hist = calc_corellation(spike_times, spike_ids, num, duration)
 
     # Plot rate histogram
     pop_rate_axis = pop_rate_axes[3 - (i / 2), 1 - (i % 2)]
@@ -134,6 +171,10 @@ for i, (spike_times, spike_ids, name, num) in enumerate(pop_spikes):
     pop_cv_isi_axis.set_title(name)
     pop_cv_isi_axis.plot(isi_bin_x, isi_hist)
     
+    pop_corr_axis = pop_corr_axes[3 - (i / 2), 1 - (i % 2)]
+    pop_corr_axis.set_title(name)
+    pop_corr_axis.plot(corr_bin_x, corr_hist)
+
     # Update offset
     start_id += num
 
