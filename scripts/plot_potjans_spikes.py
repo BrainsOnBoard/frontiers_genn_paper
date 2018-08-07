@@ -28,6 +28,9 @@ N_full = {
 
 N_scaling = 1.0
 duration = 9.0
+raster_plot_step = 20
+raster_plot_start_ms = 1000.0
+raster_plot_end_ms = 2000.0
 
 def load_spikes(filename):
     # Parse filename and use to get population name and size
@@ -148,10 +151,13 @@ gsp = gs.GridSpec(4, 8)
 raster_axis = plt.Subplot(fig, gsp[:,:2])
 fig.add_subplot(raster_axis)
 
-start_id = 0
+# Get offsets of populations
+neuron_id_offset = np.cumsum([0] + [n for _, _, _, n in pop_spikes])
+
 for i, (spike_times, spike_ids, name, num) in enumerate(pop_spikes):
-    # Plot spikes
-    raster_axis.scatter(spike_times, spike_ids + start_id, s=1, edgecolors="none")
+    # Plot the spikes from every raster_plot_step neurons within time range
+    plot_mask = ((spike_ids % raster_plot_step) == 0) & (spike_times > raster_plot_start_ms) & (spike_times <= raster_plot_end_ms)
+    raster_axis.scatter(spike_times[plot_mask], spike_ids[plot_mask] + neuron_id_offset[i], s=1, edgecolors="none")
 
     # Calculate statistics
     rate_bin_x, rate_hist = calc_rate_hist(spike_times, spike_ids, num, duration)
@@ -176,21 +182,20 @@ for i, (spike_times, spike_ids, name, num) in enumerate(pop_spikes):
     #pop_corr_axis.set_title(name)
     pop_corr_axis.plot(corr_bin_x, corr_hist)
 
-    # Update offset
-    start_id += num
-
 #for i in range(2):
 #    pop_rate_axes[-1, i].set_xlim((0.0, 20.0))
 #    pop_cv_isi_axes[-1, i].set_xlim((0.0, 1.5))
 
 raster_axis.set_xlabel("Time [ms]")
-#raster_axis.set_yticks(np.arange(0.0, len(pop_spikes) * 1.0, 1.0))
-#main_axes[1].set_yticklabels(zip(*pop_spikes)[2])
 
-#main_axes[1].set_xlabel("Mean firing rate [Hz]")
-#
+# Calculate midpoints of each population in terms of neuron ids and position population ids here
+pop_midpoints = neuron_id_offset[:-1] + ((neuron_id_offset[1:] - neuron_id_offset[:-1]) * 0.5)
+raster_axis.set_yticks(pop_midpoints)
+raster_axis.set_yticklabels(name for _, _, name, _ in pop_spikes)
+raster_axis.set_xlim((raster_plot_start_ms, raster_plot_end_ms))
+raster_axis.set_ylim((0,neuron_id_offset[-1]))
 
-fig.tight_layout()
+fig.tight_layout(pad=0.0)
 
 # Show plot
 plt.show()
