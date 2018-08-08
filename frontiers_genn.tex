@@ -190,10 +190,17 @@ The datasets [GENERATED/ANALYZED] for this study can be found in the [NAME OF RE
 %%%  NB logo1.eps is required in the path in order to correctly compile front page header %%%
 
 \begin{figure}[h!]
-\begin{center}
-\includegraphics[width=10cm]{logo1}% This is a *.eps file
-\end{center}
-\caption{ Enter the caption for your figure here.  Repeat as  necessary for each of your figures}\label{fig:1}
+    \begin{center}
+        \includegraphics[width=180mm]{figures/microcircuit_accuracy}
+    \end{center}
+    \caption{Spiking output of cortical microcircuit model with Poisson input.  
+    \textbf{(A)} Raster plot showing spike times (dots) of neurons from each population. 
+    The spikes of 5\% of neurons (vertical) are shown.
+    \textbf{(B)} Single-neuron firing rates of all neurons.
+    \textbf{(C)} CV ISI, a measure of irregularity of all neurons.
+    \textbf{(D)} Correlation coefficients between binned spike trains for \num{200} neurons in each population.
+    All measures are calculated over the last \SI{9}{\second} of the simulation and histogram bin widths are determined using the Freedman-Diaconis rule.
+    Repeat as  necessary for each of your figures}\label{fig:microcircuit_accuracy}
 \end{figure}
 
 
