@@ -200,15 +200,19 @@ The datasets [GENERATED/ANALYZED] for this study can be found in the [NAME OF RE
     \textbf{(C)} CV ISI, a measure of irregularity of all neurons.
     \textbf{(D)} Correlation coefficients between binned spike trains for \num{200} neurons in each population.
     All measures are calculated over the last \SI{9}{\second} of the simulation and histogram bin widths are determined using the Freedman-Diaconis rule.
-    Repeat as  necessary for each of your figures}\label{fig:microcircuit_accuracy}
+    Repeat as  necessary for each of your figures}
+    \label{fig:microcircuit_accuracy}
 \end{figure}
 
 
 \begin{figure}[h!]
-\begin{center}
-\includegraphics[width=15cm]{logos}
-\end{center}
-\caption{This is a figure with sub figures, \textbf{(A)} is one logo, \textbf{(B)} is a different logo.}\label{fig:2}
+    \begin{center}
+        \includegraphics[width=180mm]{figures/microcircuit_performance}
+    \end{center}
+    \caption{Simulation times of microcircuit model running on various GPU hardware.
+    SpiNNaker and fastest HPC simulation times presented by \citet{VanAlbada2018} included for comparison.
+    `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.}
+    \label{fig:microcircuit_performance}
 \end{figure}
 
 %%% If you are submitting a figure with subfigures please combine these into one image file with part labels integrated.
