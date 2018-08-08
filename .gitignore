@@ -5,3 +5,4 @@
 *.out
 /frontiers_genn.pdf
 *-eps-converted-to.pdf
+*.pyc

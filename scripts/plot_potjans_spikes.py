@@ -1,11 +1,9 @@
-import csv
-import itertools
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 import numpy as np
 import re
 import plot_settings
-import warnings
+import utils
 
 from os import path
 from scipy.stats import gaussian_kde
@@ -16,7 +14,6 @@ from elephant.statistics import isi, cv
 from elephant.spike_train_correlation import corrcoef
 
 from neo import SpikeTrain
-from neo.io import PickleIO
 from quantities import s, ms
 
 N_full = {
@@ -145,16 +142,36 @@ pop_spikes = [load_spikes("6I.csv"),
 # Create plot
 fig = plt.figure(figsize=(plot_settings.double_column_width, 90.0 * plot_settings.mm_to_inches),
                  frameon=False)
-gsp = gs.GridSpec(4, 8)
+
+# Create outer gridspec dividing plot area into 4
+gsp = gs.GridSpec(1, 4)
+
+# Create sub-gridspecs for each panel of histograms with no spacing between axes
+gs_rate_axes = gs.GridSpecFromSubplotSpec(4, 2, subplot_spec=gsp[1], wspace=0.0, hspace=0.0)
+gs_cv_isi_axes = gs.GridSpecFromSubplotSpec(4, 2, subplot_spec=gsp[2], wspace=0.0, hspace=0.0)
+gs_corr_axes = gs.GridSpecFromSubplotSpec(4, 2, subplot_spec=gsp[3], wspace=0.0, hspace=0.0)
 
 # Add raster plot axis to figure
-raster_axis = plt.Subplot(fig, gsp[:,:2])
+raster_axis = plt.Subplot(fig, gsp[0])
 fig.add_subplot(raster_axis)
+utils.remove_axis_junk(raster_axis)
 
 # Get offsets of populations
 neuron_id_offset = np.cumsum([0] + [n for _, _, _, n in pop_spikes])
 
+# Axis at start of each row and column to share x and y axes with
+pop_rate_axis_col_sharex = [None] * 2
+pop_rate_axis_row_sharey = [None] * 4
+pop_cv_isi_axis_col_sharex = [None] * 2
+pop_cv_isi_axis_row_sharey = [None] * 4
+pop_corr_axis_col_sharex = [None] * 2
+pop_corr_axis_row_sharey = [None] * 4
+
+# Loop through populations
 for i, (spike_times, spike_ids, name, num) in enumerate(pop_spikes):
+    col = i % 2
+    row = i / 2
+
     # Plot the spikes from every raster_plot_step neurons within time range
     plot_mask = ((spike_ids % raster_plot_step) == 0) & (spike_times > raster_plot_start_ms) & (spike_times <= raster_plot_end_ms)
     raster_axis.scatter(spike_times[plot_mask], spike_ids[plot_mask] + neuron_id_offset[i], s=1, edgecolors="none")
@@ -165,26 +182,74 @@ for i, (spike_times, spike_ids, name, num) in enumerate(pop_spikes):
     corr_bin_x, corr_hist = calc_corellation(spike_times, spike_ids, num, duration)
 
     # Plot rate histogram
-    pop_rate_axis = plt.Subplot(fig, gsp[3 - (i / 2), 3 - (i % 2)])
+    pop_rate_axis = plt.Subplot(fig, gs_rate_axes[3 - row, col],
+                                sharex=pop_rate_axis_col_sharex[col],
+                                sharey=pop_rate_axis_row_sharey[row])
     fig.add_subplot(pop_rate_axis)
-    #pop_rate_axis.set_title(name)
+    pop_rate_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_rate_axis.transAxes)
     pop_rate_axis.plot(rate_bin_x, rate_hist)
     
     # Plot rate histogram
-    pop_cv_isi_axis = plt.Subplot(fig, gsp[3 - (i / 2), 5 - (i % 2)])
+    pop_cv_isi_axis = plt.Subplot(fig, gs_cv_isi_axes[3 - row, col],
+                                  sharex=pop_cv_isi_axis_col_sharex[col],
+                                  sharey=pop_cv_isi_axis_row_sharey[row])
     fig.add_subplot(pop_cv_isi_axis)
-    #pop_cv_isi_axis.set_title(name)
+    pop_cv_isi_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_cv_isi_axis.transAxes)
     pop_cv_isi_axis.plot(isi_bin_x, isi_hist)
 
     # Plot correlation histogram
-    pop_corr_axis = plt.Subplot(fig, gsp[3 - (i / 2), 7 - (i % 2)])
+    pop_corr_axis = plt.Subplot(fig, gs_corr_axes[3 - row, col],
+                                sharex=pop_corr_axis_col_sharex[col],
+                                sharey=pop_corr_axis_row_sharey[row])
     fig.add_subplot(pop_corr_axis)
-    #pop_corr_axis.set_title(name)
+    pop_corr_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_corr_axis.transAxes)
     pop_corr_axis.plot(corr_bin_x, corr_hist)
 
-#for i in range(2):
-#    pop_rate_axes[-1, i].set_xlim((0.0, 20.0))
-#    pop_cv_isi_axes[-1, i].set_xlim((0.0, 1.5))
+    # Remove axis junk
+    utils.remove_axis_junk(pop_rate_axis)
+    utils.remove_axis_junk(pop_cv_isi_axis)
+    utils.remove_axis_junk(pop_corr_axis)
+
+    # If this is the first (leftmost) column
+    if col == 0:
+        # Cache axes so that their Y axis can be shared with others in same row
+        pop_rate_axis_row_sharey[row] = pop_rate_axis
+        pop_cv_isi_axis_row_sharey[row] = pop_cv_isi_axis
+        pop_corr_axis_row_sharey[row] = pop_corr_axis
+
+        # Set y axis labels
+        pop_rate_axis.set_ylabel("p")
+        pop_cv_isi_axis.set_ylabel("p")
+        pop_corr_axis.set_ylabel("p")
+    # Otherwise, hide y axes
+    else:
+        plt.setp(pop_rate_axis.get_yticklabels(), visible=False)
+        plt.setp(pop_cv_isi_axis.get_yticklabels(), visible=False)
+        plt.setp(pop_corr_axis.get_yticklabels(), visible=False)
+
+    # If this is the first (bottommost) row
+    if row == 0:
+        # Cache axes so that their X axis can be shared with others in same column
+        pop_rate_axis_col_sharex[col] = pop_rate_axis
+        pop_cv_isi_axis_col_sharex[col] = pop_cv_isi_axis
+        pop_corr_axis_col_sharex[col] = pop_corr_axis
+
+        # Set x axis labels
+        pop_rate_axis.set_xlabel("rate\n[spikes/s]")
+        pop_cv_isi_axis.set_xlabel("CV ISI")
+        pop_corr_axis.set_xlabel("corr.\ncoef.")
+    # Otherwise, hide x axes
+    else:
+        plt.setp(pop_rate_axis.get_xticklabels(), visible=False)
+        plt.setp(pop_cv_isi_axis.get_xticklabels(), visible=False)
+        plt.setp(pop_corr_axis.get_xticklabels(), visible=False)
+
+    # If this is the top left cell add subfigure title
+    if row == 3 and col == 0:
+        pop_rate_axis.set_title("B", loc="left")
+        pop_cv_isi_axis.set_title("C", loc="left")
+        pop_corr_axis.set_title("D", loc="left")
+
 
 raster_axis.set_xlabel("Time [ms]")
 
@@ -195,7 +260,12 @@ raster_axis.set_yticklabels(name for _, _, name, _ in pop_spikes)
 raster_axis.set_xlim((raster_plot_start_ms, raster_plot_end_ms))
 raster_axis.set_ylim((0,neuron_id_offset[-1]))
 
+raster_axis.set_title("A", loc="left")
+
 fig.tight_layout(pad=0.0)
+
+# Save figure
+utils.save_raster_figure(fig, "../figures/microcircuit_accuracy")
 
 # Show plot
 plt.show()

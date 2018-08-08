@@ -2,11 +2,18 @@
 import csv
 import numpy as np
 import os
+import seaborn as sns
 import sys
 import tempfile
 
 # Import classes
 from matplotlib.ticker import ScalarFormatter
+
+def remove_axis_junk(axis):
+    # Turn off grid
+    axis.xaxis.grid(False)
+    axis.yaxis.grid(False)
+    #sns.despine(ax=axis)
 
 # OMFG matplotlib, REALLY! How is this not normal behaviour
 class FixedOrderFormatter(ScalarFormatter):
