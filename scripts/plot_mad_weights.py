@@ -25,5 +25,12 @@ fig, axis = plt.subplots(figsize=(plot_settings.column_width, 90.0 * plot_settin
 axis.bar(bin_centre_x, hist, width=bin_x[1] - bin_x[0])
 
 axis.plot(bin_centre_x, norm.pdf(bin_centre_x, 45.65, 3.99))
+
+axis.set_xlabel("Weight [pA]")
+axis.set_ylabel("Fraction of synapses")
+
+utils.remove_axis_junk(axis)
+
 fig.tight_layout(pad=0.0)
+fig.savefig("../figures/mad_weights.eps")
 plt.show()

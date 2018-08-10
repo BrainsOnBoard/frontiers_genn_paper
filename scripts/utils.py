@@ -13,7 +13,6 @@ def remove_axis_junk(axis):
     # Turn off grid
     axis.xaxis.grid(False)
     axis.yaxis.grid(False)
-    #sns.despine(ax=axis)
 
 # OMFG matplotlib, REALLY! How is this not normal behaviour
 class FixedOrderFormatter(ScalarFormatter):
