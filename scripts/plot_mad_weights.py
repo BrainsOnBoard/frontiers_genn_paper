@@ -24,6 +24,7 @@ fig, axis = plt.subplots(figsize=(plot_settings.column_width, 90.0 * plot_settin
                          frameon=False)
 axis.bar(bin_centre_x, hist, width=bin_x[1] - bin_x[0])
 
+# Plot weight distribution from original paper
 axis.plot(bin_centre_x, norm.pdf(bin_centre_x, 45.65, 3.99))
 
 axis.set_xlabel("Weight [pA]")
