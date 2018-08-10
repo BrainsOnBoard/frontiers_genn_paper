@@ -96,29 +96,40 @@ We then verify the correctness of our GPU simulations before comparing the perfo
 \end{itemize}
 
 GeNN neuron models are defined by writing a class defining the model parameters and snippets of C-like code that describe how it should be simulated.
-For example the following `LIF' class describes a very simple leaky integrate-and-fire neuron with normalised units, solved algebraically:
+For example the following \lstinline{LIF} class describes a very simple leaky integrate-and-fire neuron with normalised units, solved algebraically:
 %
 \lstinputlisting[language=C++,showstringspaces=false,basicstyle=\tiny,numbers=left,upquote=true,firstline=2,lastline=15]{code_snippets.cc}
 %
-The \lstinline{DECLARE_MODEL} and \lstinline{IMPLEMENT_MODEL} macros define boilerplate code used for subsequently defining parameters and initial model states.
-\todo{sim code, parameters, values, derived parameters}
-Macros are used to provide some `syntactic sugar' and type safety but are entirely optional.
-GeNN uses this same approach for defining synapse models with the option to define code snippets for continuous time-driven updates as well as event-driven updates in response to pre and postsynaptic spikes.
-Once r
+The \lstinline{DECLARE_MODEL} and \lstinline{IMPLEMENT_MODEL} macros insert boilerplate code used subsequently for defining parameters and initial model states in a type-safe manner.
+The \lstinline{SET_SIM_CODE}, \lstinline{SET_THRESHOLD_CONDITION_CODE} and \lstinline{SET_RESET_CODE} macros specify the snippets of code used, respectively, to update the simulation state, check whether a spike should be emitted and to reset the neuron after a spike.
+The names of model parameters (constant across the entire population) are specified using the \lstinline{SET_PARAM_NAMES} macro and any `pre-processing' logic to be applied to these is specified with \lstinline{SET_DERIVED_PARAMS} -- in this case converting an exponential decay time constant to a multiplier to be applied every simulation timestep.
+Finally, the \lstinline{SET_VARS} macro specifies the names and types of the per-neuron state variables.
+These macros provide some `syntactic sugar' but are entirely optional -- users can instead override the underlying virtual functions themselves.
+In GeNN synapse models are defined using very similar classes with the option to define code snippets for time-driven and event-driven updates.
+Event-driven updates can be triggered by pre or postsynaptic spikes as well as by custom events e.g. pre or postsynaptic neuron's membrane voltages crossing a threshold.
+Once the required models have been defined, homogeneous \textit{populations} of neurons can be added to a network:
 %
 \lstinputlisting[language=C++,showstringspaces=false,basicstyle=\tiny,numbers=left,upquote=true,firstline=17,lastline=20]{code_snippets.cc}
 %
-This also demonstrates how the same approach used for defining models can be used to initialise variables.
-Here the membrane voltage for our \num{1000} LIF neurons is sampled from the uniform distribution using a `variable initialisation snippet' built into GeNN which allows the same parallelisation strategies used for simulating models on the GPU to be applied to initialising them.
-This approach is advantageous both as it removes the need to transfer the model state from the CPU to the GPU
-While the PCI express bus typically used to connect the GPU to the host system is relatively fast (up to \SI{16}{\giga\byte\per\second}), initialising millions of synaptic weights on the CPU and then uploading them at the start of the simulation can still considerably slow down the time it takes to iterate the model.
+Here we demonstrates how the same approach used for defining models can also be used to initialise variables.
+The membrane voltage \lstinline{V} of our \num{1000} LIF neurons is sampled from the uniform distribution using a \textit{variable initialisation snippet} built into GeNN which allows the same parallelisation strategies used for simulating models on the GPU to be applied to initialising their parameters.
+This approach is advantageous as it both removes the need to transfer model state from the CPU to the GPU and allows the GPU to be used to accelerate potentially costly initialisation such as sampling random numbers.
+%While the PCI express bus typically used to connect the GPU to the host system is relatively fast (up to \SI{16}{\giga\byte\per\second}), initialising millions of synaptic weights on the CPU and then uploading them at the start of the simulation can still considerably slow down the time it takes to iterate the model.
+\todo{Benchmark demonstrating speedup from presentation?}
 
-Models can be implemented using the C++ interface described in the preceding section and the resultant simulation code can be linked against 
+Once network models have been defined using the C++ interface described in the preceding section, GeNN will generate the CUDA code to simulate the network and this can be linked against a simple simulation loop provided by the user:
+%
+\lstinputlisting[language=C++,showstringspaces=false,basicstyle=\tiny,numbers=left,upquote=true,firstline=22,lastline=32]{code_snippets.cc}
+%
+This approach allows a lot of flexibility in terms of tightly intergrating visualisation tools and closed-loop robotics with GeNN simulation but, combined with the use of C++ for model definition,
 \todo{Brian2GeNN, SpineML, PyNN}
+%
 \subsection{The cell-type specific cortical microcircuit}
 sfa
+%
 \subsection{Balanced random network with power-law STDP}
-The type of one-shot, online learning observed in nature is one of the many properties that make spiking neural networks attractive when compared to the approaches typically employed in training artificial neural networks.
+The type of one-shot, online learning observed in nature is one of the properties that make spiking neural networks attractive when compared to the approaches typically employed in training artificial neural networks.
+
 \todo{link between learning and synaptic plasticity}
 However, adding synaptic plasticity to spiking neural network simulations typically increases the computational cost of simulating them significantly. 
 \citet{Morrison2007} reported that adding plasticity to their simulations slowed them down by ``a factor of less than 10'' and \citet{Knight2016b} found that, in the best case, simple STDP plasticity reduced the performance of the SpiNNaker neuromorphic system by approximately $6\times$.
@@ -154,11 +165,9 @@ However spiking neural networks are not especially well-suited
 \end{itemize}
 
 \section*{Conflict of Interest Statement}
-
 The authors declare that the research was conducted in the absence of any commercial or financial relationships that could be construed as a potential conflict of interest.
 
 \section*{Author Contributions}
-
 The Author Contributions section is mandatory for all articles, including articles by sole authors. If an appropriate statement is not provided on submission, a standard one will be inserted during the production process. The Author Contributions statement must describe the contributions of individual authors referred to by their initials and, in doing so, all authors agree to be accountable for the content of the work. Please see  \href{http://home.frontiersin.org/about/author-guidelines#AuthorandContributors}{here} for full authorship criteria.
 
 \section*{Funding}
@@ -173,8 +182,8 @@ This is a short text to acknowledge the contributions of specific colleagues, in
 \section*{Data Availability Statement}
 The datasets [GENERATED/ANALYZED] for this study can be found in the [NAME OF REPOSITORY] [LINK].
 % Please see the availability of data guidelines for more information, at https://www.frontiersin.org/about/author-guidelines#AvailabilityofData
-
-\bibliographystyle{frontiersinSCNS_ENG_HUMS} % for Science, Engineering and Humanities and Social Sciences articles, for Humanities and Social Sciences articles please include page numbers in the in-text citations
+%
+\bibliographystyle{frontiersinSCNS_ENG_HUMS}
 \bibliography{frontiers_genn}
 
 %%% Make sure to upload the bib file along with the tex file and PDF

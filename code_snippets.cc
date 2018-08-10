@@ -17,4 +17,16 @@ IMPLEMENT_MODEL(LIF);
 InitVarSnippet::Uniform::ParamValues vDist(0.0,1.0);
 LIF::ParamValues params(20.0);
 LIF::VarValues initState(initVar<InitVarSnippet::Uniform>(vDist));
-model.addNeuronPopulation<LIF>("pop",1000,params,initState);
+network.addNeuronPopulation<LIF>("pop",1000,params,initState);
+// Simulation
+#include "model_CODE/definitions.h"
+
+int main()
+{
+  allocateMem();
+  initialize();
+  while(t < 100.0f) {
+     stepTimeGPU();
+  }
+  return 0;
+}
