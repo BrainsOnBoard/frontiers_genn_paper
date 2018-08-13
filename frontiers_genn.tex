@@ -13,7 +13,7 @@
 
 \documentclass[utf8]{frontiersSCNS} % for Science, Engineering and Humanities and Social Sciences articles
 
-\usepackage{url,hyperref,lineno,listings,microtype,subcaption}
+\usepackage{booktabs,url,hyperref,lineno,listings,microtype,subcaption}
 
 % Automatic formatting of SI units
 \usepackage[binary-units]{siunitx}
@@ -25,6 +25,8 @@
 
 % Visible TODO notes
 \newcommand{\todo}[1]{\textbf{\textsc{\textcolor{red}{(TODO: #1)}}}}
+
+\lstset{language=C++,showstringspaces=false,basicstyle=\tiny,upquote=true}
 
 \linenumbers
 
@@ -71,6 +73,8 @@ Inspired by the distributed nature of memory and computation in the brain, neuro
 However, while these systems may be the ultimate platform for \textit{deploying} spiking neural networks, their very distributed nature makes them unwieldy tools for \textit{developing} SNN models.
 Instead development of SNN models tends to be performed on computers with standard Von Neumann architectures and, once models scale above a certain size, clusters of Von Neumann architecture machines.
 
+\todo{how many top 500 supecomputers have NVIDIA?}
+
 In this paper we re-implement two large-scale point neuron network models with levels of connectivity and sparseness matching those in the neocortex using our GeNN code generator.
 We then verify the correctness of our GPU simulations before comparing the performance and energy usage against published data for traditional CPU-based HPC as well as neuromorphic hardware.
 
@@ -98,7 +102,7 @@ We then verify the correctness of our GPU simulations before comparing the perfo
 GeNN neuron models are defined by writing a class defining the model parameters and snippets of C-like code that describe how it should be simulated.
 For example the following \lstinline{LIF} class describes a very simple leaky integrate-and-fire neuron with normalised units, solved algebraically:
 %
-\lstinputlisting[language=C++,showstringspaces=false,basicstyle=\tiny,numbers=left,upquote=true,firstline=2,lastline=15]{code_snippets.cc}
+\lstinputlisting[firstline=2,lastline=15]{code_snippets.cc}
 %
 The \lstinline{DECLARE_MODEL} and \lstinline{IMPLEMENT_MODEL} macros insert boilerplate code used subsequently for defining parameters and initial model states in a type-safe manner.
 The \lstinline{SET_SIM_CODE}, \lstinline{SET_THRESHOLD_CONDITION_CODE} and \lstinline{SET_RESET_CODE} macros specify the snippets of code used, respectively, to update the simulation state, check whether a spike should be emitted and to reset the neuron after a spike.
@@ -106,22 +110,23 @@ The names of model parameters (constant across the entire population) are specif
 Finally, the \lstinline{SET_VARS} macro specifies the names and types of the per-neuron state variables.
 These macros provide some `syntactic sugar' but are entirely optional -- users can instead override the underlying virtual functions themselves.
 In GeNN synapse models are defined using very similar classes with the option to define code snippets for time-driven and event-driven updates.
-Event-driven updates can be triggered by pre or postsynaptic spikes as well as by custom events e.g. pre or postsynaptic neuron's membrane voltages crossing a threshold.
-Once the required models have been defined, homogeneous \textit{populations} of neurons can be added to a network:
+Event-driven updates can be triggered by pre or postsynaptic spikes as well as by custom events for example the pre or postsynaptic neuron's membrane voltages crossing a threshold.
+Once the required models have been defined, the parameters and initial state variables values can be set and \textit{populations} of neurons can be added to a network:
 %
-\lstinputlisting[language=C++,showstringspaces=false,basicstyle=\tiny,numbers=left,upquote=true,firstline=17,lastline=20]{code_snippets.cc}
+\lstinputlisting[firstline=17,lastline=20]{code_snippets.cc}
 %
-Here we demonstrates how the same approach used for defining models can also be used to initialise variables.
-The membrane voltage \lstinline{V} of our \num{1000} LIF neurons is sampled from the uniform distribution using a \textit{variable initialisation snippet} built into GeNN which allows the same parallelisation strategies used for simulating models on the GPU to be applied to initialising their parameters.
+This listing also illustrate how the approach used for defining models can also be used to define how variables are initialised.
+The membrane voltage \lstinline{V} of our \num{1000} LIF neurons is sampled from the uniform distribution using one of GeNN's built in \textit{variable initialisation snippets}.
+These are definited in a similar manner to the neuron and synapse models previously described allowing network initialisation to be parallelised uisng the same strategies used for simulating models on the GPU to be applied to initialising their parameters.
 This approach is advantageous as it both removes the need to transfer model state from the CPU to the GPU and allows the GPU to be used to accelerate potentially costly initialisation such as sampling random numbers.
 %While the PCI express bus typically used to connect the GPU to the host system is relatively fast (up to \SI{16}{\giga\byte\per\second}), initialising millions of synaptic weights on the CPU and then uploading them at the start of the simulation can still considerably slow down the time it takes to iterate the model.
 \todo{Benchmark demonstrating speedup from presentation?}
 
 Once network models have been defined using the C++ interface described in the preceding section, GeNN will generate the CUDA code to simulate the network and this can be linked against a simple simulation loop provided by the user:
 %
-\lstinputlisting[language=C++,showstringspaces=false,basicstyle=\tiny,numbers=left,upquote=true,firstline=22,lastline=32]{code_snippets.cc}
+\lstinputlisting[firstline=22,lastline=32]{code_snippets.cc}
 %
-This approach allows a lot of flexibility in terms of tightly intergrating visualisation tools and closed-loop robotics with GeNN simulation but, combined with the use of C++ for model definition,
+While this approach allows a lot of flexibility and means that visualisation tools and closed-loop robotics can be tightly coupled to GeNN simulations, combined with the use of C++ for model definition, this 
 \todo{Brian2GeNN, SpineML, PyNN}
 %
 \subsection{The cell-type specific cortical microcircuit}
@@ -133,14 +138,33 @@ The type of one-shot, online learning observed in nature is one of the propertie
 \todo{link between learning and synaptic plasticity}
 However, adding synaptic plasticity to spiking neural network simulations typically increases the computational cost of simulating them significantly. 
 \citet{Morrison2007} reported that adding plasticity to their simulations slowed them down by ``a factor of less than 10'' and \citet{Knight2016b} found that, in the best case, simple STDP plasticity reduced the performance of the SpiNNaker neuromorphic system by approximately $6\times$.
+Perhaps because of the restrictive cost in computing power and time, there are relatively few large-scale network models with synaptic plasticity.
 
 \section{Results}
-\subsection{Model }
 \subsection{Correctness}
 jeldh
 
 \subsection{Performance}
-sss
+To assess the performance of our GeNN simulations we chose a selection of GPUs across the spec
+
+\begin{table}
+  \centering
+  \begin{tabular}{r r S r S S}
+    \toprule
+        {Device model}  & {Target market}   & {Thermal Design Power}    & {Architecture}    & {Number of}   & {Memory} \\
+                        &                   & {TDP [\si{\watt}]}        &                   & {CUDA cores}  & {[\si{\giga\byte}]} \\
+    \midrule
+        GeForce 1050 Ti & Gaming            & 75                        & Pascal            & 768           & 4 \\
+        Jetson TX2      & Embedded          & 15                        & Pascal            & 256           & 4* \\
+        Tesla K40m      & HPC               & 245                       & Kepler            & 2880          & 12 \\
+        Tesla V100      & HPC               & 250                       & Volta             & 5120          & 16 \\
+    \bottomrule
+  \end{tabular}
+
+  \caption{GPU devices}
+  \label{tab:gpu_devices}
+\end{table}
+
 
 \subsection{Power and energy}
 sda
