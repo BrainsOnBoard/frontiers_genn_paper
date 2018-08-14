@@ -48,21 +48,35 @@ def load_spikes(filename):
     spike_times = spike_times[post_transient]
     spike_neuron_id = spike_neuron_id[post_transient]
 
-    return spike_times, spike_neuron_id, name, num
+    # Load NEST spikes
+    # **NOTE** retrospectively using NEO for all spike io would be better
+    nest_spike_path = path.join("potjans_spikes", "nest", "spikes_L" + name + ".dat")
+    nest_spikes = np.loadtxt(nest_spike_path, delimiter="\t",
+                             dtype={"names": ("time", "id", ), "formats": (float, float)})
 
-def calc_histogram(data, smoothing):
-    # Calculate bin-size using Freedman-Diaconis rule
-    bin_size = (2.0 * iqr(data)) / (float(len(data)) ** (1.0 / 3.0))
+    # Convert CSV columns to numpy
+    nest_spike_times = nest_spikes["time"]
+    nest_spike_neuron_id = nest_spikes["id"].astype(int)
+    nest_post_transient = (nest_spike_times > 1000.0)
+    nest_spike_times = nest_spike_times[nest_post_transient]
+    nest_spike_neuron_id = nest_spike_neuron_id[nest_post_transient]
 
-    # Get range of data
-    min_y = np.amin(data)
-    max_y = np.amax(data)
+    return spike_times, spike_neuron_id, name, num, nest_spike_times, nest_spike_neuron_id
 
-    # Calculate number of bins, rounding up to get right edge
-    num_bins = np.ceil((max_y - min_y) / bin_size)
+def calc_histogram(data, smoothing, bin_x=None):
+    if bin_x is None:
+        # Calculate bin-size using Freedman-Diaconis rule
+        bin_size = (2.0 * iqr(data)) / (float(len(data)) ** (1.0 / 3.0))
 
-    # Create range of bin x coordinates
-    bin_x = np.arange(min_y, min_y + (num_bins * bin_size), bin_size)
+        # Get range of data
+        min_y = np.amin(data)
+        max_y = np.amax(data)
+
+        # Calculate number of bins, rounding up to get right edge
+        num_bins = np.ceil((max_y - min_y) / bin_size)
+
+        # Create range of bin x coordinates
+        bin_x = np.arange(min_y, min_y + (num_bins * bin_size), bin_size)
 
     # Create kernel density estimator of data
     data_kde = gaussian_kde(data, smoothing)
@@ -73,15 +87,15 @@ def calc_histogram(data, smoothing):
     # Return
     return bin_x, hist_smooth
 
-def calc_rate_hist(spike_times, spike_ids, num, duration):
+def calc_rate_hist(spike_times, spike_ids, num, duration, bin_x=None):
      # Calculate histogram of spike IDs to get each neuron's firing rate
     rate, _ = np.histogram(spike_ids, bins=range(num + 1))
     assert len(rate) == num
     rate = np.divide(rate, duration, dtype=float)
     
-    return calc_histogram(rate, 0.3)
+    return calc_histogram(rate, 0.3, bin_x)
 
-def calc_cv_isi_hist(spike_times, spike_ids, num, duration):
+def calc_cv_isi_hist(spike_times, spike_ids, num, duration, bin_x=None):
     # Loop through neurons
     cv_isi = []
     for n in range(num):
@@ -93,9 +107,9 @@ def calc_cv_isi_hist(spike_times, spike_ids, num, duration):
         if len(neuron_spike_times) > 1:
             cv_isi.append(cv(isi(neuron_spike_times)))
 
-    return calc_histogram(cv_isi, 0.04)
+    return calc_histogram(cv_isi, 0.04, bin_x)
 
-def calc_corellation(spike_times, spike_ids, num, duration):
+def calc_corellation(spike_times, spike_ids, num, duration, bin_x=None):
     # Create randomly shuffled indices
     neuron_indices = np.arange(num)
     np.random.shuffle(neuron_indices)
@@ -128,7 +142,7 @@ def calc_corellation(spike_times, spike_ids, num, duration):
     correlation_non_disjoint = correlation[np.tril_indices_from(correlation, k=-1)]
 
     # Calculate histogram
-    return calc_histogram(correlation_non_disjoint, 0.002)
+    return calc_histogram(correlation_non_disjoint, 0.002, bin_x)
 
 pop_spikes = [load_spikes("6I.csv"),
               load_spikes("6E.csv"),
@@ -157,7 +171,7 @@ fig.add_subplot(raster_axis)
 utils.remove_axis_junk(raster_axis)
 
 # Get offsets of populations
-neuron_id_offset = np.cumsum([0] + [n for _, _, _, n in pop_spikes])
+neuron_id_offset = np.cumsum([0] + [n for _, _, _, n, _, _ in pop_spikes])
 
 # Axis at start of each row and column to share x and y axes with
 pop_rate_axis_col_sharex = [None] * 2
@@ -168,7 +182,7 @@ pop_corr_axis_col_sharex = [None] * 2
 pop_corr_axis_row_sharey = [None] * 4
 
 # Loop through populations
-for i, (spike_times, spike_ids, name, num) in enumerate(pop_spikes):
+for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in enumerate(pop_spikes):
     col = i % 2
     row = i / 2
 
@@ -176,10 +190,13 @@ for i, (spike_times, spike_ids, name, num) in enumerate(pop_spikes):
     plot_mask = ((spike_ids % raster_plot_step) == 0) & (spike_times > raster_plot_start_ms) & (spike_times <= raster_plot_end_ms)
     raster_axis.scatter(spike_times[plot_mask], spike_ids[plot_mask] + neuron_id_offset[i], s=1, edgecolors="none")
 
-    # Calculate statistics
-    rate_bin_x, rate_hist = calc_rate_hist(spike_times, spike_ids, num, duration)
-    isi_bin_x, isi_hist = calc_cv_isi_hist(spike_times, spike_ids, num, duration)
-    corr_bin_x, corr_hist = calc_corellation(spike_times, spike_ids, num, duration)
+    # Calculate statistics (using precise NEST stats to determine bins)
+    rate_bin_x, nest_rate_hist = calc_rate_hist(nest_spike_times, nest_spike_ids, num, duration)
+    _, rate_hist = calc_rate_hist(spike_times, spike_ids, num, duration, bin_x=rate_bin_x)
+    isi_bin_x, nest_isi_hist = calc_cv_isi_hist(nest_spike_times, nest_spike_ids, num, duration)
+    _, isi_hist = calc_cv_isi_hist(spike_times, spike_ids, num, duration, bin_x=isi_bin_x)
+    corr_bin_x, nest_corr_hist = calc_corellation(nest_spike_times, nest_spike_ids, num, duration)
+    _, corr_hist = calc_corellation(spike_times, spike_ids, num, duration, bin_x=corr_bin_x)
 
     # Plot rate histogram
     pop_rate_axis = plt.Subplot(fig, gs_rate_axes[3 - row, col],
@@ -187,7 +204,8 @@ for i, (spike_times, spike_ids, name, num) in enumerate(pop_spikes):
                                 sharey=pop_rate_axis_row_sharey[row])
     fig.add_subplot(pop_rate_axis)
     pop_rate_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_rate_axis.transAxes)
-    pop_rate_axis.plot(rate_bin_x, rate_hist)
+    pop_rate_axis.plot(rate_bin_x, rate_hist, linewidth=1)
+    pop_rate_axis.plot(rate_bin_x, nest_rate_hist, linewidth=1)
     
     # Plot rate histogram
     pop_cv_isi_axis = plt.Subplot(fig, gs_cv_isi_axes[3 - row, col],
@@ -195,7 +213,8 @@ for i, (spike_times, spike_ids, name, num) in enumerate(pop_spikes):
                                   sharey=pop_cv_isi_axis_row_sharey[row])
     fig.add_subplot(pop_cv_isi_axis)
     pop_cv_isi_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_cv_isi_axis.transAxes)
-    pop_cv_isi_axis.plot(isi_bin_x, isi_hist)
+    pop_cv_isi_axis.plot(isi_bin_x, isi_hist, linewidth=1)
+    pop_cv_isi_axis.plot(isi_bin_x, nest_isi_hist, linewidth=1)
 
     # Plot correlation histogram
     pop_corr_axis = plt.Subplot(fig, gs_corr_axes[3 - row, col],
@@ -203,7 +222,8 @@ for i, (spike_times, spike_ids, name, num) in enumerate(pop_spikes):
                                 sharey=pop_corr_axis_row_sharey[row])
     fig.add_subplot(pop_corr_axis)
     pop_corr_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_corr_axis.transAxes)
-    pop_corr_axis.plot(corr_bin_x, corr_hist)
+    pop_corr_axis.plot(corr_bin_x, corr_hist, linewidth=1)
+    pop_corr_axis.plot(corr_bin_x, nest_corr_hist, linewidth=1)
 
     # Remove axis junk
     utils.remove_axis_junk(pop_rate_axis)
@@ -256,7 +276,7 @@ raster_axis.set_xlabel("Time [ms]")
 # Calculate midpoints of each population in terms of neuron ids and position population ids here
 pop_midpoints = neuron_id_offset[:-1] + ((neuron_id_offset[1:] - neuron_id_offset[:-1]) * 0.5)
 raster_axis.set_yticks(pop_midpoints)
-raster_axis.set_yticklabels(name for _, _, name, _ in pop_spikes)
+raster_axis.set_yticklabels(name for _, _, name, _, _,_ in pop_spikes)
 raster_axis.set_xlim((raster_plot_start_ms, raster_plot_end_ms))
 raster_axis.set_ylim((0,neuron_id_offset[-1]))
 
