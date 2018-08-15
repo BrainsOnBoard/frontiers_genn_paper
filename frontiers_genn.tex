@@ -13,7 +13,7 @@
 
 \documentclass[utf8]{frontiersSCNS} % for Science, Engineering and Humanities and Social Sciences articles
 
-\usepackage{booktabs,url,hyperref,lineno,listings,microtype,subcaption}
+\usepackage{amsmath,amssymb,booktabs,url,hyperref,lineno,listings,microtype,subcaption}
 
 % Automatic formatting of SI units
 \usepackage[binary-units]{siunitx}
@@ -68,18 +68,20 @@
 
 %%% Leave the Abstract empty if your article does not require one, please see the Summary Table for full details.
 \section{}
-Inspired by the distributed nature of memory and computation in the brain, neuromorphic systems aim to re
+Inspired by the distributed nature of memory and computation in the brain, neuromorphic systems are designed to provide a more energy-efficient substrate for emulating spiking neural networks when compared to simulations running on Von Neumann architectures.
 
-However, while these systems may be the ultimate platform for \textit{deploying} spiking neural networks, their very distributed nature makes them unwieldy tools for \textit{developing} SNN models.
-Instead development of SNN models tends to be performed on computers with standard Von Neumann architectures and, once models scale above a certain size, clusters of Von Neumann architecture machines.
+While neuromorphic systems may be the ultimate platform for \textit{deploying} spiking neural networks, their very distributed nature makes them unwieldy tools for \textit{developing} SNN models.
+Instead development and simulation of SNN models tends to be performed on computers with standard Von Neumann architectures and, once models scale above a certain size, clusters of these machines.
+However over the last decade, as well as being present in a large proportion of workstations, NVIDIA GPU accelerators are now used in \SI{50}{\percent} of the Top 10 super computing sites to increase peak performance.
 
-\todo{how many top 500 supecomputers have NVIDIA?}
+\todo{argument for using GPUs for SNN}
 
 In this paper we re-implement two large-scale point neuron network models with levels of connectivity and sparseness matching those in the neocortex using our GeNN code generator.
 We then verify the correctness of our GPU simulations before comparing the performance and energy usage against published data for traditional CPU-based HPC as well as neuromorphic hardware.
+We show that a full-scale model of a cortical column can be simulated faster using a single NVIDIA Tesla V100 accelerator than is possible using 32 nodes of a CPU based cluster or the SpiNNaker neuromorphic system with a significantly lower cost in terms of energy to solution.\todo{specifics}
 
 \tiny
- \keyFont{ \section{Keywords:} keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword} %All article types: you may provide up to 8 keywords; at least 5 are mandatory.
+ \keyFont{ \section{Keywords:} GPU, high-performance computing, parallel computing, accuracy of simulation, energy to solution, benchmarking, computational neuroscience} %All article types: you may provide up to 8 keywords; at least 5 are mandatory.
 \end{abstract}
 
 \section{Introduction}
@@ -94,9 +96,7 @@ We then verify the correctness of our GPU simulations before comparing the perfo
 \section{Material and Methods}
 \subsection{GeNN}
 \begin{itemize}
-    \item GeNN code generator - while CUDA is relatively simple, efficiently parallelising SNN code is non-trivial
-    \item Does not rely on any sort of domain-specific language - models are described by snippets of serial C-like code
-    \item Walk through example of a neuron model
+    \item GeNN code generator - while CUDA is relatively simple, efficiently parallelising SNN code is non-trivial    
 \end{itemize}
 
 GeNN neuron models are defined by writing a class defining the model parameters and snippets of C-like code that describe how it should be simulated.
@@ -126,45 +126,93 @@ Once network models have been defined using the C++ interface described in the p
 %
 \lstinputlisting[firstline=22,lastline=32]{code_snippets.cc}
 %
-While this approach allows a lot of flexibility and means that visualisation tools and closed-loop robotics can be tightly coupled to GeNN simulations, combined with the use of C++ for model definition, this 
+While this approach allows a lot of flexibility and means that visualisation tools and closed-loop robotics can be tightly coupled to GeNN simulations, when combined with the use of C++ for model definition, this does make using GeNN a somewhat daunting prospect to users more used to Python-based simulations such as Brian~\citep{Stimberg2014} or PyNN~\citep{Davison2008a}.
+Therefore GeNN offers
 \todo{Brian2GeNN, SpineML, PyNN}
 %
 \subsection{The cell-type specific cortical microcircuit}
-sfa
-%
-\subsection{Balanced random network with power-law STDP}
+This model of \SI{1}{\milli\metre\cubed} of early-sensory cortex was first developed by \citet{Potjans2012}.
+The model consists of around \num{80000} leaky integrate-and-fire neurons, divided into layers 2/3, 4, 5 and 6 -- each layer modelled as one population of excitatory and another of inhibitory neurons.
+Neurons in each population are connected with population-specific densities derived from an extensive review of the anatomical literature resulting in a total of approximately \num{0.3E9} synapses.
+In addition to this synaptic input, each neuron in the network also receives independant Poisson inputs with population-specific rates representing input from adjacent cortical regions.
+Beside this basic structure, the connectivity is otherwise random with both synaptic strengths and transmission delays being normally distributed.
+
+
+\begin{enumerate}
+    \item LIF exp algabraic solution
+    \item Roughly how this is simulated in GeNN: thread per neuron, cuRAND for Poisson, coalesced reads of sparse matrix, fire-and-forget atomics to update input
+    \item 
+\end{enumerate}
+
+\subsection{Balanced random network with spike-timing dependant plasticity}
 The type of one-shot, online learning observed in nature is one of the properties that make spiking neural networks attractive when compared to the approaches typically employed in training artificial neural networks.
 
 \todo{link between learning and synaptic plasticity}
 However, adding synaptic plasticity to spiking neural network simulations typically increases the computational cost of simulating them significantly. 
 \citet{Morrison2007} reported that adding plasticity to their simulations slowed them down by ``a factor of less than 10'' and \citet{Knight2016b} found that, in the best case, simple STDP plasticity reduced the performance of the SpiNNaker neuromorphic system by approximately $6\times$.
 Perhaps because of the restrictive cost in computing power and time, there are relatively few large-scale network models with synaptic plasticity.
+However the model that \citet{Morrison2007} develop in order to show how 
+\citet{Morrison2007} argue that because STDP is, by nature, sensitive to correlations in neural activity experiments on the role of STDP in cortical dynamics made on scaled down models with fewer incoming synapses per neuron with larger synaptic weighhts.
+\begin{align}
+    \Delta w & = \
+        \begin{cases}
+            \lambda w_{0}^{1-\mu} w^{\mu} e^{-\frac{|\Delta t|}{\tau}}\\ & if\, \Delta t>0\\
+            -\lambda \alpha w e^{-\frac{|\Delta t|}{\tau}} & if\, \Delta t\leq0
+        \end{cases}
+\end{align}
 
 \section{Results}
 \subsection{Correctness}
-jeldh
+
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=180mm]{figures/microcircuit_accuracy}
+    \end{center}
+    \caption{Spiking output of cortical microcircuit model with Poisson input.  
+    \textbf{(A)} Raster plot showing spike times (dots) of neurons from each population. 
+    The spikes of 5\% of neurons (vertical) are shown.
+    \textbf{(B)} Single-neuron firing rates of all neurons.
+    \textbf{(C)} CV ISI, a measure of irregularity of all neurons.
+    \textbf{(D)} Correlation coefficients between binned spike trains for \num{200} neurons in each population.
+    All measures are calculated over the last \SI{9}{\second} of the simulation and histogram bin widths are determined using the Freedman-Diaconis rule.
+    Repeat as  necessary for each of your figures}
+    \label{fig:microcircuit_accuracy}
+\end{figure}
 
 \subsection{Performance}
-To assess the performance of our GeNN simulations we chose a selection of GPUs across the spec
+To assess the performance of our GPU simulations we chose a variety GPUs (listed in table~\ref{tab:gpu_devices}) covering a range of financial and power budgets.
+CUDA abstracts away the amount of parallelism the application exposes from the amount of hardware parallelism available so we can run a model that uses \num{80000} threads on a GPU with \num{256} CUDA cores.
+However memory is more of a constraint and, because of this, while all of the GPUs listed in table~\ref{tab:gpu_devices} can run the microcircuit model, only the 2 HPC GPUs have enough memory to run the STDP model.
 
 \begin{table}
   \centering
-  \begin{tabular}{r r S r S S}
+  \begin{tabular}{r S r S S S S}
     \toprule
-        {Device model}  & {Target market}   & {Thermal Design Power}    & {Architecture}    & {Number of}   & {Memory} \\
-                        &                   & {TDP [\si{\watt}]}        &                   & {CUDA cores}  & {[\si{\giga\byte}]} \\
+        {Model}         & {TDP}             & {Architecture}    & {Num.}    & {Memory}              & {Memory}                      & {Max single-precision}\\
+                        & {[\si{\watt}]}    &                   & {CUDA}    & {capacity}            & {bandwidth}                   & {performance}\\
+                        &                   &                   & {cores}   & {[\si{\giga\byte}]}   & {[\si{\giga\byte\per\second}]}& {[GFLOPS]}\\
     \midrule
-        GeForce 1050 Ti & Gaming            & 75                        & Pascal            & 768           & 4 \\
-        Jetson TX2      & Embedded          & 15                        & Pascal            & 256           & 4* \\
-        Tesla K40m      & HPC               & 245                       & Kepler            & 2880          & 12 \\
-        Tesla V100      & HPC               & 250                       & Volta             & 5120          & 16 \\
+        GeForce 1050 Ti & 75                & Pascal            & 768       & 4                     & 112                           & 2100\\
+        Jetson TX2      & 15                & Pascal            & 256       & 4\textsuperscript{1}  & 58.4                          & 12\\
+        Tesla K40m      & 245               & Kepler            & 2880      & 12                    & 288                           & 4290\\
+        Tesla V100      & 250               & Volta             & 5120      & 16                    & 900                           & 14000\\
     \bottomrule
   \end{tabular}
 
-  \caption{GPU devices}
+  \caption{GPU devices.
+  \textsuperscript{1}~Memory is shared between CPU and GPU.}
   \label{tab:gpu_devices}
 \end{table}
 
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=180mm]{figures/microcircuit_performance}
+    \end{center}
+    \caption{Simulation times of microcircuit model running on various GPU hardware.
+    SpiNNaker and fastest HPC simulation times presented by \citet{VanAlbada2018} included for comparison.
+    `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.}
+    \label{fig:microcircuit_performance}
+\end{figure}
 
 \subsection{Power and energy}
 sda
@@ -209,44 +257,5 @@ The datasets [GENERATED/ANALYZED] for this study can be found in the [NAME OF RE
 
 %%% Make sure to upload the bib file along with the tex file and PDF
 %%% Please see the test.bib file for some examples of references
-
-\section*{Figure captions}
-
-%%% Please be aware that for original research articles we only permit a combined number of 15 figures and tables, one figure with multiple subfigures will count as only one figure.
-%%% Use this if adding the figures directly in the mansucript, if so, please remember to also upload the files when submitting your article
-%%% There is no need for adding the file termination, as long as you indicate where the file is saved. In the examples below the files (logo1.eps and logos.eps) are in the Frontiers LaTeX folder
-%%% If using *.tif files convert them to .jpg or .png
-%%%  NB logo1.eps is required in the path in order to correctly compile front page header %%%
-
-\begin{figure}[h!]
-    \begin{center}
-        \includegraphics[width=180mm]{figures/microcircuit_accuracy}
-    \end{center}
-    \caption{Spiking output of cortical microcircuit model with Poisson input.  
-    \textbf{(A)} Raster plot showing spike times (dots) of neurons from each population. 
-    The spikes of 5\% of neurons (vertical) are shown.
-    \textbf{(B)} Single-neuron firing rates of all neurons.
-    \textbf{(C)} CV ISI, a measure of irregularity of all neurons.
-    \textbf{(D)} Correlation coefficients between binned spike trains for \num{200} neurons in each population.
-    All measures are calculated over the last \SI{9}{\second} of the simulation and histogram bin widths are determined using the Freedman-Diaconis rule.
-    Repeat as  necessary for each of your figures}
-    \label{fig:microcircuit_accuracy}
-\end{figure}
-
-
-\begin{figure}[h!]
-    \begin{center}
-        \includegraphics[width=180mm]{figures/microcircuit_performance}
-    \end{center}
-    \caption{Simulation times of microcircuit model running on various GPU hardware.
-    SpiNNaker and fastest HPC simulation times presented by \citet{VanAlbada2018} included for comparison.
-    `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.}
-    \label{fig:microcircuit_performance}
-\end{figure}
-
-%%% If you are submitting a figure with subfigures please combine these into one image file with part labels integrated.
-%%% If you don't add the figures in the LaTeX files, please upload them when submitting the article.
-%%% Frontiers will add the figures at the end of the provisional pdf automatically
-%%% The use of LaTeX coding to draw Diagrams/Figures/Structures should be avoided. They should be external callouts including graphics.
 
 \end{document}
