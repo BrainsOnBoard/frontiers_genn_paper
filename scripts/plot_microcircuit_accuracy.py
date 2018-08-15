@@ -6,8 +6,7 @@ import plot_settings
 import utils
 
 from os import path
-from scipy.stats import gaussian_kde
-from scipy.stats import iqr
+from scipy.stats import entropy, gaussian_kde, iqr
 
 from elephant.conversion import BinnedSpikeTrain
 from elephant.statistics import isi, cv
@@ -182,6 +181,9 @@ pop_corr_axis_col_sharex = [None] * 2
 pop_corr_axis_row_sharey = [None] * 4
 
 # Loop through populations
+rate_kl = []
+isi_kl = []
+corr_kl = []
 for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in enumerate(pop_spikes):
     col = i % 2
     row = i / 2
@@ -198,14 +200,27 @@ for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in 
     corr_bin_x, nest_corr_hist = calc_corellation(nest_spike_times, nest_spike_ids, num, duration)
     _, corr_hist = calc_corellation(spike_times, spike_ids, num, duration, bin_x=corr_bin_x)
 
+    rate_bin_mask = (nest_rate_hist > 1.0E-15) & (rate_hist > 1.0E-15)
+    isi_bin_mask = (nest_isi_hist > 1.0E-15) & (isi_hist > 1.0E-15)
+    corr_bin_mask = (nest_corr_hist > 1.0E-15) & (corr_hist > 1.0E-15)
+
+    # Calculate KL divergence
+    rate_kl.append(entropy(nest_rate_hist[rate_bin_mask], rate_hist[rate_bin_mask]))
+    isi_kl.append(entropy(nest_isi_hist[isi_bin_mask], isi_hist[isi_bin_mask]))
+    corr_kl.append(entropy(nest_corr_hist[corr_bin_mask], corr_hist[corr_bin_mask]))
+
+    assert np.isfinite(rate_kl[-1])
+    assert np.isfinite(isi_kl[-1])
+    assert np.isfinite(corr_kl[-1])
+
     # Plot rate histogram
     pop_rate_axis = plt.Subplot(fig, gs_rate_axes[3 - row, col],
                                 sharex=pop_rate_axis_col_sharex[col],
                                 sharey=pop_rate_axis_row_sharey[row])
     fig.add_subplot(pop_rate_axis)
     pop_rate_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_rate_axis.transAxes)
-    pop_rate_axis.plot(rate_bin_x, rate_hist, linewidth=1)
-    pop_rate_axis.plot(rate_bin_x, nest_rate_hist, linewidth=1)
+    pop_rate_axis.plot(rate_bin_x, rate_hist, linewidth=0.5)
+    pop_rate_axis.plot(rate_bin_x, nest_rate_hist, linewidth=0.5)
     
     # Plot rate histogram
     pop_cv_isi_axis = plt.Subplot(fig, gs_cv_isi_axes[3 - row, col],
@@ -213,8 +228,8 @@ for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in 
                                   sharey=pop_cv_isi_axis_row_sharey[row])
     fig.add_subplot(pop_cv_isi_axis)
     pop_cv_isi_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_cv_isi_axis.transAxes)
-    pop_cv_isi_axis.plot(isi_bin_x, isi_hist, linewidth=1)
-    pop_cv_isi_axis.plot(isi_bin_x, nest_isi_hist, linewidth=1)
+    pop_cv_isi_axis.plot(isi_bin_x, isi_hist, linewidth=0.5)
+    pop_cv_isi_axis.plot(isi_bin_x, nest_isi_hist, linewidth=0.5)
 
     # Plot correlation histogram
     pop_corr_axis = plt.Subplot(fig, gs_corr_axes[3 - row, col],
@@ -222,8 +237,8 @@ for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in 
                                 sharey=pop_corr_axis_row_sharey[row])
     fig.add_subplot(pop_corr_axis)
     pop_corr_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_corr_axis.transAxes)
-    pop_corr_axis.plot(corr_bin_x, corr_hist, linewidth=1)
-    pop_corr_axis.plot(corr_bin_x, nest_corr_hist, linewidth=1)
+    pop_corr_axis.plot(corr_bin_x, corr_hist, linewidth=0.5)
+    pop_corr_axis.plot(corr_bin_x, nest_corr_hist, linewidth=0.5)
 
     # Remove axis junk
     utils.remove_axis_junk(pop_rate_axis)
@@ -273,10 +288,11 @@ for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in 
 
 raster_axis.set_xlabel("Time [ms]")
 
+pop_names = [name for _, _, name, _, _,_ in pop_spikes]
 # Calculate midpoints of each population in terms of neuron ids and position population ids here
 pop_midpoints = neuron_id_offset[:-1] + ((neuron_id_offset[1:] - neuron_id_offset[:-1]) * 0.5)
 raster_axis.set_yticks(pop_midpoints)
-raster_axis.set_yticklabels(name for _, _, name, _, _,_ in pop_spikes)
+raster_axis.set_yticklabels(pop_names)
 raster_axis.set_xlim((raster_plot_start_ms, raster_plot_end_ms))
 raster_axis.set_ylim((0,neuron_id_offset[-1]))
 
@@ -286,6 +302,32 @@ fig.tight_layout(pad=0.0)
 
 # Save figure
 utils.save_raster_figure(fig, "../figures/microcircuit_accuracy")
+
+
+# Create second figure to show KL divergence
+kl_fig, kl_axes = plt.subplots(3, figsize=(plot_settings.column_width, 90.0 * plot_settings.mm_to_inches),
+                               frameon=False)
+
+# Position bars
+kl_bar_width = 0.8
+kl_bar_pad = 0.75
+kl_bar_x = np.arange(0.0, len(rate_kl) * (kl_bar_width + kl_bar_pad), kl_bar_width + kl_bar_pad)
+
+# Plot bars
+kl_axes[0].bar(kl_bar_x, rate_kl, kl_bar_width)
+kl_axes[1].bar(kl_bar_x, isi_kl, kl_bar_width)
+kl_axes[2].bar(kl_bar_x, corr_kl, kl_bar_width)
+
+# Set axis labels and titles
+for axis, title in zip(kl_axes, ["A", "B", "C"]):
+    utils.remove_axis_junk(axis)
+    axis.set_ylabel("$D_{KL}$")
+    axis.set_title(title, loc="left")
+    axis.set_xticks(kl_bar_x)
+    axis.set_xticklabels(pop_names, ha="center")
+
+kl_fig.tight_layout(pad=0)
+kl_fig.savefig("../figures/microcircuit_accuracy_kl.eps")
 
 # Show plot
 plt.show()
