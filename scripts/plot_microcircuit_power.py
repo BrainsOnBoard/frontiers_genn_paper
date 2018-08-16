@@ -53,6 +53,6 @@ for d, a in zip(data, axes):
     a.set_ylabel("Power [W]")
 
 fig.tight_layout(pad=0.0)
-
+fig.savefig("../figures/microcircuit_power.eps")
 plt.show()
 
