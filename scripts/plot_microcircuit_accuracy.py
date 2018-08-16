@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 import numpy as np
-import re
+#import pickle
 import plot_settings
+import re
 import utils
 
 from os import path
@@ -82,9 +83,10 @@ def calc_histogram(data, smoothing, bin_x=None):
 
     # Use to generate smoothed histogram
     hist_smooth = data_kde.evaluate(bin_x)
-    
-    # Return
-    return bin_x, hist_smooth
+
+    # Normalise histogram and return
+    hist_normalised = hist_smooth / np.sum(hist_smooth) / (bin_x[1] - bin_x[0])
+    return bin_x, hist_normalised
 
 def calc_rate_hist(spike_times, spike_ids, num, duration, bin_x=None):
      # Calculate histogram of spike IDs to get each neuron's firing rate
@@ -200,9 +202,10 @@ for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in 
     corr_bin_x, nest_corr_hist = calc_corellation(nest_spike_times, nest_spike_ids, num, duration)
     _, corr_hist = calc_corellation(spike_times, spike_ids, num, duration, bin_x=corr_bin_x)
 
-    rate_bin_mask = (nest_rate_hist > 1.0E-15) & (rate_hist > 1.0E-15)
-    isi_bin_mask = (nest_isi_hist > 1.0E-15) & (isi_hist > 1.0E-15)
-    corr_bin_mask = (nest_corr_hist > 1.0E-15) & (corr_hist > 1.0E-15)
+    # Create a mask to select bins where the GeNN simulation has non-negligible values
+    rate_bin_mask = (rate_hist > 1.0E-15)
+    isi_bin_mask = (isi_hist > 1.0E-15)
+    corr_bin_mask = (corr_hist > 1.0E-15)
 
     # Calculate KL divergence
     rate_kl.append(entropy(nest_rate_hist[rate_bin_mask], rate_hist[rate_bin_mask]))
@@ -294,7 +297,7 @@ pop_midpoints = neuron_id_offset[:-1] + ((neuron_id_offset[1:] - neuron_id_offse
 raster_axis.set_yticks(pop_midpoints)
 raster_axis.set_yticklabels(pop_names)
 raster_axis.set_xlim((raster_plot_start_ms, raster_plot_end_ms))
-raster_axis.set_ylim((0,neuron_id_offset[-1]))
+raster_axis.set_ylim((0, neuron_id_offset[-1]))
 
 raster_axis.set_title("A", loc="left")
 
@@ -302,7 +305,11 @@ fig.tight_layout(pad=0.0)
 
 # Save figure
 utils.save_raster_figure(fig, "../figures/microcircuit_accuracy")
-
+#output = open('kl.pkl', 'wb')
+#pickle.dump(rate_kl, output)
+#pickle.dump(isi_kl, output)
+#pickle.dump(corr_kl, output)
+#output.close()
 
 # Create second figure to show KL divergence
 kl_fig, kl_axes = plt.subplots(3, figsize=(plot_settings.column_width, 90.0 * plot_settings.mm_to_inches),
@@ -313,17 +320,48 @@ kl_bar_width = 0.8
 kl_bar_pad = 0.75
 kl_bar_x = np.arange(0.0, len(rate_kl) * (kl_bar_width + kl_bar_pad), kl_bar_width + kl_bar_pad)
 
+# Values for grid-based NEST and SpiNNaker eye-balled from paper
+rate_kl_nest =      np.asarray([32,     7,      132,    12,     9,  6,      28,     50], dtype=float)
+rate_kl_spinnaker = np.asarray([63,     13,     68,     33,     19, 11,     29,     21], dtype=float)
+isi_kl_nest =       np.asarray([121,    10,     56,     16,     31, 10,     33,     6], dtype=float)
+isi_kl_spinnaker =  np.asarray([83,     5,      135,    22,     28, 8,      17,     3], dtype=float)
+
+corr_kl_nest =      np.asarray([47,     75,     50,     102,    87, 65,     91,     55], dtype=float)
+corr_kl_spinnaker = np.asarray([70,     77,     38,     43,     44, 103,    107,    91], dtype=float)
+
+# Scale eye-balled values from pixels to actual units
+rate_kl_nest *= (0.005 / 75.0)
+rate_kl_spinnaker *= (0.005 / 75.0)
+
+isi_kl_nest[:2] *= (0.05 / 75.0)
+isi_kl_spinnaker[:2] *= (0.05 / 75.0)
+isi_kl_nest[2:4] *= (0.1 / 75.0)
+isi_kl_spinnaker[2:4] *= (0.1 / 75.0)
+isi_kl_nest[4:] *= (0.05 / 75.0)
+isi_kl_spinnaker[4:] *= (0.05 / 75.0)
+
+corr_kl_nest *= (0.1 / 75.0)
+corr_kl_spinnaker *= (0.1 / 75.0)
+
 # Plot bars
-kl_axes[0].bar(kl_bar_x, rate_kl, kl_bar_width)
-kl_axes[1].bar(kl_bar_x, isi_kl, kl_bar_width)
-kl_axes[2].bar(kl_bar_x, corr_kl, kl_bar_width)
+kl_axes[0].bar(bar_x * 3, rate_kl, bar_width, label="GeNN")
+kl_axes[0].bar(bar_x * 3 + bar_width, rate_kl_nest, bar_width, label="NEST")
+kl_axes[0].bar(bar_x * 3 + bar_width * 2, rate_kl_spinnaker, bar_width, label="SpiNNaker")
+kl_axes[0].legend()
+
+kl_axes[1].bar(bar_x * 3, isi_kl, bar_width)
+kl_axes[1].bar(bar_x * 3 + bar_width, isi_kl_nest, bar_width)
+kl_axes[1].bar(bar_x * 3 + bar_width * 2, isi_kl_spinnaker, bar_width)
+
+kl_axes[2].bar(bar_x * 3, corr_kl, bar_width)
+kl_axes[2].bar(bar_x * 3 + bar_width, corr_kl_nest, bar_width)
+kl_axes[2].bar(bar_x * 3 + bar_width * 2, corr_kl_spinnaker, bar_width)
 
 # Set axis labels and titles
 for axis, title in zip(kl_axes, ["A", "B", "C"]):
-    utils.remove_axis_junk(axis)
     axis.set_ylabel("$D_{KL}$")
     axis.set_title(title, loc="left")
-    axis.set_xticks(kl_bar_x)
+    axis.set_xticks(kl_bar_x * 3)
     axis.set_xticklabels(pop_names, ha="center")
 
 kl_fig.tight_layout(pad=0)
