@@ -72,7 +72,7 @@ Inspired by the distributed nature of memory and computation in the brain, neuro
 
 While neuromorphic systems may be the ultimate platform for \textit{deploying} spiking neural networks, their very distributed nature makes them unwieldy tools for \textit{developing} SNN models.
 Instead development and simulation of SNN models tends to be performed on computers with standard Von Neumann architectures and, once models scale above a certain size, clusters of these machines.
-However over the last decade, as well as being present in a large proportion of workstations, NVIDIA GPU accelerators are now used in \SI{50}{\percent} of the Top 10 super computing sites to increase peak performance.
+However over the last decade, as well as becoming a common fixture in many workstations, NVIDIA GPU accelerators are now used in \SI{50}{\percent} of the Top 10 super computing sites to increase peak performance.
 
 \todo{argument for using GPUs for SNN}
 
@@ -81,7 +81,7 @@ We then verify the correctness of our GPU simulations before comparing the perfo
 We show that a full-scale model of a cortical column can be simulated faster using a single NVIDIA Tesla V100 accelerator than is possible using 32 nodes of a CPU based cluster or the SpiNNaker neuromorphic system with a significantly lower cost in terms of energy to solution.\todo{specifics}
 
 \tiny
- \keyFont{ \section{Keywords:} GPU, high-performance computing, parallel computing, accuracy of simulation, energy to solution, benchmarking, computational neuroscience} %All article types: you may provide up to 8 keywords; at least 5 are mandatory.
+ \keyFont{\section{Keywords:} GPU, high-performance computing, parallel computing, accuracy of simulation, energy to solution, benchmarking, computational neuroscience} %All article types: you may provide up to 8 keywords; at least 5 are mandatory.
 \end{abstract}
 
 \section{Introduction}
@@ -131,12 +131,21 @@ Therefore GeNN offers
 \todo{Brian2GeNN, SpineML, PyNN}
 %
 \subsection{The cell-type specific cortical microcircuit}
+\label{sec:method/microcircuit}
 This model of \SI{1}{\milli\metre\cubed} of early-sensory cortex was first developed by \citet{Potjans2012}.
-The model consists of around \num{80000} leaky integrate-and-fire neurons, divided into layers 2/3, 4, 5 and 6 -- each layer modelled as one population of excitatory and another of inhibitory neurons.
+The model consists of around \num{80000} leaky integrate-and-fire neurons, divided into layers 2/3, 4, 5 and 6; and each layer is modelled as an excitatory and an inhibitory population of neurons.
 Neurons in each population are connected with population-specific densities derived from an extensive review of the anatomical literature resulting in a total of approximately \num{0.3E9} synapses.
-In addition to this synaptic input, each neuron in the network also receives independant Poisson inputs with population-specific rates representing input from adjacent cortical regions.
-Beside this basic structure, the connectivity is otherwise random with both synaptic strengths and transmission delays being normally distributed.
+In addition to this synaptic input, each neuron in the network also receives independent Poisson inputs with population-specific rates representing input from adjacent cortical regions.
+Beside this basic structure, the connectivity is random with both synaptic strengths and transmission delays being normally distributed.
+\todo{Thomas: is it necessary to go into further details of network structure or just refer reader to Potjans2012?}
 
+\begin{align}
+    \tau_{m} \frac{dV}{dt} = & (V - V_{rest}) + R_{m}I
+    \tau_{syn} \frac{dI{syn}}{dt} = & 
+\end{align}
+
+Although these two state variables are coupled, in our GeNN model, the two equations are solved separately so the current going into equation~\ref{eq:lif_neuron} is effectively treated as a piecewise constant.
+While, as \citet{Rotter1999} describes, this 
 
 \begin{enumerate}
     \item LIF exp algabraic solution
@@ -145,14 +154,18 @@ Beside this basic structure, the connectivity is otherwise random with both syna
 \end{enumerate}
 
 \subsection{Balanced random network with spike-timing dependant plasticity}
-The type of one-shot, online learning observed in nature is one of the properties that make spiking neural networks attractive when compared to the approaches typically employed in training artificial neural networks.
+\label{sec:method/balanced_random}
+The type of one-shot, online learning observed in nature is one of the features of biological neural networks that neuromorphic engineers aspire to emulate.
+Synaptic plasticity -- the family of biological mechanisms responsible for changing the strength of synaptic connections in response to neural activity -- has been shown to be fundamental to learning\todo{that citation about optogenetic memory-wiping} and is therefore a key area of computational neuroscience research.
 
-\todo{link between learning and synaptic plasticity}
 However, adding synaptic plasticity to spiking neural network simulations typically increases the computational cost of simulating them significantly. 
-\citet{Morrison2007} reported that adding plasticity to their simulations slowed them down by ``a factor of less than 10'' and \citet{Knight2016b} found that, in the best case, simple STDP plasticity reduced the performance of the SpiNNaker neuromorphic system by approximately $6\times$.
+\citet{Morrison2007} reported that adding plasticity to their simulations slowed them down by ``a factor of less than 10'' and \citet{Knight2016b} found that, in the \textit{best} case, simple STDP plasticity reduced the performance of the SpiNNaker neuromorphic system by approximately $6\times$.
 Perhaps because of the restrictive cost in computing power and time, there are relatively few large-scale network models with synaptic plasticity.
-However the model that \citet{Morrison2007} develop in order to show how 
-\citet{Morrison2007} argue that because STDP is, by nature, sensitive to correlations in neural activity experiments on the role of STDP in cortical dynamics made on scaled down models with fewer incoming synapses per neuron with larger synaptic weighhts.
+However, \citeauthor{Morrison2007} argue that it is vital to perform experiments on STDP in models with full-scale connectivity as simplifying connectivity tends to result in fewer, stronger incoming synapses per neuron which will inevitably increase the correlation between neurons.
+Because STDP is inherently sensitive to correlated neural activity, artefacts due to this increased correlation are likely to be present in the synaptic weights learned using simplified models.
+Therefore \citeauthor{Morrison2007} developed a large balanced random network model~\citep{Brunel2000} with \num{90000} excitatory and \num{22500} inhibitory neurons -- the scale necessary to achieve realistic connection probabilities of $\approx0.1$ and \num{10000} incoming connections per neuron~\citep{braitenberg2013cortex}.
+Balanced random networks have been shown to reproduce some of the dynamics seen in the neocortex\todo{citations} and, by adding STDP, \citeauthor{Morrison2007} showed that STDP does not disrupt these dynamics.
+
 \begin{align}
     \Delta w & = \
         \begin{cases}
@@ -163,6 +176,8 @@ However the model that \citet{Morrison2007} develop in order to show how
 
 \section{Results}
 \subsection{Correctness}
+The 
+\citet{VanAlbada2018} demonstrated that 
 
 \begin{figure}[h!]
     \begin{center}
@@ -174,15 +189,15 @@ However the model that \citet{Morrison2007} develop in order to show how
     \textbf{(B)} Single-neuron firing rates of all neurons.
     \textbf{(C)} CV ISI, a measure of irregularity of all neurons.
     \textbf{(D)} Correlation coefficients between binned spike trains for \num{200} neurons in each population.
-    All measures are calculated over the last \SI{9}{\second} of the simulation and histogram bin widths are determined using the Freedman-Diaconis rule.
-    Repeat as  necessary for each of your figures}
+    All measures are calculated over the last \SI{9}{\second} of the simulation and histogram bin widths are determined using the Freedman-Diaconis rule.}
     \label{fig:microcircuit_accuracy}
 \end{figure}
 
 \subsection{Performance}
+\label{sec:results/performance}
 To assess the performance of our GPU simulations we chose a variety GPUs (listed in table~\ref{tab:gpu_devices}) covering a range of financial and power budgets.
-CUDA abstracts away the amount of parallelism the application exposes from the amount of hardware parallelism available so we can run a model that uses \num{80000} threads on a GPU with \num{256} CUDA cores.
-However memory is more of a constraint and, because of this, while all of the GPUs listed in table~\ref{tab:gpu_devices} can run the microcircuit model, only the 2 HPC GPUs have enough memory to run the STDP model.
+CUDA abstracts away the  parallelism the application exposes from the amount of hardware parallelism available so we can run a model that uses \num{80000} threads on a GPU with many fewer CUDA cores.
+However memory is a harder constraint and, because of this, while all of the GPUs listed in table~\ref{tab:gpu_devices} can run the microcircuit model described in section~\ref{sec:method/microcircuit}, only the 2 Tesla GPUs have enough memory to run the balanced random network model described in section~\ref{sec:method/balanced_random}.
 
 \begin{table}
   \centering
@@ -210,21 +225,30 @@ However memory is more of a constraint and, because of this, while all of the GP
     \end{center}
     \caption{Simulation times of microcircuit model running on various GPU hardware.
     SpiNNaker and fastest HPC simulation times presented by \citet{VanAlbada2018} included for comparison.
-    `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.}
+    `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.\todo{10s simulations to match other paper}}
     \label{fig:microcircuit_performance}
 \end{figure}
 
 \subsection{Power and energy}
-sda
+While GPU simulations do not face the issues with quantisation that occur when using fixed point arithmetic, the simulations described in this paper all use single-precision floating point rather than the double-precision used by NEST.
+Additionally the non-associative nature of floating point addition and multiplication mean that when a large number of paralellel threads \citep{Villa2009}
+when, for example, the input from many thousands on synapses into a neuron are being summed across a massively parallel system add
 
 \section{Discussion}
+
 \subsection{Neurorobotics}
 afa
 
 \subsection{Interactive simulation}
 asfs
 
-\subsection{Future GPU performance}
+\subsection{Further optimisation and GPU architectures}
+The results in section~\ref{sec:results/performance} show that, while the entire initialisation of the balanced random network can be effectively offloaded to the GPU, because the synapses connected using the `FixedNumberTotal' rule have to be initialised on the CPU this adds in the order of \SI{20}{\second} to each microcircuit simulation when run on a workstation or HPC node and almost \SI{10}{\minute} when run on the Jetson TX2.
+
+\begin{itemize}
+    \item Generated `fixed number total' connections still performed on CPU - especially when using lower-power ARM CPUs - slow. Cannot be trivially parallelised, but after binomial distribution is sampled for each row can fill rows with synapses by sampling from uniform distribution on GPU. HOWEVER results need to be either sorted (tricky, but Flashsort might be suitable) or values could be sampled in order using rank order statistic.
+    \item Since
+\end{itemize}
 Since the end of ``the free lunch'' -- the point at which it became impractical to continue building ever faster and more complex single-core CPUs -- the only way processor designers have been able to extract more performance from the increasing number of transistors offered by newer fabrication technologies was by build multi-core CPUs. \todo{citations}
 However parallel CPU programming paradigms such as multithreading are not well-suited to the type of \textit{fine-grained} parallelism required to harness hundreds of cores.\todo{citations}
 
