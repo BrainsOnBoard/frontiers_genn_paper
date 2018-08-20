@@ -19,9 +19,9 @@ conn_build_actor = None
 simn_actor = None
 
 # Loop through devices
-for d, a in zip(data, axes):
+for i, (d, a) in enumerate(zip(data, axes)):
     # Set title to device
-    a.set_title(d[0])
+    a.set_title(chr(i + ord("A")), loc="left")
 
     t = [-idle_time_s, 0.0, d[2][0], d[2][0] + d[3][0], d[2][0] + d[3][0] + idle_time_s]
 
