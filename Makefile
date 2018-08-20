@@ -8,21 +8,19 @@ TEXFLAGS=--shell-escape
 BIBFLAGS=
 texdoc=frontiers_genn
 
+TIKZ_PICTURES :=$(wildcard figures/*.tex)
+TIKZ_PDF :=$(foreach fig,$(basename $(TIKZ_PICTURES)),$(fig).pdf)
+
 .PHONY: clean
-.PHONY: cmyk
 .PHONY: bib
-.PHONY: complete
 .PHONY: count
 
 # Make all items
-all : $(texdoc).pdf
+all : $(texdoc).pdf $(TIKZ_PDF)
 	$(TEX) $(TEXFLAGS) $(texdoc)
 
 $(texdoc).pdf : $(texdoc.tex)
 	$(TEX) $(TEXFLAGS) $(texdoc)
-
-# Complete (rather than quick build)
-complete : clean bib all
 
 # Generate reference requirements
 $(texdoc).aux : $(texdoc).tex
@@ -34,6 +32,10 @@ bib : $(texdoc).aux
 	$(TEX) $(TEXFLAGS) $(texdoc)
 	$(TEX) $(TEXFLAGS) $(texdoc)
 
+# Build pdfs from Tikz diagrams
+figures/%.pdf: figures/%.tex
+	pdflatex -output-directory=figures/ $< 
+	
 # Clean
 clean :
 	find . -type f -regex ".*$(texdoc).*\.\(aux\|bbl\|bcf\|blg\|log\|png\|out\|toc\|lof\|lot\|count\)" -delete
