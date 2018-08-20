@@ -344,18 +344,18 @@ corr_kl_nest *= (0.1 / 75.0)
 corr_kl_spinnaker *= (0.1 / 75.0)
 
 # Plot bars
-kl_axes[0].bar(bar_x * 3, rate_kl, bar_width, label="GeNN")
-kl_axes[0].bar(bar_x * 3 + bar_width, rate_kl_nest, bar_width, label="NEST")
-kl_axes[0].bar(bar_x * 3 + bar_width * 2, rate_kl_spinnaker, bar_width, label="SpiNNaker")
+genn_actor = kl_axes[0].bar(kl_bar_x * 3, rate_kl, kl_bar_width)[0]
+nest_actor = kl_axes[0].bar(kl_bar_x * 3 + kl_bar_width, rate_kl_nest, kl_bar_width)[0]
+spinnaker_actor = kl_axes[0].bar(kl_bar_x * 3 + kl_bar_width * 2, rate_kl_spinnaker, kl_bar_width)[0]
 kl_axes[0].legend()
 
-kl_axes[1].bar(bar_x * 3, isi_kl, bar_width)
-kl_axes[1].bar(bar_x * 3 + bar_width, isi_kl_nest, bar_width)
-kl_axes[1].bar(bar_x * 3 + bar_width * 2, isi_kl_spinnaker, bar_width)
+kl_axes[1].bar(kl_bar_x * 3, isi_kl, kl_bar_width)
+kl_axes[1].bar(kl_bar_x * 3 + kl_bar_width, isi_kl_nest, kl_bar_width)
+kl_axes[1].bar(kl_bar_x * 3 + kl_bar_width * 2, isi_kl_spinnaker, kl_bar_width)
 
-kl_axes[2].bar(bar_x * 3, corr_kl, bar_width)
-kl_axes[2].bar(bar_x * 3 + bar_width, corr_kl_nest, bar_width)
-kl_axes[2].bar(bar_x * 3 + bar_width * 2, corr_kl_spinnaker, bar_width)
+kl_axes[2].bar(kl_bar_x * 3, corr_kl, kl_bar_width)
+kl_axes[2].bar(kl_bar_x * 3 + kl_bar_width, corr_kl_nest, kl_bar_width)
+kl_axes[2].bar(kl_bar_x * 3 + kl_bar_width * 2, corr_kl_spinnaker, kl_bar_width)
 
 # Set axis labels and titles
 for axis, title in zip(kl_axes, ["A", "B", "C"]):
@@ -364,7 +364,10 @@ for axis, title in zip(kl_axes, ["A", "B", "C"]):
     axis.set_xticks(kl_bar_x * 3)
     axis.set_xticklabels(pop_names, ha="center")
 
-kl_fig.tight_layout(pad=0)
+kl_fig.legend([genn_actor, nest_actor, spinnaker_actor],
+              ["GeNN", "NEST grid-aligned", "SpiNNaker"],
+              ncol=3, loc="lower center")
+kl_fig.tight_layout(pad=0, rect=(0, 0.075, 1, 1))
 kl_fig.savefig("../figures/microcircuit_accuracy_kl.eps")
 
 # Show plot
