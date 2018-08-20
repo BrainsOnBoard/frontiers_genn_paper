@@ -6,10 +6,10 @@ import sys
 import plot_settings
 import utils
 
-data = [("Jetson TX2", 33426.3, 12335.7, 19939.5),
-        ("GeForce 1050ti", 15114.5, 1904.46, 2102.91),
+data = [("Jetson TX2", 29335, 13165.9, 15676.7),
+        ("GeForce 1050ti", 14102.4, 2159.49, 2106.02),
         ("Tesla K40m", 4270.76, 1373.32, 1223.66),
-        ("Tesla V100", 2218.93, 325.415, 419.117),
+        ("Tesla V100", 2244.04, 370.681, 392.14),
         ("HPC\n(fastest)", 3030.0, 0.0, 0.0),
         ("SpiNNaker", 20000, 0.0, 0.0)]
 
@@ -33,11 +33,11 @@ bar_x = np.arange(0.0, len(device) * (bar_width + bar_pad), bar_width + bar_pad)
 offset = np.zeros(len(bar_x) - 2)
 
 # Plot stacked, GPU bars
-axis.bar(bar_x[:-2], neuron_sim_time[:-2], bar_width, label="Neuron simulation")
+neuron_sim_actor = axis.bar(bar_x[:-2], neuron_sim_time[:-2], bar_width)[0]
 offset += neuron_sim_time[:-2]
-axis.bar(bar_x[:-2], synapse_sim_time[:-2], bar_width, offset, label="Synapse simulation")
+synapse_sim_actor = axis.bar(bar_x[:-2], synapse_sim_time[:-2], bar_width, offset)[0]
 offset += synapse_sim_time[:-2]
-axis.bar(bar_x[:-2], overhead[:-2], bar_width, offset, label="Overhead")
+overhead_actor = axis.bar(bar_x[:-2], overhead[:-2], bar_width, offset)
 offset += overhead[:-2]
 
 # Plot individual other bars
@@ -64,9 +64,12 @@ axis.xaxis.grid(False)
 axis.set_xticks(bar_x)
 axis.set_xticklabels(device, rotation="vertical", ha="center", multialignment="right")
 
+fig.legend([neuron_sim_actor, synapse_sim_actor, overhead_actor],
+           ["Neuron simulation", "Synapse simulation", "Overhead"],
+           ncol=3, loc="lower center")
 
 # Set tight layour - tweaking bottom to fit in axis
 # text and right to fit in right break marker
-fig.tight_layout(pad=0, rect=(0.0, 0.0, 1.0, 0.96))
+fig.tight_layout(pad=0, rect=(0.0, 0.09, 1.0, 0.96))
 fig.savefig("../figures/microcircuit_performance.eps")
 plt.show()
