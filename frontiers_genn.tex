@@ -134,25 +134,28 @@ Therefore GeNN offers
 \subsection{The cell-type specific cortical microcircuit}
 \label{sec:method/microcircuit}
 This model of \SI{1}{\milli\metre\cubed} of early-sensory cortex was first developed by \citet{Potjans2012}.
-The model consists of around \num{80000} leaky integrate-and-fire neurons, divided into layers 2/3, 4, 5 and 6; and each layer is modelled as an excitatory and an inhibitory population of neurons.
+The model consists of around \num{80000} leaky integrate-and-fire~(LIF) neurons, divided into layers 2/3, 4, 5 and 6; where each layer is modelled as an excitatory and an inhibitory population.
 Neurons in each population are connected with population-specific densities derived from an extensive review of the anatomical literature resulting in a total of approximately \num{0.3E9} synapses.
 In addition to this synaptic input, each neuron in the network also receives independent Poisson inputs with population-specific rates representing input from adjacent cortical regions.
 Beside this basic structure, the connectivity is random with both synaptic strengths and transmission delays being normally distributed.
 \todo{Thomas: is it necessary to go into further details of network structure or just refer reader to Potjans2012?}
 
 \begin{align}
-    \tau_{m} \frac{dV}{dt} = & (V - V_{rest}) + R_{m}I
-    \tau_{syn} \frac{dI{syn}}{dt} = & 
+    \tau_{m} \frac{dV_{j}}{dt} = & (V_{j} - V_{rest}) + R_{m}(I_{bias} + I_{s_{j}}) \label{eq:lif_neuron}\\
+    \tau_{syn} \frac{dI_{s_{j}}}{dt} = & -I_{s_{j}} + \sum_{i=0}^{n} w_{ij} \sum_{t_{i}^{f}}  \delta(t - t_{i}^{f})\label{eq:exp_neuron_input_current}
 \end{align}
 
-Although these two state variables are coupled, in our GeNN model, the two equations are solved separately so the current going into equation~\ref{eq:lif_neuron} is effectively treated as a piecewise constant.
-While, as \citet{Rotter1999} describes, this 
+Although these two state variables are coupled, in our GeNN model, the continuous terms of the two equations are solved separately so the synaptic input current $I_{s_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
+As \citet{Rotter1999} describes, this approach leads to a delay of one simulation timestep compared to the exact solution, but this seperation is not only attractive from an engineering point-of-view by better encapsulating the neurons and synapses, but it also provides a generic way of describing neurons with heterogeneous synaptic input dynamics.
 
-\begin{enumerate}
-    \item LIF exp algabraic solution
-    \item Roughly how this is simulated in GeNN: thread per neuron, cuRAND for Poisson, coalesced reads of sparse matrix, fire-and-forget atomics to update input
-    \item 
-\end{enumerate}
+Simulating a homogeneous \textit{population} of neurons is an ideal task for a SIMD or SIMT device such as a GPU: the neurons do not communicate with each other and, aside from the relatively rare times that they spike, each neuron will be running exactly the same code.
+This means that they can be trivially parallelised by simulating each neuron on a single thread which fetches the neuron's state variables from global memory into registers at the start of each timestep, then advances the simulation state and writes back the state variables.
+As long as the state variables are laid out correctly in memory, the required memory operations can be \textit{coalesced} so that a \SI{4}{\byte} state variable can be read for \num{32} neurons in a single \SI{128}{\byte} transaction -- the most efficient way to access the global memory.
+%This same parallelism strategy is equally valid for neuron models whose dynamics can only be solved numerically -- the advancing of simulation state simply has to be implemented as for example a Runge-Kutta
+
+Simulating the sparsely connected synapses between two such populations of neurons is, at first glance, less suitable for GPU parallelism however, on modern GPU hardware, this can also be implemented in a very efficient manner.
+
+
 
 \subsection{Balanced random network with spike-timing dependant plasticity}
 \label{sec:method/balanced_random}
@@ -175,6 +178,13 @@ Balanced random networks have been shown to reproduce some of the dynamics seen 
         \end{cases}
 \end{align}
 
+Similarly to the microcircuit model described in the previous section this model uses LIF neurons.
+However, rather than exponentially filtering the incoming synaptic input, this model uses a slightly more complex \textit{alpha} synapses \todo{cite} which provide a closer match to the dynamics of biological ion channels:
+
+\begin{align}
+    \tau_{syn} \frac{dI_{s_{j}}}{dt} = & -I_{s_{j}} + \sum_{i=0}^{n} w_{ij} \sum_{t_{i}^{f}}  \delta(t - t_{i}^{f})\label{eq:alpha_neuron_input_current}
+\end{align}
+
 \section{Results}
 \subsection{Correctness}
 \citet{VanAlbada2018} performed an in-depth analysis of the correctness of simulations of the microcircuit model described in section~\ref{sec:method/microcircuit} running on both the SpiNNaker neuromorphic system and NEST running in `grid-based' mode.
@@ -187,7 +197,7 @@ Additionally we will compare the results of simulations of the balanced random n
 
 While the randomisation of the neuron's initial membrane voltages should reduce this 
 
-\begin{figure}[h!]
+\begin{figure}
     \begin{center}
         \includegraphics[width=180mm]{figures/microcircuit_accuracy}
     \end{center}
@@ -200,6 +210,34 @@ While the randomisation of the neuron's initial membrane voltages should reduce 
     All measures are calculated over the last \SI{9}{\second} of the simulation and histogram bin widths are determined using the Freedman-Diaconis rule.}
     \label{fig:microcircuit_accuracy}
 \end{figure}
+
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=85mm]{figures/microcircuit_accuracy_kl}
+    \end{center}
+    \caption{Comparison of distributions of microcircuit dynamics including NEST running in `grid-based' mode and SpiNNaker for comparison.
+    \textbf{(A)} Single-neuron firing rates of all neurons.
+    \textbf{(B)} CV ISI, a measure of irregularity of all neurons.
+    \textbf{(C)} Correlation coefficients between binned spike trains for \num{200} neurons in each population.
+    Comparisons are calculated using the Kullback-Leibler (KL) divergences of the distributions of each dynamics against that calculated from NEST running in `exact integration' mode for each of the 8 populations.
+    All measures are calculated over the last \SI{9}{\second} of the simulation and histogram bin widths are determined using the Freedman-Diaconis rule.\todo{what to say about eye-balling from paper}}
+    \label{fig:microcircuit_accuracy_kl}
+\end{figure}
+
+
+\subsection{Power and energy}
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=85mm]{figures/microcircuit_power}
+    \end{center}
+    \caption{Power consumption during \SI{1}{\second} microcircuit simulation \todo{run \SI{10}{\second} simulation both so it looks less dumb and to better match SpiNNaker paper}
+    Power was measured using consumer power measurement device with minimum resolution of \SI{0.1}{\watt} at mains socket and averaged across each coloured section.\todo{Thomas: should I try and include error bars?}
+    \textbf{(A)} GeForce 1050Ti in a standard desktop PC with an Intel Core i5 750 processor running Windows 7.
+    \textbf{(B)} NVIDIA Jetson TX2 development kit running Ubuntu 16.04 LTS in maximum performance mode. \todo{figure out JetPack version}}
+    \label{fig:microcircuit_power}
+\end{figure}
+
+
 
 \subsection{Performance}
 \label{sec:results/performance}
@@ -227,7 +265,7 @@ However memory is a harder constraint and, because of this, while all of the GPU
   \label{tab:gpu_devices}
 \end{table}
 
-\begin{figure}[h!]
+\begin{figure}
     \begin{center}
         \includegraphics[width=180mm]{figures/microcircuit_performance}
     \end{center}
@@ -236,8 +274,6 @@ However memory is a harder constraint and, because of this, while all of the GPU
     `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.\todo{10s simulations to match other paper}}
     \label{fig:microcircuit_performance}
 \end{figure}
-
-\subsection{Power and energy}
 
 \section{Discussion}
 
