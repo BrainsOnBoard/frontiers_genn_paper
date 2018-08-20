@@ -94,6 +94,7 @@ We show that a full-scale model of a cortical column can be simulated faster usi
 \end{itemize}
 
 \section{Material and Methods}
+\label{sec:method}
 \subsection{GeNN}
 \begin{itemize}
     \item GeNN code generator - while CUDA is relatively simple, efficiently parallelising SNN code is non-trivial    
@@ -101,9 +102,9 @@ We show that a full-scale model of a cortical column can be simulated faster usi
 
 GeNN neuron models are defined by writing a class defining the model parameters and snippets of C-like code that describe how it should be simulated.
 For example the following \lstinline{LIF} class describes a very simple leaky integrate-and-fire neuron with normalised units, solved algebraically:
-%
+
 \lstinputlisting[firstline=2,lastline=15]{code_snippets.cc}
-%
+
 The \lstinline{DECLARE_MODEL} and \lstinline{IMPLEMENT_MODEL} macros insert boilerplate code used subsequently for defining parameters and initial model states in a type-safe manner.
 The \lstinline{SET_SIM_CODE}, \lstinline{SET_THRESHOLD_CONDITION_CODE} and \lstinline{SET_RESET_CODE} macros specify the snippets of code used, respectively, to update the simulation state, check whether a spike should be emitted and to reset the neuron after a spike.
 The names of model parameters (constant across the entire population) are specified using the \lstinline{SET_PARAM_NAMES} macro and any `pre-processing' logic to be applied to these is specified with \lstinline{SET_DERIVED_PARAMS} -- in this case converting an exponential decay time constant to a multiplier to be applied every simulation timestep.
@@ -114,22 +115,22 @@ Event-driven updates can be triggered by pre or postsynaptic spikes as well as b
 Once the required models have been defined, the parameters and initial state variables values can be set and \textit{populations} of neurons can be added to a network:
 %
 \lstinputlisting[firstline=17,lastline=20]{code_snippets.cc}
-%
+
 This listing also illustrate how the approach used for defining models can also be used to define how variables are initialised.
 The membrane voltage \lstinline{V} of our \num{1000} LIF neurons is sampled from the uniform distribution using one of GeNN's built in \textit{variable initialisation snippets}.
-These are definited in a similar manner to the neuron and synapse models previously described allowing network initialisation to be parallelised uisng the same strategies used for simulating models on the GPU to be applied to initialising their parameters.
+These are definied in a similar manner to the neuron and synapse models previously described allowing network initialisation to be parallelised uisng the same strategies used for simulating models on the GPU to be applied to initialising their parameters.
 This approach is advantageous as it both removes the need to transfer model state from the CPU to the GPU and allows the GPU to be used to accelerate potentially costly initialisation such as sampling random numbers.
 %While the PCI express bus typically used to connect the GPU to the host system is relatively fast (up to \SI{16}{\giga\byte\per\second}), initialising millions of synaptic weights on the CPU and then uploading them at the start of the simulation can still considerably slow down the time it takes to iterate the model.
 \todo{Benchmark demonstrating speedup from presentation?}
 
 Once network models have been defined using the C++ interface described in the preceding section, GeNN will generate the CUDA code to simulate the network and this can be linked against a simple simulation loop provided by the user:
-%
+
 \lstinputlisting[firstline=22,lastline=32]{code_snippets.cc}
-%
+
 While this approach allows a lot of flexibility and means that visualisation tools and closed-loop robotics can be tightly coupled to GeNN simulations, when combined with the use of C++ for model definition, this does make using GeNN a somewhat daunting prospect to users more used to Python-based simulations such as Brian~\citep{Stimberg2014} or PyNN~\citep{Davison2008a}.
 Therefore GeNN offers
 \todo{Brian2GeNN, SpineML, PyNN}
-%
+
 \subsection{The cell-type specific cortical microcircuit}
 \label{sec:method/microcircuit}
 This model of \SI{1}{\milli\metre\cubed} of early-sensory cortex was first developed by \citet{Potjans2012}.
@@ -176,8 +177,15 @@ Balanced random networks have been shown to reproduce some of the dynamics seen 
 
 \section{Results}
 \subsection{Correctness}
-The 
-\citet{VanAlbada2018} demonstrated that 
+\citet{VanAlbada2018} performed an in-depth analysis of the correctness of simulations of the microcircuit model described in section~\ref{sec:method/microcircuit} running on both the SpiNNaker neuromorphic system and NEST running in `grid-based' mode.
+While the GPU simulations presented in this paper do not face the issues with quantisation which can affect SpiNNaker, unlike NEST, they all use single rather than the double-precision floating point and therefore have the potential for more numerical instability.
+Additionally, the non-associative nature of floating point operations mean that, if the results from a large number of parallel threads are summed together in a non-deterministic order, can have large error bounds.
+\citet{Villa2009} demonstrated this by calculating Euclidian sums of \num{28000} double-precision floating point numbers across \num{16000} threads of a CRAY XMT system (which, in this context, has similar properties to a GPU) and found that results varied by up to \SI{24.64}{\percent}.
+However, in this experiment, more numbers are being summed than any neuron has input and the parallelism schemes described in section~\ref{sec:method} it is unclear what the ranges of the numbers being summed was and
+Nonetheless, in this section, we will follow the methodology used by \citet{VanAlbada2018} and compare the results of our microcircuit simulation to those computed using NEST running in `exact integration' mode.
+Additionally we will compare the results of simulations of the balanced random network model we describe in section~\ref{sec:method/balanced_random} with those presented by \citet{Morrison2007}.
+
+While the randomisation of the neuron's initial membrane voltages should reduce this 
 
 \begin{figure}[h!]
     \begin{center}
@@ -195,8 +203,8 @@ The
 
 \subsection{Performance}
 \label{sec:results/performance}
-To assess the performance of our GPU simulations we chose a variety GPUs (listed in table~\ref{tab:gpu_devices}) covering a range of financial and power budgets.
-CUDA abstracts away the  parallelism the application exposes from the amount of hardware parallelism available so we can run a model that uses \num{80000} threads on a GPU with many fewer CUDA cores.
+To assess the performance of our GPU simulations we chose the selection of GPUs listed in table~\ref{tab:gpu_devices} -- covering a range of financial and power budgets.
+CUDA abstracts away the degree of parallelism exposed by the application from the amount of hardware parallelism available so we can run a model that uses \num{80000} threads on a GPU with many fewer CUDA cores.
 However memory is a harder constraint and, because of this, while all of the GPUs listed in table~\ref{tab:gpu_devices} can run the microcircuit model described in section~\ref{sec:method/microcircuit}, only the 2 Tesla GPUs have enough memory to run the balanced random network model described in section~\ref{sec:method/balanced_random}.
 
 \begin{table}
@@ -230,9 +238,6 @@ However memory is a harder constraint and, because of this, while all of the GPU
 \end{figure}
 
 \subsection{Power and energy}
-While GPU simulations do not face the issues with quantisation that occur when using fixed point arithmetic, the simulations described in this paper all use single-precision floating point rather than the double-precision used by NEST.
-Additionally the non-associative nature of floating point addition and multiplication mean that when a large number of paralellel threads \citep{Villa2009}
-when, for example, the input from many thousands on synapses into a neuron are being summed across a massively parallel system add
 
 \section{Discussion}
 
