@@ -253,21 +253,6 @@ While the randomisation of the neuron's initial membrane voltages should reduce 
     \label{fig:microcircuit_accuracy_kl}
 \end{figure}
 
-
-\subsection{Power and energy}
-\todo{words}
-
-\begin{figure}
-    \begin{center}
-        \includegraphics[width=85mm]{figures/microcircuit_power}
-    \end{center}
-    \caption{Power consumption during \SI{1}{\second} microcircuit simulation \todo{run \SI{10}{\second} simulation both so it looks less dumb and to better match SpiNNaker paper}
-    Power was measured using consumer power measurement device with minimum resolution of \SI{0.1}{\watt} at mains socket and averaged across each coloured section.\todo{Thomas: should I try and include error bars?}
-    \textbf{(A)} GeForce 1050Ti in a standard desktop PC with an Intel Core i5 750 processor running Windows 7.
-    \textbf{(B)} NVIDIA Jetson TX2 development kit running Ubuntu 16.04 LTS in maximum performance mode. \todo{figure out JetPack version}}
-    \label{fig:microcircuit_power}
-\end{figure}
-
 \subsection{Performance}
 \label{sec:results/performance}
 To assess the performance of our GPU simulations we chose the selection of GPUs listed in table~\ref{tab:gpu_devices} -- covering a range of financial and power budgets.
@@ -310,6 +295,24 @@ Additionally we used CUDA's own event timing system~\citep[Section~8.1.2]{NVIDIA
 Figure~\ref{fig:microcircuit_performance} shows the durations of simulations of the microcircuit model running on each GPU for \SI{10}{\second} of biological time, including the times taken by 
 
 \todo{volta `Independent Thread Scheduling' may be part of the reason why second model works so well}
+
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=85mm]{figures/microcircuit_power}
+    \end{center}
+    \caption{Power consumption during \SI{1}{\second} microcircuit simulation \todo{run \SI{10}{\second} simulation both so it looks less dumb and to better match SpiNNaker paper}
+    Power was measured using consumer power measurement device with minimum resolution of \SI{0.1}{\watt} at mains socket.
+    \textbf{(A)} GeForce 1050Ti in a standard desktop PC with an Intel Core i5 750 processor running Windows 7.
+    \textbf{(B)} NVIDIA Jetson TX2 development kit running Ubuntu 16.04 LTS in maximum performance mode. \todo{figure out JetPack version}}
+    \label{fig:microcircuit_power}
+\end{figure}
+
+\subsection{Power and energy}
+As well as recording the timings of the microcircuit benchmark described in the previous section, we also recorded the power usage of the systems being benchmarked using a consumer power measurement device at the mains socket.
+The screen of the power measurement device was recorded using a webcam, optical character recognition was performed using `Seven Segment Optical Character Recognition' developed by \citet{Auerswald2018} and the resultant power measurements were tagged with a time and written to disk.
+Figure~\ref{fig:microcircuit_power} shows the power usage over time for simulations of the microcircuit model running for \SI{10}{\second} of biological time on each of the devices listed in table~\ref{tab:gpu_devices} aside from the Tesla V100 which we do not have local access to to repeat the methodology.
+However both the Tesla cards have built in power monitoring which suggested that the Tesla V100 only drew a maximum of \SI{88}{\watt} compared to \SI{107}{\watt} for the Tesla K40m .
+Assuming that a Tesla V100 was attached to the same workstation used for the Tesla K40m simulations we can therefore estimate that the total energy to solution would be \todo{XXX} kWh and the energy per synaptic event would be \todo{YYY} J.
 
 \section{Discussion}
 
