@@ -35,7 +35,7 @@
 
 
 \def\keyFont{\fontsize{8}{11}\helveticabold }
-\def\firstAuthorLast{Sample {et~al.}} %use et al only if is more than 1 author
+\def\firstAuthorLast{Knight and Nowotny} %use et al only if is more than 1 author
 \def\Authors{James C Knight\,$^{1,*}$, Thomas Nowotny\,$^{1}$}
 % Affiliations should be keyed to the author's name with superscript numbers and be listed as follows: Laboratory, Institute, Department, Organization, City, State abbreviation (USA, Canada, Australia), and Country (without detailed address information such as city zip codes or street names).
 % If one of the authors has a change of address, list the new address below the correspondence details using a superscript symbol and use the same symbol to indicate the author in the author list.
@@ -71,14 +71,15 @@
 Inspired by the distributed nature of memory and computation in the brain, neuromorphic systems are designed to provide a more energy-efficient substrate for emulating spiking neural networks when compared to simulations running on Von Neumann architectures.
 
 While neuromorphic systems may be the ultimate platform for \textit{deploying} spiking neural networks, their very distributed nature makes them unwieldy tools for \textit{developing} SNN models.
-Instead development and simulation of SNN models tends to be performed on computers with standard Von Neumann architectures and, once models scale above a certain size, clusters of these machines.
-However over the last decade, as well as becoming a common fixture in many workstations, NVIDIA GPU accelerators are now used in \SI{50}{\percent} of the Top 10 super computing sites to increase peak performance.
-
+Instead development and simulation of SNN models tends to be performed on computers with standard Von Neumann CPU architectures and, once models scale above a certain size, clusters of these machines.
+However over the last decade, as well as becoming a common fixture in many workstations, NVIDIA GPU accelerators are now used in \SI{50}{\percent} of the Top 10 super computing sites to increase peak performance while lowering power requirements.
+In many ways, the large amount of available parallelism and the Single Instruction Multiple Thread (SIMT) architecture of GPUs is well suited to simulating large numbers of homogeneous neurons and synapses, however 
 \todo{argument for using GPUs for SNN}
 
-In this paper we re-implement two large-scale point neuron network models with levels of connectivity and sparseness matching those in the neocortex using our GeNN code generator.
-We then verify the correctness of our GPU simulations before comparing the performance and energy usage against published data for traditional CPU-based HPC as well as neuromorphic hardware.
-We show that a full-scale model of a cortical column can be simulated faster using a single NVIDIA Tesla V100 accelerator than is possible using 32 nodes of a CPU based cluster or the SpiNNaker neuromorphic system with a significantly lower cost in terms of energy to solution.\todo{specifics}
+In this paper we re-implement two large-scale point neuron network models with levels of connectivity and sparseness matching those in the neocortex using our GeNN code generator, discussing how they are mapped to GPU hardware.
+We then verify the correctness of our GPU simulations before comparing the performance and energy usage against published data for traditional CPU-based HPC as well as neuromorphic hardware where it is available.
+We show that a full-scale model of a cortical column can be simulated at speeds approaching $0.5\times$ real-time using a single NVIDIA Tesla V100 accelerator -- faster than is possible using a CPU based cluster or the SpiNNaker neuromorphic system.
+Additionally .\todo{specifics}
 
 \tiny
  \keyFont{\section{Keywords:} GPU, high-performance computing, parallel computing, accuracy of simulation, energy to solution, benchmarking, computational neuroscience} %All article types: you may provide up to 8 keywords; at least 5 are mandatory.
@@ -90,7 +91,7 @@ We show that a full-scale model of a cortical column can be simulated faster usi
     \item Neuromorphic hardware families - limitations, scales etc
     \item HPC - Neuron, NEST etc, recent benchmarks
     \item GPU hardware introduction - blocks, global memory, L2 cache, shared memory etc
-    \item Other GPU simulators
+    \item Other GPU simulators - CARLsim, NEURON/Arbor via 3rd party library, NeMo
 \end{itemize}
 
 \section{Material and Methods}
@@ -155,16 +156,16 @@ As long as the state variables are laid out correctly in memory, the required me
 
 \begin{figure}
     \begin{center}
-        \includegraphics[width=180mm]{figures/ragged_matrix}
+        \includegraphics[width=118mm]{figures/ragged_matrix}
     \end{center}
-    \caption{GPU parallelism of sparse synaptic matrix processing.
+    \caption{GPU parallelism of sparse synaptic matrix processing across two thread blocks each with \num{4} threads.
     Snaking lines indicate CUDA threads.
     Hatching indicates padding entries.}
     \label{fig:ragged_matrix}
 \end{figure}
 
 Simulating the sparsely connected synapses between two such populations of neurons is, at first glance, less suitable for GPU parallelism.
-However, on modern GPU hardware, this can also be implemented in an efficient manner using the data structure shown in figure~\ref{fig:ragged_matrix}.
+However, on modern GPU hardware, this can also be implemented in an efficient manner using the data structures shown in figure~\ref{fig:ragged_matrix}.
 This structure consits of multiple 2D arrays where each row represents the synapses coming from a single presynaptic neuron and has enough columns to contain the largest number of postsynaptic targets any presynaptic neuron connects to.
 One of these 2D arrays is used to contain the indices of the postsynaptic neurons ($i$) and additional arrays are allocated for any individual synaptic state variables such as the synaptic weight~($w_{ij}$) or dendritic delay~($d_{ij}$).
 Each block of $N_{block}$ CUDA threads (in figure~\ref{fig:ragged_matrix} $N_{block}=4$) is responsible for processing $N_{block}$ columns of the matrix.
@@ -179,29 +180,36 @@ However, if this population is connected to another population with the same siz
 \subsection{Balanced random network with spike-timing dependant plasticity}
 \label{sec:method/balanced_random}
 The type of one-shot, online learning observed in nature is one of the features of biological neural networks that neuromorphic engineers aspire to emulate.
-Synaptic plasticity -- the family of biological mechanisms responsible for changing the strength of synaptic connections in response to neural activity -- has been shown to be fundamental to learning\todo{that citation about optogenetic memory-wiping} and is therefore a key area of computational neuroscience research.
+Synaptic plasticity -- the family of mechanisms responsible for changing the strength of synaptic connections in response to neural activity -- has been shown to be fundamental to learning~\citep{Nabavi2014} and is therefore a key area of computational neuroscience research.
+Spike Timing Dependant Plasticity~(STDP)~\citep{Bi1998} is a popular theory which postulates that these changes are driven by the difference in timing between presynaptic spikes arriving at a synapse and the times at which the postsynaptic neuron itself spikes.
+In excitatory cortical neurons~\citep{Markram1997} as well as in the hippocampus~\citep{Bi1998}, synapses at which a presynaptic spike is closely followed by a postsynaptic spike are strengthened whereas those at which a postsynaptic spike precedes a presynaptic spike are weakened.
+The intuition behind this relationship is that synapses that are implicated in the firing of the postsynaptic neuron are strengthened and those that are irrelevant are weakened.
 
-However, adding synaptic plasticity to spiking neural network simulations typically increases the computational cost of simulating them significantly. 
-\citet{Morrison2007} reported that adding plasticity to their simulations slowed them down by ``a factor of less than 10'' and \citet{Knight2016b} found that, in the \textit{best} case, simple STDP plasticity reduced the performance of the SpiNNaker neuromorphic system by approximately $6\times$.
-Perhaps because of the restrictive cost in computing power and time, there are relatively few large-scale network models with synaptic plasticity.
-However, \citeauthor{Morrison2007} argue that it is vital to perform experiments on STDP in models with full-scale connectivity as simplifying connectivity tends to result in fewer, stronger incoming synapses per neuron which will inevitably increase the correlation between neurons.
-Because STDP is inherently sensitive to correlated neural activity, artefacts due to this increased correlation are likely to be present in the synaptic weights learned using simplified models.
+However, adding STDP to spiking neural network simulations typically increases the computational cost of simulating them significantly. 
+\citet{Morrison2007} reported that adding plasticity to their simulations slowed them down by ``a factor of less than 10'' and \citet{Knight2016b} found that, in the \textbf{best} case, simple STDP plasticity reduced the performance of the SpiNNaker neuromorphic system by approximately $6\times$.
+Furthermore, the dynamics of neural systems with plasticity operating on biologically-plausible time scales also take several orders of magnitude more time to stabilise.
+%Perhaps because of these issues, there are relatively few large-scale network models with synaptic plasticity.
+However, \citeauthor{Morrison2007} argue that it is vital to perform experiments on STDP in models with full-scale connectivity, as simplifying connectivity typically results in fewer, stronger incoming synapses per neuron.
+These stronger synaptic inputs are then likely to increase the correlation between neurons and, because STDP is inherently sensitive to correlated neural activity, this is likely to cause artefacts in the learned synaptic weights.
 Therefore \citeauthor{Morrison2007} developed a large balanced random network model~\citep{Brunel2000} with \num{90000} excitatory and \num{22500} inhibitory neurons -- the scale necessary to achieve realistic connection probabilities of $\approx0.1$ and \num{10000} incoming connections per neuron~\citep{braitenberg2013cortex}.
-Balanced random networks have been shown to reproduce some of the dynamics seen in the neocortex\todo{citations} and, by adding STDP, \citeauthor{Morrison2007} showed that STDP does not disrupt these dynamics.
-
-\begin{align}
-    \Delta w & = \
-        \begin{cases}
-            \lambda w_{0}^{1-\mu} w^{\mu} e^{-\frac{|\Delta t|}{\tau}}\\ & if\, \Delta t>0\\
-            -\lambda \alpha w e^{-\frac{|\Delta t|}{\tau}} & if\, \Delta t\leq0
-        \end{cases}
-\end{align}
+Balanced random networks have been shown to reproduce some of the dynamics seen in the neocortex~\citep{Brunel1999,Brunel2000} and, by adding STDP, \citeauthor{Morrison2007} showed that STDP does not disrupt these dynamics.
 
 Similarly to the microcircuit model described in the previous section this model uses LIF neurons.
 However, rather than exponentially filtering the incoming synaptic input, this model uses a slightly more complex \textit{alpha} synapses \todo{cite} which provide a closer match to the dynamics of biological ion channels:
 
 \begin{align}
-    \tau_{syn} \frac{dI_{s_{j}}}{dt} = & -I_{s_{j}} + \sum_{i=0}^{n} w_{ij} \sum_{t_{i}^{f}}  \delta(t - t_{i}^{f})\label{eq:alpha_neuron_input_current}
+    \tau_{syn} \frac{dI_{s_{j}}}{dt} = & x_{s_{j}} - I_{s_{j}} \\ 
+    \tau_{syn} \frac{dx_{s_{j}}}{dt} = & -x_{s_{j}} + \sum_{i=0}^{n} w_{ij} \sum_{t_{i}^{f}}  \delta(t - t_{i}^{f})
+\end{align}
+
+As well as alternative synaptic plasticity rules using postsynaptic membrane voltage~\citep{Brader2007,Clopath2010c} rather than postsynaptic spike times and those including `third factors' such as dopamine~\citep{Izhikevich2007}, there are a plethora of different STDP formalisations (see \citet{Morrison2008} for a review).
+However, in the model described in this section, \citet{Morrison2007} chose to use a rule with the following relationship between spike timing ($\Delta t = t_{post} - t_{pre}$)
+\begin{align}
+    \Delta w_{ij} & = \
+        \begin{cases}
+            \lambda w_{0}^{1-\mu} w_{ij}^{\mu} e^{-\frac{|\Delta t|}{\tau}}\\ & if\, \Delta t>0\\
+            -\lambda \alpha w_{ij} e^{-\frac{|\Delta t|}{\tau}} & if\, \Delta t\leq0
+        \end{cases}
 \end{align}
 
 \section{Results}
@@ -214,7 +222,7 @@ However, in this experiment, more numbers are being summed than any neuron has i
 Nonetheless, in this section, we will follow the methodology used by \citet{VanAlbada2018} and compare the results of our microcircuit simulation to those computed using NEST running in `exact integration' mode.
 Additionally we will compare the results of simulations of the balanced random network model we describe in section~\ref{sec:method/balanced_random} with those presented by \citet{Morrison2007}.
 
-While the randomisation of the neuron's initial membrane voltages should reduce this 
+While the randomisation of the neuron's initial membrane voltages should reduce this, 
 
 \begin{figure}
     \begin{center}
@@ -245,6 +253,8 @@ While the randomisation of the neuron's initial membrane voltages should reduce 
 
 
 \subsection{Power and energy}
+\todo{words}
+
 \begin{figure}
     \begin{center}
         \includegraphics[width=85mm]{figures/microcircuit_power}
@@ -255,8 +265,6 @@ While the randomisation of the neuron's initial membrane voltages should reduce 
     \textbf{(B)} NVIDIA Jetson TX2 development kit running Ubuntu 16.04 LTS in maximum performance mode. \todo{figure out JetPack version}}
     \label{fig:microcircuit_power}
 \end{figure}
-
-
 
 \subsection{Performance}
 \label{sec:results/performance}
