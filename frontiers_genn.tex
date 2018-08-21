@@ -89,7 +89,7 @@ We show that a full-scale model of a cortical column can be simulated faster usi
 \begin{itemize}
     \item Neuromorphic hardware families - limitations, scales etc
     \item HPC - Neuron, NEST etc, recent benchmarks
-    \item GPU hardware introduction
+    \item GPU hardware introduction - blocks, global memory, L2 cache, shared memory etc
     \item Other GPU simulators
 \end{itemize}
 
@@ -146,16 +146,35 @@ Beside this basic structure, the connectivity is random with both synaptic stren
 \end{align}
 
 Although these two state variables are coupled, in our GeNN model, the continuous terms of the two equations are solved separately so the synaptic input current $I_{s_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
-As \citet{Rotter1999} describes, this approach leads to a delay of one simulation timestep compared to the exact solution, but this seperation is not only attractive from an engineering point-of-view by better encapsulating the neurons and synapses, but it also provides a generic way of describing neurons with heterogeneous synaptic input dynamics.
+As \citet{Rotter1999} describes, this approach leads to a delay of one simulation timestep compared to the exact solution, but this separation is not only attractive from an engineering point-of-view by better encapsulating the neurons and synapses, but it also provides a generic way of describing neurons with heterogeneous synaptic input dynamics.
 
 Simulating a homogeneous \textit{population} of neurons is an ideal task for a SIMD or SIMT device such as a GPU: the neurons do not communicate with each other and, aside from the relatively rare times that they spike, each neuron will be running exactly the same code.
 This means that they can be trivially parallelised by simulating each neuron on a single thread which fetches the neuron's state variables from global memory into registers at the start of each timestep, then advances the simulation state and writes back the state variables.
 As long as the state variables are laid out correctly in memory, the required memory operations can be \textit{coalesced} so that a \SI{4}{\byte} state variable can be read for \num{32} neurons in a single \SI{128}{\byte} transaction -- the most efficient way to access the global memory.
 %This same parallelism strategy is equally valid for neuron models whose dynamics can only be solved numerically -- the advancing of simulation state simply has to be implemented as for example a Runge-Kutta
 
-Simulating the sparsely connected synapses between two such populations of neurons is, at first glance, less suitable for GPU parallelism however, on modern GPU hardware, this can also be implemented in a very efficient manner.
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=180mm]{figures/ragged_matrix}
+    \end{center}
+    \caption{GPU parallelism of sparse synaptic matrix processing.
+    Snaking lines indicate CUDA threads.
+    Hatching indicates padding entries.}
+    \label{fig:ragged_matrix}
+\end{figure}
 
-
+Simulating the sparsely connected synapses between two such populations of neurons is, at first glance, less suitable for GPU parallelism.
+However, on modern GPU hardware, this can also be implemented in an efficient manner using the data structure shown in figure~\ref{fig:ragged_matrix}.
+This structure consits of multiple 2D arrays where each row represents the synapses coming from a single presynaptic neuron and has enough columns to contain the largest number of postsynaptic targets any presynaptic neuron connects to.
+One of these 2D arrays is used to contain the indices of the postsynaptic neurons ($i$) and additional arrays are allocated for any individual synaptic state variables such as the synaptic weight~($w_{ij}$) or dendritic delay~($d_{ij}$).
+Each block of $N_{block}$ CUDA threads (in figure~\ref{fig:ragged_matrix} $N_{block}=4$) is responsible for processing $N_{block}$ columns of the matrix.
+Processing begins by using the $N_{block}$ thread to fetch the indices of $N_{block}$ presynaptic spikes ($i_{0},\ldots,i_{N_{block} - 1}$) and the lengths of the corresponding rows of the matrix ($l_{0},\ldots,l_{N_{block} - 1}$) into shared memory (as these will be accessed by all threads in the block during the next phase).
+Threads are then synchronised and loop through the $N_{block}$ rows with each thread processing the synapse in their column.
+In the case of the simple static synapses described by equation~\ref{eq:exp_neuron_input_current} this processing consists simply of reading the index of the postsynaptic target neuron along with the weight $w_{ij}$ and delay $d_{ij}$ associated with the connection and using an atomic add operation to apply the weight to the correct address in the dendritic delay ring-buffer.\todo{say more}
+This process is then repeated until all incoming spikes are processed.
+While this parallelism strategy may seem counter-intuitive, it typically performs much better than the naïve approach of using one thread per incoming spike as it exposes much more parallelism as well as resulting in perfectly coalesced memory read operations.
+For example, if we consider a population of \num{10000} neurons firing at an average rate of \SI{10}{\hertz}, in a \SI{0.1}{\milli\second} timestep it will only, on average, emit \num{10} spikes in a single timestep.
+However, if this population is connected to another population with the same size with a \SI{10}{\percent} connection probability, the connection matrix will have over \num{1000} columns resulting in 2 orders of magnitude more parallelism being exposed.
 
 \subsection{Balanced random network with spike-timing dependant plasticity}
 \label{sec:method/balanced_random}
@@ -288,7 +307,7 @@ The results in section~\ref{sec:results/performance} show that, while the entire
 
 \begin{itemize}
     \item Generated `fixed number total' connections still performed on CPU - especially when using lower-power ARM CPUs - slow. Cannot be trivially parallelised, but after binomial distribution is sampled for each row can fill rows with synapses by sampling from uniform distribution on GPU. HOWEVER results need to be either sorted (tricky, but Flashsort might be suitable) or values could be sampled in order using rank order statistic.
-    \item Since
+    \item Half precision float, ILP - should double performance on TX1
 \end{itemize}
 Since the end of ``the free lunch'' -- the point at which it became impractical to continue building ever faster and more complex single-core CPUs -- the only way processor designers have been able to extract more performance from the increasing number of transistors offered by newer fabrication technologies was by build multi-core CPUs. \todo{citations}
 However parallel CPU programming paradigms such as multithreading are not well-suited to the type of \textit{fine-grained} parallelism required to harness hundreds of cores.\todo{citations}
