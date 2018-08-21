@@ -140,12 +140,12 @@ Neurons in each population are connected with population-specific densities deri
 In addition to this synaptic input, each neuron in the network also receives independent Poisson inputs with population-specific rates representing input from adjacent cortical regions.
 Beside this basic structure, the connectivity is random with both synaptic strengths and transmission delays being normally distributed.
 \todo{Thomas: is it necessary to go into further details of network structure or just refer reader to Potjans2012?}
-
+%
 \begin{align}
     \tau_{m} \frac{dV_{j}}{dt} = & (V_{j} - V_{rest}) + R_{m}(I_{bias} + I_{s_{j}}) \label{eq:lif_neuron}\\
     \tau_{syn} \frac{dI_{s_{j}}}{dt} = & -I_{s_{j}} + \sum_{i=0}^{n} w_{ij} \sum_{t_{i}^{f}}  \delta(t - t_{i}^{f})\label{eq:exp_neuron_input_current}
 \end{align}
-
+%
 Although these two state variables are coupled, in our GeNN model, the continuous terms of the two equations are solved separately so the synaptic input current $I_{s_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
 As \citet{Rotter1999} describes, this approach leads to a delay of one simulation timestep compared to the exact solution, but this separation is not only attractive from an engineering point-of-view by better encapsulating the neurons and synapses, but it also provides a generic way of describing neurons with heterogeneous synaptic input dynamics.
 
@@ -196,22 +196,24 @@ Balanced random networks have been shown to reproduce some of the dynamics seen 
 
 Similarly to the microcircuit model described in the previous section this model uses LIF neurons.
 However, rather than exponentially filtering the incoming synaptic input, this model uses a slightly more complex \textit{alpha} synapses \todo{cite} which provide a closer match to the dynamics of biological ion channels:
-
+%
 \begin{align}
-    \tau_{syn} \frac{dI_{s_{j}}}{dt} = & x_{s_{j}} - I_{s_{j}} \\ 
-    \tau_{syn} \frac{dx_{s_{j}}}{dt} = & -x_{s_{j}} + \sum_{i=0}^{n} w_{ij} \sum_{t_{i}^{f}}  \delta(t - t_{i}^{f})
+    \tau_{syn} \frac{dI_{s_{j}}}{dt} = & x_{s_{j}} - I_{s_{j}} \label{eq:alpha_neuron_input_current_1}\\ 
+    \tau_{syn} \frac{dx_{s_{j}}}{dt} = & -x_{s_{j}} + \sum_{i=0}^{n} w_{ij} \sum_{t_{i}^{f}}  \delta(t - t_{i}^{f}) \label{eq:alpha_neuron_input_current_2}
 \end{align}
-
+%
+Aside from requiring an additional state variable to hold $x_{s_{j}}$, equations~\ref{eq:alpha_neuron_input_current_1}~and~\ref{eq:alpha_neuron_input_current_2} are i
 As well as alternative synaptic plasticity rules using postsynaptic membrane voltage~\citep{Brader2007,Clopath2010c} rather than postsynaptic spike times and those including `third factors' such as dopamine~\citep{Izhikevich2007}, there are a plethora of different STDP formalisations (see \citet{Morrison2008} for a review).
-However, in the model described in this section, \citet{Morrison2007} chose to use a rule with the following relationship between spike timing ($\Delta t = t_{post} - t_{pre}$)
+However, in the model described in this section, \citet{Morrison2007} chose to use a rule with the following relationship between pre~($t_{pre}$) and postsynaptic~($t_{post}$) spike timing ($\Delta t = t_{post} - t_{pre}$):
+%
 \begin{align}
     \Delta w_{ij} & = \
         \begin{cases}
-            \lambda w_{0}^{1-\mu} w_{ij}^{\mu} e^{-\frac{|\Delta t|}{\tau}}\\ & if\, \Delta t>0\\
-            -\lambda \alpha w_{ij} e^{-\frac{|\Delta t|}{\tau}} & if\, \Delta t\leq0
+            \lambda w_{0}^{1-\mu} w_{ij}^{\mu} e^{-\frac{|\Delta t|}{\tau}} & if\, \Delta t>0\\
+            -\lambda \alpha w_{ij} e^{-\frac{|\Delta t|}{\tau}}             & if\, \Delta t\leq0
         \end{cases}
 \end{align}
-
+%
 \section{Results}
 \subsection{Correctness}
 \citet{VanAlbada2018} performed an in-depth analysis of the correctness of simulations of the microcircuit model described in section~\ref{sec:method/microcircuit} running on both the SpiNNaker neuromorphic system and NEST running in `grid-based' mode.
@@ -270,7 +272,7 @@ While the randomisation of the neuron's initial membrane voltages should reduce 
 \label{sec:results/performance}
 To assess the performance of our GPU simulations we chose the selection of GPUs listed in table~\ref{tab:gpu_devices} -- covering a range of financial and power budgets.
 CUDA abstracts away the degree of parallelism exposed by the application from the amount of hardware parallelism available so we can run a model that uses \num{80000} threads on a GPU with many fewer CUDA cores.
-However memory is a harder constraint and, because of this, while all of the GPUs listed in table~\ref{tab:gpu_devices} can run the microcircuit model described in section~\ref{sec:method/microcircuit}, only the 2 Tesla GPUs have enough memory to run the balanced random network model described in section~\ref{sec:method/balanced_random}.
+However memory is a harder constraint and, because of this, while all of the GPUs listed in table~\ref{tab:gpu_devices} can run the microcircuit model described in section~\ref{sec:method/microcircuit}, only the two `Tesla' GPUs have enough memory to run the balanced random network model described in section~\ref{sec:method/balanced_random}.
 
 \begin{table}
   \centering
@@ -281,7 +283,7 @@ However memory is a harder constraint and, because of this, while all of the GPU
                         &                   &                   & {cores}   & {[\si{\giga\byte}]}   & {[\si{\giga\byte\per\second}]}& {[GFLOPS]}\\
     \midrule
         GeForce 1050 Ti & 75                & Pascal            & 768       & 4                     & 112                           & 2100\\
-        Jetson TX2      & 15                & Pascal            & 256       & 4\textsuperscript{1}  & 58.4                          & 12\\
+        Jetson TX2      & 15                & Pascal            & 256       & 4\textsuperscript{1}  & 58.4                          & 600??\\
         Tesla K40m      & 245               & Kepler            & 2880      & 12                    & 288                           & 4290\\
         Tesla V100      & 250               & Volta             & 5120      & 16                    & 900                           & 14000\\
     \bottomrule
@@ -292,15 +294,22 @@ However memory is a harder constraint and, because of this, while all of the GPU
   \label{tab:gpu_devices}
 \end{table}
 
+We measured the performance of both models by querying the \lstinline{std::chrono::high_resolution_clock} on the host computer around the simulation loop to get a total simulation time and, in the case of the microcircuit model, around the code used to calculate the connectivity.
+Additionally we used CUDA's own event timing system~\citep[Section~8.1.2]{NVIDIACorporation2018} to record the time taken by the neuron and synapse simulation kernels as well as the postsynaptic learning kernel in the balanced random network model.
+
 \begin{figure}
     \begin{center}
-        \includegraphics[width=180mm]{figures/microcircuit_performance}
+        \includegraphics[width=85mm]{figures/microcircuit_performance}
     \end{center}
-    \caption{Simulation times of microcircuit model running on various GPU hardware.
+    \caption{Simulation times of microcircuit model running on various GPU hardware for \SI{10}{\second} of biological time.
     SpiNNaker and fastest HPC simulation times presented by \citet{VanAlbada2018} included for comparison.
     `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.\todo{10s simulations to match other paper}}
     \label{fig:microcircuit_performance}
 \end{figure}
+
+Figure~\ref{fig:microcircuit_performance} shows the times 
+
+\todo{volta `Independent Thread Scheduling' may be part of the reason why second model works so well}
 
 \section{Discussion}
 
