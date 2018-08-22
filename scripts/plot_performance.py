@@ -27,15 +27,18 @@ def plot(data, filename, num_ref, real_time_s=None):
     offset = np.zeros(len(bar_x) - num_ref)
 
     # Plot stacked, GPU bars
-    neuron_sim_actor = axis.bar(bar_x[:-num_ref], neuron_sim_time[:-num_ref], bar_width)[0]
-    offset += neuron_sim_time[:-num_ref]
-    synapse_sim_actor = axis.bar(bar_x[:-num_ref], synapse_sim_time[:-num_ref], bar_width, offset)[0]
-    offset += synapse_sim_time[:-num_ref]
-    overhead_actor = axis.bar(bar_x[:-num_ref], overhead[:-num_ref], bar_width, offset)
-    offset += overhead[:-num_ref]
+    gpu_bar_x_slice = np.s_[:] if num_ref == 0 else np.s_[:-num_ref]
+
+    neuron_sim_actor = axis.bar(bar_x[gpu_bar_x_slice], neuron_sim_time[gpu_bar_x_slice], bar_width)[0]
+    offset += neuron_sim_time[gpu_bar_x_slice]
+    synapse_sim_actor = axis.bar(bar_x[gpu_bar_x_slice], synapse_sim_time[gpu_bar_x_slice], bar_width, offset)[0]
+    offset += synapse_sim_time[gpu_bar_x_slice]
+    overhead_actor = axis.bar(bar_x[gpu_bar_x_slice], overhead[gpu_bar_x_slice], bar_width, offset)
+    offset += overhead[gpu_bar_x_slice]
 
     # Plot individual other bars
-    axis.bar(bar_x[-num_ref:], total_sim_time[-num_ref:], bar_width, 0.0)
+    if num_ref > 0:
+        axis.bar(bar_x[-num_ref:], total_sim_time[-num_ref:], bar_width, 0.0)
 
     # Add real-timeness annoation
     #for t, x in zip(total_sim_time, bar_x):
@@ -76,11 +79,10 @@ microcircuit_data = [("Jetson TX2", 258751, 99775.9, 155475),
                      ("HPC\n(fastest)", 24296.0, 0.0, 0.0),
                      ("SpiNNaker", 200000, 0.0, 0.0)]
 
-stdp_data = [("Tesla K40m", 4736610, 435387, 296357),
+stdp_data = [("Tesla K40m\nBitmask", 4736610, 435387, 296357),
              ("Tesla V100\nBitmask", 564826, 100144, 82951.6),
-             ("Tesla V100\nRagged", 567267, 99346.3, 85975.4),
-             ("HPC", 60.0 * 60.0 * 60.0 * 1000.0 / 5.0, 0.0, 0.0)]
+             ("Tesla V100\nRagged", 567267, 99346.3, 85975.4)]
 
 plot(microcircuit_data, "../figures/microcircuit_performance.eps", 2, 10.0)
-plot(stdp_data, "../figures/stdp_performance.eps", 1)
+plot(stdp_data, "../figures/stdp_performance.eps", 0, 200.0)
 plt.show()

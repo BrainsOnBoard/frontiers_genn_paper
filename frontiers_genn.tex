@@ -294,12 +294,24 @@ Additionally we used CUDA's own event timing system~\citep[Section~8.1.2]{NVIDIA
         \includegraphics[width=85mm]{figures/microcircuit_performance}
     \end{center}
     \caption{Simulation times of microcircuit model running on various GPU hardware for \SI{10}{\second} of biological time.
-    SpiNNaker and fastest HPC simulation times presented by \citet{VanAlbada2018} included for comparison.
+    SpiNNaker and fastest HPC simulation times (12 nodes) presented by \citet{VanAlbada2018} included for comparison.
     `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.}
     \label{fig:microcircuit_performance}
 \end{figure}
 
-Figure~\ref{fig:microcircuit_performance} shows the durations of simulations of the microcircuit model running on each GPU for \SI{10}{\second} of biological time, including the times taken by 
+Figure~\ref{fig:microcircuit_performance} shows the durations of simulations of the microcircuit model running on each GPU for \SI{10}{\second} of biological time, including the times taken by neuron and synapse simulation kernels.
+
+However, while the initialisation phase of the NEST simulation was fully parallelised and took less than \SI{3}{\second} in the configuration shown in figure~\ref{fig:microcircuit_performance}, the `FixedNumberTotal' connection rule used by the microcircuit model 
+
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=85mm]{figures/stdp_performance}
+    \end{center}
+    \caption{Simulation times of balanced random network model running on various GPU hardware for \SI{200}{\second} of biological time.
+    HPC simulation time as provided by \citet{Morrison2007} included for comparison.
+    `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.}
+    \label{fig:stdp_performance}
+\end{figure}
 
 \todo{volta `Independent Thread Scheduling' may be part of the reason why second model works so well}
 
@@ -329,15 +341,15 @@ Figure~\ref{fig:microcircuit_power} shows the power usage over time for simulati
         GeForce 1050 Ti         & 0.006                     & 0.0055                    & 2.1 \\
         Jetson TX2              & 0.002                     & 0.00077                   & 0.30  \\
         Tesla K40m              & XXX                       & XXX                       & XXX \\
-        SpiNNaker               & {--}                      & 0.017                     & 5.9 \textsuperscript{2}\\
+        SpiNNaker               & {--}                      & 0.017                     & 5.9 \textsuperscript{1}\\
         NEST (lowest energy)    & {--}                      & 0.012                     & 4.4 \\
     \bottomrule
   \end{tabular}
 
   \caption{Energy cost of simulations.
   Energy to solution and simulation energy of GPU are calculated using the \lstinline{numpy.trapz} and the simulation energy is divided by the total number of synaptic events processed to obtain the energy per synaptic event.
-  For comparison, simulation energies for SpiNNaker and NEST are read off the figure presented by \citet{VanAlbada2018}.
-  Energies per synaptic event for SpiNNaker and NEST are those reported by \citet{VanAlbada2018}.\\
+  For comparison, simulation energies for SpiNNaker and the NEST simulation with the lowest simulation energy (2 nodes)are read off the figure presented by \citet{VanAlbada2018}.
+  Energies per synaptic event for SpiNNaker and the NEST are those reported by \citet{VanAlbada2018}.\\
   \textsuperscript{1}~This energy per synaptic event is calculated after the `idle' power of the SpiNNaker system has been taken into account.}
   \label{tab:energy_measures}
 \end{table}
