@@ -5,7 +5,7 @@ import utils
 
 # CSV filename, 'idle' power, connection build time, sim time, spike write time
 data = [("microcircuit_power/1050ti.csv", 70.0, 18511.7 + 338.603, 140041, 24039),
-        ("microcircuit_power/tx2.csv", 5.5, 541584.0 + 965.12, 258751.0)]
+        ("microcircuit_power/tx2.csv", 5.5, 541584.0 + 965.12, 258751.0, 15043.6)]
 
 
 fig, axes = plt.subplots(len(data), figsize=(plot_settings.column_width, 90.0 * plot_settings.mm_to_inches))
@@ -16,8 +16,9 @@ idle_time_s = 10.0
 total_synaptic_events = 938037605 * 10
 
 idle_actor = None
-conn_build_actor = None
-simn_actor = None
+init_actor = None
+sim_actor = None
+spike_write_actor = None
 
 # Loop through devices
 for i, (d, a) in enumerate(zip(data, axes)):
@@ -25,51 +26,59 @@ for i, (d, a) in enumerate(zip(data, axes)):
     trace = np.loadtxt(d[0], skiprows=1, delimiter=",",
                        dtype={"names": ("time", "power", ), "formats": (float, float)})
 
+    # Filter out clearly erroneous values
     valid = (trace["power"] < (d[1] * 5.0))
     time = trace["time"][valid]
     power = trace["power"][valid]
     
-    # Find point power trace first crossed idle - assume this is experiment start time
-    experiment_start_index = np.argmax(power > d[1])
-    experiment_start_time = time[experiment_start_index]
+    # Find points power trace first crossed idle - assume first and last are experiment start and end times
+    exp_non_idle_indices = np.where(power > d[1])[0]
+    exp_start_index = exp_non_idle_indices[0]
+    exp_end_index = exp_non_idle_indices[-1]
+    exp_start_time = time[exp_start_index]
+    exp_end_time = time[exp_end_index]
+
+    sim_end_time = exp_end_time - (d[4] / 1000.0)
+    sim_end_index = np.argmax(time > sim_end_time)
+
+    sim_start_time = sim_end_time - (d[3] / 1000.0)
+    sim_start_index = np.argmax(time > sim_start_time)
 
     # Make all times relative to experiment start
-    time -= experiment_start_time
-
-    # Find index of point where connection generation time has elapsed
-    sim_start_index = np.argmax(time > (d[2] / 1000.0))
-
-    exp_end_index = np.argmax(time > ((d[2] + d[3]) / 1000.0))
+    time -= exp_start_time
 
     # Set title to device
     a.set_title(chr(i + ord("A")), loc="left")
 
     # Initial idle
-    idle_actor = a.fill_between(time[:experiment_start_index],
-                                power[:experiment_start_index])
+    idle_actor = a.fill_between(time[:exp_start_index],
+                                power[:exp_start_index])
 
 
     # Connection building
-    conn_build_actor = a.fill_between(time[experiment_start_index:sim_start_index],
-                                      power[experiment_start_index:sim_start_index])
+    init_actor = a.fill_between(time[exp_start_index - 1:sim_start_index],
+                                power[exp_start_index - 1:sim_start_index])
 
 
     # Simulation
-    sim_actor = a.fill_between(time[sim_start_index:exp_end_index],
-                               power[sim_start_index:exp_end_index])
+    sim_actor = a.fill_between(time[sim_start_index - 1:sim_end_index],
+                               power[sim_start_index - 1:sim_end_index])
 
 
+    # Spike writing
+    spike_write_actor = a.fill_between(time[sim_end_index - 1:exp_end_index],
+                               power[sim_end_index - 1:exp_end_index])
     # Final idle
-    a.fill_between(time[exp_end_index:],
-                   power[exp_end_index:],
+    a.fill_between(time[exp_end_index - 1:],
+                   power[exp_end_index - 1:],
                    color=idle_actor.get_facecolor())
 
     # Calculate mean idle power
-    idle_power = np.average(power[:experiment_start_index])
+    idle_power = np.average(np.hstack((power[:exp_start_index], power[exp_end_index:])))
 
     # Calculate energy to solution
-    energy_to_solution = np.trapz(power[experiment_start_index:exp_end_index],
-                                  time[experiment_start_index:exp_end_index])
+    energy_to_solution = np.trapz(power[exp_start_index:exp_end_index],
+                                  time[exp_start_index:exp_end_index])
 
     # **TODO** should we subtract idle power
     sim_energy = np.trapz(power[sim_start_index:exp_end_index],
@@ -78,16 +87,17 @@ for i, (d, a) in enumerate(zip(data, axes)):
 
     print("%s:" % (d[0]))
     print("\tIdle power = %fW" % (idle_power))
-    print("\tEnergy to solution = %fJ" % (energy_to_solution))
+    print("\tEnergy to solution = %fJ = %fkWh" % (energy_to_solution, energy_to_solution / 3600000.0))
     print("\tEnergy per synaptic event = %fuJ" % (energy_per_synaptic_event * 1E6))
 
     a.axvline(0.0, color="black", linestyle="--")
-    a.axvline((d[2] + d[3]) / 1000.0, color="black", linestyle="--")
+    a.axvline(exp_end_time - exp_start_time, color="black", linestyle="--")
     a.set_xlabel("Simulation time [s]")
     a.set_ylabel("Power [W]")
 
-fig.legend([idle_actor, conn_build_actor, sim_actor], ["Idle", "Initialisation", "Simulation"],
-           loc="lower center", ncol=3)
+fig.legend([idle_actor, init_actor, sim_actor, spike_write_actor],
+           ["Idle", "Initialisation", "Simulation", "Spike writing"],
+           loc="lower center", ncol=2)
 fig.tight_layout(pad=0.0)
 fig.savefig("../figures/microcircuit_power.eps")
 plt.show()
