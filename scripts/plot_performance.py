@@ -6,7 +6,7 @@ import sys
 import plot_settings
 import utils
 
-def plot(data, filename, num_ref):
+def plot(data, filename, num_ref, real_time_s=None):
     columns = zip(*data)
     device = np.asarray(columns[0],  dtype=str)
 
@@ -49,7 +49,8 @@ def plot(data, filename, num_ref):
     axis.legend(loc="upper right", ncol=3)
 
     # Add realtime line
-    axis.axhline(1.0, color="black", linestyle="--")
+    if real_time_s is not None:
+        axis.axhline(real_time_s, color="black", linestyle="--")
 
     # Remove vertical grid
     axis.xaxis.grid(False)
@@ -67,18 +68,19 @@ def plot(data, filename, num_ref):
     fig.tight_layout(pad=0, rect=(0.0, 0.09, 1.0, 0.96))
     fig.savefig(filename)
 
-microcircuit_data = [("Jetson TX2", 29335, 13165.9, 15676.7),
-                     ("GeForce 1050ti", 14102.4, 2159.49, 2106.02),
-                     ("Tesla K40m", 4270.76, 1373.32, 1223.66),
-                     ("Tesla V100", 2244.04, 370.681, 392.14),
-                     ("HPC\n(fastest)", 3030.0, 0.0, 0.0),
-                     ("SpiNNaker", 20000, 0.0, 0.0)]
+# Total simulation time, neuron simulation, synapse simulation
+microcircuit_data = [("Jetson TX2", 258751, 99775.9, 155475),
+                     ("GeForce 1050ti", 140041, 19083, 21115.3),
+                     ("Tesla K40m", 42343, 13730.1, 12575.9),
+                     ("Tesla V100", 21713.6, 3247.78, 3910.13),
+                     ("HPC\n(fastest)", 24296.0, 0.0, 0.0),
+                     ("SpiNNaker", 200000, 0.0, 0.0)]
 
 stdp_data = [("Tesla K40m", 4736610, 435387, 296357),
              ("Tesla V100\nBitmask", 564826, 100144, 82951.6),
              ("Tesla V100\nRagged", 567267, 99346.3, 85975.4),
              ("HPC", 60.0 * 60.0 * 60.0 * 1000.0 / 5.0, 0.0, 0.0)]
 
-plot(microcircuit_data, "../figures/microcircuit_performance.eps", 2)
+plot(microcircuit_data, "../figures/microcircuit_performance.eps", 2, 10.0)
 plot(stdp_data, "../figures/stdp_performance.eps", 1)
 plt.show()

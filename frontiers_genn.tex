@@ -94,6 +94,13 @@ Additionally we show that, across a range of GPU systems, the energy per synapti
     \item Other GPU simulators - CARLsim, NEURON/Arbor via 3rd party library, NeMo
 \end{itemize}
 
+Since the end of ``the free lunch'' -- the point at which it became impractical to continue building ever faster and more complex single-core CPUs -- the only way processor designers have been able to extract more performance from the increasing number of transistors offered by newer fabrication technologies was by build multi-core CPUs. \todo{citations}
+However parallel CPU programming paradigms such as multithreading are not well-suited to the type of \textit{fine-grained} parallelism required to harness hundreds of cores.\todo{citations}
+
+The SIMT programming model architecture used by NVIDIA GPUs is designed explicitly for fine-grained parallelism and high throughput.
+However spiking neural networks are not especially well-suited
+
+
 \section{Material and Methods}
 \label{sec:method}
 \subsection{GeNN}
@@ -288,7 +295,7 @@ Additionally we used CUDA's own event timing system~\citep[Section~8.1.2]{NVIDIA
     \end{center}
     \caption{Simulation times of microcircuit model running on various GPU hardware for \SI{10}{\second} of biological time.
     SpiNNaker and fastest HPC simulation times presented by \citet{VanAlbada2018} included for comparison.
-    `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.\todo{10s simulations to match other paper}}
+    `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.}
     \label{fig:microcircuit_performance}
 \end{figure}
 
@@ -361,14 +368,13 @@ Initialising this form of probabilistic connector involves a three stage process
 While the first stage of this process is difficult to parallelise, the second stage is trivially parallelisable and, while sorting is not a particularly GPU-friendly operation, \citet{Awan2016} has shown that simple in-place sorting algorithms such as insertion sort can be used to efficiently sort large numbers of relatively short arrays in parallel on a GPU.
 Therefore a hybrid approach where the row lengths are calculated on the CPU and the rows then populated on the GPU is likely to significantly improve performance.
 
+Because the SIMT programming model used by GPUs does not require the complex coherant caches which is making simply adding more CPU cores to symmetric multiprocessing difficult~\todo{citation}, it is expected that GPU hardware will continue to scale~ \todo{citation}.
+However, even with new even higher speed memory technologies such as HBM3~\todo{citation}, memory bandwidth has historically always lagged behind processing performance.
+
+
 \begin{itemize}
     \item Half precision float, ILP - should double performance on TX1
 \end{itemize}
-Since the end of ``the free lunch'' -- the point at which it became impractical to continue building ever faster and more complex single-core CPUs -- the only way processor designers have been able to extract more performance from the increasing number of transistors offered by newer fabrication technologies was by build multi-core CPUs. \todo{citations}
-However parallel CPU programming paradigms such as multithreading are not well-suited to the type of \textit{fine-grained} parallelism required to harness hundreds of cores.\todo{citations}
-
-The SIMT programming model architecture used by NVIDIA GPUs is designed explicitly for fine-grained parallelism and high throughput.
-However spiking neural networks are not especially well-suited
 
 \begin{itemize}
     \item HBM3 - further doubling of memory bandwidth
