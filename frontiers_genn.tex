@@ -91,7 +91,7 @@ Additionally we show that, across a range of GPU systems, the energy per synapti
     \item Neuromorphic hardware families - limitations, scales etc
     \item HPC - Neuron, NEST etc, recent benchmarks
     \item GPU hardware introduction - blocks, global memory, L2 cache, shared memory etc
-    \item Other GPU simulators - CARLsim, NEURON/Arbor via 3rd party library, NeMo
+    \item Other GPU simulators - CARLsim~\citep{Chou2018}, NEURON/Arbor via 3rd party library, NeMo, EDLUT~\citep{Garrido2011}.
 \end{itemize}
 
 Since the end of ``the free lunch'' -- the point at which it became impractical to continue building ever faster and more complex single-core CPUs -- the only way processor designers have been able to extract more performance from the increasing number of transistors offered by newer fabrication technologies was by build multi-core CPUs. \todo{citations}
@@ -308,7 +308,6 @@ However, while the initialisation phase of the NEST simulation was fully paralle
         \includegraphics[width=85mm]{figures/stdp_performance}
     \end{center}
     \caption{Simulation times of balanced random network model running on various GPU hardware for \SI{200}{\second} of biological time.
-    HPC simulation time as provided by \citet{Morrison2007} included for comparison.
     `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.}
     \label{fig:stdp_performance}
 \end{figure}
