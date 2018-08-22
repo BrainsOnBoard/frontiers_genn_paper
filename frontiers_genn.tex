@@ -91,9 +91,17 @@ Additionally we show that, across a range of GPU systems, the energy per synapti
     \item Neuromorphic hardware families - limitations, scales etc
     \item HPC - Neuron, NEST etc, recent benchmarks
     \item GPU hardware introduction - blocks, global memory, L2 cache, shared memory etc
-    \item Other GPU simulators - CARLsim~\citep{Chou2018}, NEURON/Arbor via 3rd party library, NeMo, EDLUT~\citep{Garrido2011}.
 \end{itemize}
 
+Elderly review- \citep{Brette2012}.
+\begin{itemize}
+    \item CARLsim~\citep{Chou2018} - Only supports a fixed number of neuron models
+    \item EDLUT~\citep{Garrido2011} -- Initially event-driven using lookup tables to determine where an event `moves' model in state space. Now supports hybrid event + time-driven simulation
+    \item ANNarchy~\citep{Vitay2015} -- Code generation from Python to multi-core CPU or GPU code, focus on hybrid rate and spiking models, neuron models specified as equations -- as such equation has to be solved symbolically or numerically -- euler or midpoint only. CUDA limitations? Nearest neighbour STDP only. No GPU performance analysis available
+    \item NCS6~\citep{Hoang2013} (no update for 3 years)
+    \item Myriad~\citep{Rittner2016} (no update for 2 years) -- 
+    \item NeMo~\citep{Fidjeland2009} (no update for 4 years) -- 
+\end{itemize}
 Since the end of ``the free lunch'' -- the point at which it became impractical to continue building ever faster and more complex single-core CPUs -- the only way processor designers have been able to extract more performance from the increasing number of transistors offered by newer fabrication technologies was by build multi-core CPUs. \todo{citations}
 However parallel CPU programming paradigms such as multithreading are not well-suited to the type of \textit{fine-grained} parallelism required to harness hundreds of cores.\todo{citations}
 
