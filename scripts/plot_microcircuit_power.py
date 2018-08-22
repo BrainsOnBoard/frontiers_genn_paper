@@ -88,6 +88,7 @@ for i, (d, a) in enumerate(zip(data, axes)):
     print("%s:" % (d[0]))
     print("\tIdle power = %fW" % (idle_power))
     print("\tEnergy to solution = %fJ = %fkWh" % (energy_to_solution, energy_to_solution / 3600000.0))
+    print("\tSimulation energy = %fJ = %fkWh" % (sim_energy, sim_energy / 3600000.0))
     print("\tEnergy per synaptic event = %fuJ" % (energy_per_synaptic_event * 1E6))
 
     a.axvline(0.0, color="black", linestyle="--")
