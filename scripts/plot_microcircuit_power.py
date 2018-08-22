@@ -3,8 +3,8 @@ import numpy as np
 import plot_settings
 import utils
 
-# CSV filename, 'idle' power, connection build time, sim time
-data = [("microcircuit_power/1050ti.csv", 70.0, 18511.7 + 338.603, 140041),
+# CSV filename, 'idle' power, connection build time, sim time, spike write time
+data = [("microcircuit_power/1050ti.csv", 70.0, 18511.7 + 338.603, 140041, 24039),
         ("microcircuit_power/tx2.csv", 5.5, 541584.0 + 965.12, 258751.0)]
 
 
