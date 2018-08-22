@@ -79,7 +79,7 @@ In many ways, the large amount of available parallelism and the Single Instructi
 In this paper we re-implement two large-scale point neuron network models with levels of connectivity and sparseness matching those in the neocortex using our GeNN code generator, discussing how they are mapped to GPU hardware.
 We then verify the correctness of our GPU simulations before comparing the performance and energy usage against published data for traditional CPU-based HPC as well as neuromorphic hardware where it is available.
 We show that a full-scale model of a cortical column can be simulated at speeds approaching $0.5\times$ real-time using a single NVIDIA Tesla V100 accelerator -- faster than is possible using a CPU based cluster or the SpiNNaker neuromorphic system.
-Additionally .\todo{specifics}
+Additionally we show that, across a range of GPU systems, the energy per synaptic event is less than half that of a CPU-based simulation and, on a Jetson TX2 embedded system, 
 
 \tiny
  \keyFont{\section{Keywords:} GPU, high-performance computing, parallel computing, accuracy of simulation, energy to solution, benchmarking, computational neuroscience} %All article types: you may provide up to 8 keywords; at least 5 are mandatory.
@@ -230,11 +230,11 @@ While the randomisation of the neuron's initial membrane voltages should reduce 
     \begin{center}
         \includegraphics[width=180mm]{figures/microcircuit_accuracy}
     \end{center}
-    \caption{Spiking output of cortical microcircuit model with Poisson input.  
-    \textbf{(A)} Raster plot showing spike times (dots) of neurons from each population. 
-    The spikes of 5\% of neurons (vertical) are shown.
-    \textbf{(B)} Single-neuron firing rates of all neurons.
-    \textbf{(C)} CV ISI, a measure of irregularity of all neurons.
+    \caption{Spiking output of cortical microcircuit model with Poisson input.\\
+    \textbf{(A)} Raster plot showing spike times (dots) of neurons from each population.
+    The spikes of 5\% of neurons (vertical) are shown.\\
+    \textbf{(B)} Single-neuron firing rates of all neurons.\\
+    \textbf{(C)} CV ISI, a measure of irregularity of all neurons.\\
     \textbf{(D)} Correlation coefficients between binned spike trains for \num{200} neurons in each population.
     All measures are calculated over the last \SI{9}{\second} of the simulation and histogram bin widths are determined using the Freedman-Diaconis rule.}
     \label{fig:microcircuit_accuracy}
@@ -244,10 +244,10 @@ While the randomisation of the neuron's initial membrane voltages should reduce 
     \begin{center}
         \includegraphics[width=85mm]{figures/microcircuit_accuracy_kl}
     \end{center}
-    \caption{Comparison of distributions of microcircuit dynamics including NEST running in `grid-based' mode and SpiNNaker for comparison.
-    \textbf{(A)} Single-neuron firing rates of all neurons.
-    \textbf{(B)} CV ISI, a measure of irregularity of all neurons.
-    \textbf{(C)} Correlation coefficients between binned spike trains for \num{200} neurons in each population.
+    \caption{Comparison of distributions of microcircuit dynamics including NEST running in `grid-based' mode and SpiNNaker for comparison.\\
+    \textbf{(A)} Single-neuron firing rates of all neurons.\\
+    \textbf{(B)} CV ISI, a measure of irregularity of all neurons.\\
+    \textbf{(C)} Correlation coefficients between binned spike trains for \num{200} neurons in each population.\\
     Comparisons are calculated using the Kullback-Leibler (KL) divergences of the distributions of each dynamics against that calculated from NEST running in `exact integration' mode for each of the 8 populations.
     All measures are calculated over the last \SI{9}{\second} of the simulation and histogram bin widths are determined using the Freedman-Diaconis rule.\todo{what to say about eye-balling from paper}}
     \label{fig:microcircuit_accuracy_kl}
@@ -274,7 +274,7 @@ However memory is a harder constraint and, because of this, while all of the GPU
     \bottomrule
   \end{tabular}
 
-  \caption{GPU devices.
+  \caption{GPU devices.\\
   \textsuperscript{1}~Memory is shared between CPU and GPU.}
   \label{tab:gpu_devices}
 \end{table}
@@ -301,8 +301,8 @@ Figure~\ref{fig:microcircuit_performance} shows the durations of simulations of 
         \includegraphics[width=85mm]{figures/microcircuit_power}
     \end{center}
     \caption{Power consumption during \SI{10}{\second} microcircuit simulation.
-    Power was measured using consumer power measurement device with minimum resolution of \SI{0.1}{\watt} at mains socket.
-    \textbf{(A)} GeForce 1050Ti in a desktop PC with an Intel Core i5 750 processor running Windows 7.
+    Power was measured using consumer power measurement device with minimum resolution of \SI{0.1}{\watt} at mains socket.\\
+    \textbf{(A)} GeForce 1050Ti in a desktop PC with an Intel Core i5 750 processor running Windows 7.\\
     \textbf{(B)} NVIDIA Jetson TX2 development kit running Ubuntu 16.04 LTS in maximum performance mode. \todo{figure out JetPack version}}
     \label{fig:microcircuit_power}
 \end{figure}
@@ -310,9 +310,35 @@ Figure~\ref{fig:microcircuit_performance} shows the durations of simulations of 
 \subsection{Power and energy}
 As well as recording the timings of the microcircuit benchmark described in the previous section, we also recorded the power usage of the systems being benchmarked using a consumer power measurement device at the mains socket.
 The screen of the power measurement device was recorded using a webcam, optical character recognition was performed using `Seven Segment Optical Character Recognition' developed by \citet{Auerswald2018} and the resultant power measurements were tagged with a time and written to disk.
-Figure~\ref{fig:microcircuit_power} shows the power usage over time for simulations of the microcircuit model running for \SI{10}{\second} of biological time on each of the devices listed in table~\ref{tab:gpu_devices} aside from the Tesla V100 which we do not have local access to to repeat the methodology.
-However both the Tesla cards have built in power monitoring which suggested that the Tesla V100 only drew a maximum of \SI{88}{\watt} compared to \SI{107}{\watt} for the Tesla K40m .
-Assuming that a Tesla V100 was attached to the same workstation used for the Tesla K40m simulations we can therefore estimate that the total energy to solution would be \todo{XXX} kWh and the energy per synaptic event would be \todo{YYY} J.
+Figure~\ref{fig:microcircuit_power} shows the power usage over time for simulations of the microcircuit model running for \SI{10}{\second} of biological time on each of the devices listed in table~\ref{tab:gpu_devices} aside from the Tesla V100 which we do not have local access to record the power usage of the entire system.
+
+\begin{table}
+  \centering
+  \begin{tabular}{r S S S}
+    \toprule
+        {Model}                 & {Energy to solution}      & {Simulation energy}       & {Energy per synaptic event} \\
+                                & {[\si{\kilo\watt\hour}]}  & {[\si{\kilo\watt\hour}]}  & {[\si{\micro\joule}]} \\
+    \midrule
+        GeForce 1050 Ti         & 0.006                     & 0.0055                    & 2.1 \\
+        Jetson TX2              & 0.002                     & 0.00077                   & 0.30  \\
+        Tesla K40m              & XXX                       & XXX                       & XXX \\
+        SpiNNaker               & {--}                      & 0.017                     & 5.9 \textsuperscript{2}\\
+        NEST (lowest energy)    & {--}                      & 0.012                     & 4.4 \\
+    \bottomrule
+  \end{tabular}
+
+  \caption{Energy cost of simulations.
+  Energy to solution and simulation energy of GPU are calculated using the \lstinline{numpy.trapz} and the simulation energy is divided by the total number of synaptic events processed to obtain the energy per synaptic event.
+  For comparison, simulation energies for SpiNNaker and NEST are read off the figure presented by \citet{VanAlbada2018}.
+  Energies per synaptic event for SpiNNaker and NEST are those reported by \citet{VanAlbada2018}.\\
+  \textsuperscript{1}~This energy per synaptic event is calculated after the `idle' power of the SpiNNaker system has been taken into account.}
+  \label{tab:energy_measures}
+\end{table}
+
+By integrating the power time series using the \lstinline{numpy.trapz} function we we can calculate the energy to solution of each simulation as well as the energy per synaptic event -- a common evaluation measure for the energy efficiency of neuromorphic systems.
+\todo{Telsa K40m figures so I can write something meaningful here}
+While we were unable to measure the energy of the system containing the Tesla V100 directly, both the Tesla cards have built in power monitoring which showed that the Tesla V100 drew a maximum of \SI{88}{\watt} compared to \SI{107}{\watt} for the Tesla K40m.
+Assuming that a Tesla V100 was attached to the same workstation used for the Tesla K40m simulations we can therefore estimate that the total energy to solution would be \todo{XXX} kWh and the energy per synaptic event would be \todo{YYY}.
 
 \section{Discussion}
 
@@ -324,9 +350,18 @@ asfs
 
 \subsection{Further optimisation and GPU architectures}
 The results in section~\ref{sec:results/performance} show that, while the entire initialisation of the balanced random network can be effectively offloaded to the GPU, because the synapses connected using the `FixedNumberTotal' rule have to be initialised on the CPU this adds in the order of \SI{20}{\second} to each microcircuit simulation when run on a workstation or HPC node and almost \SI{10}{\minute} when run on the Jetson TX2.
+Initialising this form of probabilistic connector involves a three stage process:
+%
+\begin{enumerate}
+    \item Sampling from a multinomial distribution to obtain the number of connections per row.
+    \item For each row, sampling the correct number of indices from a uniform distribution.
+    \item Sorting each rows indices into ascending order to improve performance.
+\end{enumerate}
+%
+While the first stage of this process is difficult to parallelise, the second stage is trivially parallelisable and, while sorting is not a particularly GPU-friendly operation, \citet{Awan2016} has shown that simple in-place sorting algorithms such as insertion sort can be used to efficiently sort large numbers of relatively short arrays in parallel on a GPU.
+Therefore a hybrid approach where the row lengths are calculated on the CPU and the rows then populated on the GPU is likely to significantly improve performance.
 
 \begin{itemize}
-    \item Generated `fixed number total' connections still performed on CPU - especially when using lower-power ARM CPUs - slow. Cannot be trivially parallelised, but after binomial distribution is sampled for each row can fill rows with synapses by sampling from uniform distribution on GPU. HOWEVER results need to be either sorted (tricky, but Flashsort might be suitable) or values could be sampled in order using rank order statistic.
     \item Half precision float, ILP - should double performance on TX1
 \end{itemize}
 Since the end of ``the free lunch'' -- the point at which it became impractical to continue building ever faster and more complex single-core CPUs -- the only way processor designers have been able to extract more performance from the increasing number of transistors offered by newer fabrication technologies was by build multi-core CPUs. \todo{citations}
