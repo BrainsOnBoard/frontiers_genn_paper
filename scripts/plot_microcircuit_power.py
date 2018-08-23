@@ -3,10 +3,10 @@ import numpy as np
 import plot_settings
 import utils
 
-# CSV filename, 'idle' power, connection build time, sim time, spike write time
-data = [("microcircuit_power/k40c.csv", 150.0, 14192.5 + 369.73, 41455.6, 5690.71),
-        ("microcircuit_power/1050ti.csv", 70.0, 18511.7 + 338.603, 140041, 24039),
-        ("microcircuit_power/tx2.csv", 5.5, 541584.0 + 965.12, 258751.0, 15043.6)]
+# CSV filename, 'idle' power, sim time, spike write time
+data = [("microcircuit_power/k40c.csv", 150.0, 41911.5, 6199.62),
+        ("microcircuit_power/1050ti.csv", 70.0, 140041, 24039),
+        ("microcircuit_power/tx2.csv", 6.0, 258350, 14516.2)]
 
 
 fig, axes = plt.subplots(len(data), figsize=(plot_settings.column_width, 90.0 * plot_settings.mm_to_inches))
@@ -39,10 +39,10 @@ for i, (d, a) in enumerate(zip(data, axes)):
     exp_start_time = time[exp_start_index]
     exp_end_time = time[exp_end_index]
 
-    sim_end_time = exp_end_time - (d[4] / 1000.0)
+    sim_end_time = exp_end_time - (d[3] / 1000.0)
     sim_end_index = np.argmax(time > sim_end_time)
 
-    sim_start_time = sim_end_time - (d[3] / 1000.0)
+    sim_start_time = sim_end_time - (d[2] / 1000.0)
     sim_start_index = np.argmax(time > sim_start_time)
 
     # Make all times relative to experiment start
