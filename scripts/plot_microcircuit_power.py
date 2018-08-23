@@ -4,7 +4,8 @@ import plot_settings
 import utils
 
 # CSV filename, 'idle' power, connection build time, sim time, spike write time
-data = [("microcircuit_power/1050ti.csv", 70.0, 18511.7 + 338.603, 140041, 24039),
+data = [("microcircuit_power/k40c.csv", 150.0, 14192.5 + 369.73, 41455.6, 5690.71),
+        ("microcircuit_power/1050ti.csv", 70.0, 18511.7 + 338.603, 140041, 24039),
         ("microcircuit_power/tx2.csv", 5.5, 541584.0 + 965.12, 258751.0, 15043.6)]
 
 
@@ -99,7 +100,7 @@ for i, (d, a) in enumerate(zip(data, axes)):
 fig.legend([idle_actor, init_actor, sim_actor, spike_write_actor],
            ["Idle", "Initialisation", "Simulation", "Spike writing"],
            loc="lower center", ncol=2)
-fig.tight_layout(pad=0.0)
+fig.tight_layout(pad=0.0, rect=(0.0, 0.125, 1.0, 1.0))
 fig.savefig("../figures/microcircuit_power.eps")
 plt.show()
 
