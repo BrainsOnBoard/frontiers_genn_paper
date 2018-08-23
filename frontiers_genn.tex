@@ -284,7 +284,7 @@ However memory is a harder constraint and, because of this, while all of the GPU
     \midrule
         GeForce 1050 Ti & 75                & Pascal            & 768       & 4                     & 112                           & 2100\\
         Jetson TX2      & 15                & Pascal            & 256       & 4\textsuperscript{1}  & 58.4                          & 600??\\
-        Tesla K40m      & 245               & Kepler            & 2880      & 12                    & 288                           & 4290\\
+        Tesla K40c      & 235               & Kepler            & 2880      & 12                    & 288                           & 4290\\
         Tesla V100      & 250               & Volta             & 5120      & 16                    & 900                           & 14000\\
     \bottomrule
   \end{tabular}
@@ -328,8 +328,9 @@ However, while the initialisation phase of the NEST simulation was fully paralle
     \end{center}
     \caption{Power consumption during \SI{10}{\second} microcircuit simulation.
     Power was measured using consumer power measurement device with minimum resolution of \SI{0.1}{\watt} at mains socket.\\
-    \textbf{(A)} GeForce 1050Ti in a desktop PC with an Intel Core i5 750 processor running Windows 7.\\
-    \textbf{(B)} NVIDIA Jetson TX2 development kit running Ubuntu 16.04 LTS in maximum performance mode. \todo{figure out JetPack version}}
+    \textbf{(A)} Tesla K40c in a workstation with a Intel Xeon E5-1620 v2 processor running Ubuntu 16.04 LTS.\\
+    \textbf{(B)} GeForce 1050Ti in a desktop PC with an Intel Core i5 750 processor running Windows 7.\\
+    \textbf{(C)} NVIDIA Jetson TX2 development kit running Ubuntu 16.04 LTS in maximum performance mode. \todo{figure out JetPack version}}
     \label{fig:microcircuit_power}
 \end{figure}
 
@@ -347,7 +348,7 @@ Figure~\ref{fig:microcircuit_power} shows the power usage over time for simulati
     \midrule
         GeForce 1050 Ti         & 0.006                     & 0.0055                    & 2.1 \\
         Jetson TX2              & 0.002                     & 0.00077                   & 0.30  \\
-        Tesla K40m              & XXX                       & XXX                       & XXX \\
+        Tesla K40c              & 0.0035                    & 0.0028                    & 1.06 \\
         SpiNNaker               & {--}                      & 0.017                     & 5.9 \textsuperscript{1}\\
         NEST (lowest energy)    & {--}                      & 0.012                     & 4.4 \\
     \bottomrule
@@ -361,10 +362,10 @@ Figure~\ref{fig:microcircuit_power} shows the power usage over time for simulati
   \label{tab:energy_measures}
 \end{table}
 
-By integrating the power time series using the \lstinline{numpy.trapz} function we we can calculate the energy to solution of each simulation as well as the energy per synaptic event -- a common evaluation measure for the energy efficiency of neuromorphic systems.
-\todo{Telsa K40m figures so I can write something meaningful here}
-While we were unable to measure the energy of the system containing the Tesla V100 directly, both the Tesla cards have built in power monitoring which showed that the Tesla V100 drew a maximum of \SI{88}{\watt} compared to \SI{107}{\watt} for the Tesla K40m.
-Assuming that a Tesla V100 was attached to the same workstation used for the Tesla K40m simulations we can therefore estimate that the total energy to solution would be \todo{XXX} kWh and the energy per synaptic event would be \todo{YYY}.
+By integrating the power time series using the \lstinline{numpy.trapz} function we we can calculate the energy to solution of each simulation as well as the energy per synaptic event -- a common measure for comparing the energy efficiency of neuromorphic systems.
+While we were unable to measure the energy of the Tesla V100 system directly, both the Tesla cards have built in power monitoring which showed that the Tesla V100 drew a maximum of \SI{88}{\watt} compared to \SI{107}{\watt} for the Tesla K40c.
+As the workstation containing the Tesla K40c drew \SI{218}{\watt} while simulating the model, compared to an idle power draw of \SI{84}{\watt}, we can estimate that the single CPU core being used by the simulation was drawing \SI{27}{\watt} more than when the system was idle.
+Therefore we can estimate that, if a Tesla V100 was attached to the same workstation, the maximum power draw would be reduced to \SI{199}{\watt} meaning that, based on the reduced simulation time of \SI{22}{\second}, the simulation energy for such a system would be \SI{0.0012}{\kilo\watt\hour} and the energy per synaptic event would be \SI{0.47}{\micro\joule}.
 
 \section{Discussion}
 
