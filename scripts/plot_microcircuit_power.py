@@ -5,7 +5,7 @@ import utils
 
 # CSV filename, 'idle' power, sim time, spike write time
 data = [("microcircuit_power/k40c.csv", 150.0, 41911.5, 6199.62),
-        ("microcircuit_power/1050ti.csv", 70.0, 140041, 24039),
+        ("microcircuit_power/1050ti.csv", 70.0, 137592, 15054),
         ("microcircuit_power/tx2.csv", 6.0, 258350, 14516.2)]
 
 

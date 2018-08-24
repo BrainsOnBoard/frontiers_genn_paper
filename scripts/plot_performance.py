@@ -86,10 +86,10 @@ def plot(data, filename, num_ref, real_time_s=None):
     fig.savefig(filename)
 
 # Total simulation time, neuron simulation, synapse simulation
-microcircuit_data = [("Jetson TX2", 258751, 99775.9, 155475),
-                     ("GeForce 1050ti", 140041, 19083, 21115.3),
-                     ("Tesla K40c", 41455.6, 13601.5, 12142.1),
-                     ("Tesla V100", 21713.6, 3247.78, 3910.13),
+microcircuit_data = [("Jetson TX2", 258350, 99570.4, 155284),
+                     ("GeForce 1050ti", 137592, 20192.6, 21310.1),
+                     ("Tesla K40c", 41911.5, 13636.2, 12431.8),
+                     ("Tesla V100", 21645.4, 3215.88, 3927.9),
                      ("HPC\n(fastest)", 24296.0, 0.0, 0.0),
                      ("SpiNNaker", 200000, 0.0, 0.0)]
 
