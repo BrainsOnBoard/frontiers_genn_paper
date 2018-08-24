@@ -192,6 +192,17 @@ While this parallelism strategy may seem counter-intuitive, it typically perform
 For example, if we consider a population of \num{10000} neurons firing at an average rate of \SI{10}{\hertz}, in a \SI{0.1}{\milli\second} timestep it will only, on average, emit \num{10} spikes in a single timestep.
 However, if this population is connected to another population with the same size with a \SI{10}{\percent} connection probability, the connection matrix will have over \num{1000} columns resulting in 2 orders of magnitude more parallelism being exposed.
 
+Initialising this form of probabilistic connector involves a three stage process:
+%
+\begin{enumerate}
+    \item Sampling from a multinomial distribution to obtain the number of connections per row.
+    \item For each row, sampling the correct number of indices from a uniform distribution.
+    \item Sorting each rows indices into ascending order to improve performance.
+\end{enumerate}
+%
+While the first stage of this process is difficult to parallelise, the second stage is trivially parallelisable and, while sorting is not a particularly GPU-friendly operation, \citet{Awan2016} has shown that simple in-place sorting algorithms such as insertion sort can be used to efficiently sort large numbers of relatively short arrays in parallel on a GPU.
+Therefore a hybrid approach where the row lengths are calculated on the CPU and the rows then populated on the GPU is likely to significantly improve performance.
+
 \subsection{Balanced random network with spike-timing dependant plasticity}
 \label{sec:method/balanced_random}
 The type of one-shot, online learning observed in nature is one of the features of biological neural networks that neuromorphic engineers aspire to emulate.
@@ -253,19 +264,6 @@ While the randomisation of the neuron's initial membrane voltages should reduce 
     \textbf{(D)} Correlation coefficients between binned spike trains for \num{200} neurons in each population.
     All measures are calculated over the last \SI{9}{\second} of the simulation and histogram bin widths are determined using the Freedman-Diaconis rule.}
     \label{fig:microcircuit_accuracy}
-\end{figure}
-
-\begin{figure}
-    \begin{center}
-        \includegraphics[width=85mm]{figures/microcircuit_accuracy_kl}
-    \end{center}
-    \caption{Comparison of distributions of microcircuit dynamics including NEST running in `grid-based' mode and SpiNNaker for comparison.\\
-    \textbf{(A)} Single-neuron firing rates of all neurons.\\
-    \textbf{(B)} CV ISI, a measure of irregularity of all neurons.\\
-    \textbf{(C)} Correlation coefficients between binned spike trains for \num{200} neurons in each population.\\
-    Comparisons are calculated using the Kullback-Leibler (KL) divergences of the distributions of each dynamics against that calculated from NEST running in `exact integration' mode for each of the 8 populations.
-    All measures are calculated over the last \SI{9}{\second} of the simulation and histogram bin widths are determined using the Freedman-Diaconis rule.\todo{what to say about eye-balling from paper}}
-    \label{fig:microcircuit_accuracy_kl}
 \end{figure}
 
 \subsection{Performance}
@@ -347,8 +345,8 @@ Figure~\ref{fig:microcircuit_power} shows the power usage over time for simulati
                                 & {[\si{\kilo\watt\hour}]}  & {[\si{\kilo\watt\hour}]}  & {[\si{\micro\joule}]} \\
     \midrule
         GeForce 1050 Ti         & 0.006                     & 0.0055                    & 2.1 \\
-        Jetson TX2              & 0.002                     & 0.00077                   & 0.30  \\
-        Tesla K40c              & 0.0035                    & 0.0028                    & 1.06 \\
+        Jetson TX2              & 0.00080                   & 0.00078                   & 0.30  \\
+        Tesla K40c              & 0.0031                    & 0.0027                    & 1.04 \\
         SpiNNaker               & {--}                      & 0.017                     & 5.9 \textsuperscript{1}\\
         NEST (lowest energy)    & {--}                      & 0.012                     & 4.4 \\
     \bottomrule
@@ -376,17 +374,6 @@ afa
 asfs
 
 \subsection{Further optimisation and GPU architectures}
-The results in section~\ref{sec:results/performance} show that, while the entire initialisation of the balanced random network can be effectively offloaded to the GPU, because the synapses connected using the `FixedNumberTotal' rule have to be initialised on the CPU this adds in the order of \SI{20}{\second} to each microcircuit simulation when run on a workstation or HPC node and almost \SI{10}{\minute} when run on the Jetson TX2.
-Initialising this form of probabilistic connector involves a three stage process:
-%
-\begin{enumerate}
-    \item Sampling from a multinomial distribution to obtain the number of connections per row.
-    \item For each row, sampling the correct number of indices from a uniform distribution.
-    \item Sorting each rows indices into ascending order to improve performance.
-\end{enumerate}
-%
-While the first stage of this process is difficult to parallelise, the second stage is trivially parallelisable and, while sorting is not a particularly GPU-friendly operation, \citet{Awan2016} has shown that simple in-place sorting algorithms such as insertion sort can be used to efficiently sort large numbers of relatively short arrays in parallel on a GPU.
-Therefore a hybrid approach where the row lengths are calculated on the CPU and the rows then populated on the GPU is likely to significantly improve performance.
 
 Because the SIMT programming model used by GPUs does not require the complex coherant caches which is making simply adding more CPU cores to symmetric multiprocessing difficult~\todo{citation}, it is expected that GPU hardware will continue to scale~ \todo{citation}.
 However, even with new even higher speed memory technologies such as HBM3~\todo{citation}, memory bandwidth has historically always lagged behind processing performance.
