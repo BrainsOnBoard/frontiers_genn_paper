@@ -111,6 +111,7 @@ However spiking neural networks are not especially well-suited
 \section{Material and Methods}
 \label{sec:method}
 \subsection{GeNN}
+\label{sec:method/genn}
 \begin{itemize}
     \item GeNN code generator - while CUDA is relatively simple, efficiently parallelising SNN code is non-trivial    
 \end{itemize}
@@ -136,7 +137,6 @@ The membrane voltage \lstinline{V} of our \num{1000} LIF neurons is sampled from
 These are definied in a similar manner to the neuron and synapse models previously described allowing network initialisation to be parallelised uisng the same strategies used for simulating models on the GPU to be applied to initialising their parameters.
 This approach is advantageous as it both removes the need to transfer model state from the CPU to the GPU and allows the GPU to be used to accelerate potentially costly initialisation such as sampling random numbers.
 %While the PCI express bus typically used to connect the GPU to the host system is relatively fast (up to \SI{16}{\giga\byte\per\second}), initialising millions of synaptic weights on the CPU and then uploading them at the start of the simulation can still considerably slow down the time it takes to iterate the model.
-\todo{Benchmark demonstrating speedup from presentation?}
 
 Once network models have been defined using the C++ interface described in the preceding section, GeNN will generate the CUDA code to simulate the network and this can be linked against a simple simulation loop provided by the user:
 
@@ -243,15 +243,25 @@ This rule can be implemented
 
 \section{Results}
 \subsection{Correctness}
+\label{sec:results/correctness}
 \citet{VanAlbada2018} performed an in-depth analysis of the correctness of simulations of the microcircuit model described in section~\ref{sec:method/microcircuit} running on both the SpiNNaker neuromorphic system and NEST running in `grid-based' mode.
 While the GPU simulations presented in this paper do not face the issues with quantisation which can affect SpiNNaker, unlike NEST, they all use single rather than the double-precision floating point and therefore have the potential for more numerical instability.
 Additionally, the non-associative nature of floating point operations mean that, if the results from a large number of parallel threads are summed together in a non-deterministic order, can have large error bounds.
-\citet{Villa2009} demonstrated this by calculating Euclidian sums of \num{28000} double-precision floating point numbers across \num{16000} threads of a CRAY XMT system (which, in this context, has similar properties to a GPU) and found that results varied by up to \SI{24.64}{\percent}.
-However, in this experiment, more numbers are being summed than any neuron has input and the parallelism schemes described in section~\ref{sec:method} it is unclear what the ranges of the numbers being summed was and
-Nonetheless, in this section, we will follow the methodology used by \citet{VanAlbada2018} and compare the results of our microcircuit simulation to those computed using NEST running in `exact integration' mode.
-Additionally we will compare the results of simulations of the balanced random network model we describe in section~\ref{sec:method/balanced_random} with those presented by \citet{Morrison2007}.
+\citet{Villa2009} demonstrated this by calculating the Euclidian sum of \num{28000} double-precision floating point numbers across \num{16000} threads of a CRAY XMT system (which, in this context, has similar properties to a GPU) and found that results varied by up to \SI{24.64}{\percent}.
+However, in this experiment, more numbers were summed than occurs in any of the parallelism schemes described in section~\ref{sec:method} and it is unclear what absolute errors these reported relative errors correspond to.
+Nonetheless, in this section we will confirm the correctness of our simulations using the methodology described by \citet{VanAlbada2018} to compare the results of our microcircuit simulation to those computed using NEST running in `exact integration' mode.
 
-While the randomisation of the neuron's initial membrane voltages should reduce this, 
+While the randomisation of each neurons initial membrane voltage should reduce any such effects, the first \SI{1}{\second} of spike data from each \SI{10}{\second} simulation is discarded in order to remove any transients.
+We then calculated the average firing rates and the covariance of interspike interval~(CV ISI) for each neuron in the model throughout the remaining \SI{9}{\second} of spiking data using the Elephant~\citep{Yegenoglu2018} package.
+We also picked \num{200} (this was a tradeoff between accuracy and analysis time chosen by \citeauthor{VanAlbada2018}) active neurons from each population, binned their spike trains into \SI{2}{\milli\second} bins (corresponding to the refractory time of the neurons) and calculated the Pearson correlation coefficients matrix.
+
+The same statistics were then calculated from a NEST simulation running in `exact integration' mode.
+
+Histograms of all three measures were then produced using bins calculated with the Freedman-Diaconis rule~\citep{Freedman1981} from the same measures produced from the  model
+All histograms were then smoothed using 
+
+
+Additionally we will compare the results of simulations of the balanced random network model we describe in section~\ref{sec:method/balanced_random} with those presented by \citet{Morrison2007}.
 
 \begin{figure}
     \begin{center}
@@ -308,7 +318,17 @@ Additionally we used CUDA's own event timing system~\citep[Section~8.1.2]{NVIDIA
 
 Figure~\ref{fig:microcircuit_performance} shows the durations of simulations of the microcircuit model running on each GPU for \SI{10}{\second} of biological time, including the times taken by neuron and synapse simulation kernels.
 
-However, while the initialisation phase of the NEST simulation was fully parallelised and took less than \SI{3}{\second} in the configuration shown in figure~\ref{fig:microcircuit_performance}, the `FixedNumberTotal' connection rule used by the microcircuit model 
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=85mm]{figures/microcircuit_init_performance}
+    \end{center}
+    \caption{Initialisation times of microcircuit model running on various GPU hardware.
+    SpiNNaker and fastest HPC simulation times (32 nodes) presented by \citet{VanAlbada2018} included for comparison.}
+    \label{fig:microcircuit_init_performance}
+\end{figure}
+
+As discussed in section~\ref{sec:method/genn}, as well as parallelising neuron and synapse simulation code, GeNN can also parallise the initialisation of model state variables and connectivity.
+Figure~\ref{fig:microcircuit_init_performance} shows the initialisation time of the microcircuit simulation 
 
 \begin{figure}
     \begin{center}
@@ -320,6 +340,8 @@ However, while the initialisation phase of the NEST simulation was fully paralle
 \end{figure}
 
 \todo{volta `Independent Thread Scheduling' may be part of the reason why second model works so well}
+
+\subsection{Power and energy}
 
 \begin{figure}
     \begin{center}
@@ -333,7 +355,6 @@ However, while the initialisation phase of the NEST simulation was fully paralle
     \label{fig:microcircuit_power}
 \end{figure}
 
-\subsection{Power and energy}
 As well as recording the timings of the microcircuit benchmark described in the previous section, we also recorded the power usage of the systems being benchmarked using a consumer power measurement device at the mains socket.
 The screen of the power measurement device was recorded using a webcam, optical character recognition was performed using `Seven Segment Optical Character Recognition' developed by \citet{Auerswald2018} and the resultant power measurements were tagged with a time and written to disk.
 Figure~\ref{fig:microcircuit_power} shows the power usage over time for simulations of the microcircuit model running for \SI{10}{\second} of biological time on each of the devices listed in table~\ref{tab:gpu_devices} aside from the Tesla V100 which we do not have local access to record the power usage of the entire system.
@@ -367,7 +388,7 @@ These energy costs are listed in table~\ref{tab:energy_measures} alongside the e
 From figure~\ref{fig:microcircuit_power} we can see that even an idling workstation draws on the order of \SI{100}{\watt} and, as \citeauthor{VanAlbada2018} discusses, a single infiniband switch has a TDP of over \SI{200}{\watt}.
 Therefore it is somewhat unsurprising that any accelator that allows equivalent simulations to be run on fewer nodes would significantly improve energy usage.
 Furthermore, as \citeauthor{VanAlbada2018} discusses, slowing SpiNNaker simulations down to this degree and simulating so few neurons on each processor results in very poor energy efficiency.
-However, in a previous study using a much smaller cortical microcircuit model suffering from none of these issues, \citet{Sharp2012} found that the SpiNNaker system's energy usage corresponded to \SI{0.11}{\micro\joule} per synaptic event.
+However, in a previous study using a much smaller cortical microcircuit model suffering from none of these issues, \citet{Sharp2012} measured the power usage of a SpiNNaker system energy usage corresponded to \SI{0.11}{\micro\joule} per synaptic event.
 This suggests that through 
 
 Whilst we were unable to measure the energy of the Tesla V100 system directly, Tesla GPUs have built in power monitoring which shows that the Tesla V100 drew a maximum of \SI{88}{\watt} compared to \SI{107}{\watt} for the Tesla K40c.
@@ -411,6 +432,7 @@ Details of all funding sources should be provided, including grant numbers if ap
 
 \section*{Acknowledgments}
 We would like to thank Andrew Webb for his thoughts on efficient parallel connectivity generation.
+We would also like to thank Sacha van Albada for providing the data from her NEST simulations and clarifying some parts of the accuracy analysis -- without these contributions section~\ref{sec:results/correctness} would not have been possible.
 This is a short text to acknowledge the contributions of specific colleagues, institutions, or agencies that aided the efforts of the authors.
 
 \section*{Data Availability Statement}
