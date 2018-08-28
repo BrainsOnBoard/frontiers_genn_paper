@@ -79,7 +79,7 @@ In many ways, the large amount of available parallelism and the Single Instructi
 In this paper we re-implement two large-scale point neuron network models with levels of connectivity and sparseness matching those in the neocortex using our GeNN code generator, discussing how they are mapped to GPU hardware.
 We then verify the correctness of our GPU simulations before comparing the performance and energy usage against published data for traditional CPU-based HPC as well as neuromorphic hardware where it is available.
 We show that a full-scale model of a cortical column can be simulated at speeds approaching $0.5\times$ real-time using a single NVIDIA Tesla V100 accelerator -- faster than is possible using a CPU based cluster or the SpiNNaker neuromorphic system.
-Additionally we show that, across a range of GPU systems, the energy per synaptic event is less than half that of a CPU-based simulation and, on a Jetson TX2 embedded system, 
+Additionally we show that, across a range of GPU systems, the energy to solution as well as the energy per synaptic event of the microcircuit simulation is as much as $14\times$ lower than either SpiNNaker or a CPU-based simulation.
 
 \tiny
  \keyFont{\section{Keywords:} GPU, high-performance computing, parallel computing, accuracy of simulation, energy to solution, benchmarking, computational neuroscience} %All article types: you may provide up to 8 keywords; at least 5 are mandatory.
@@ -107,7 +107,6 @@ However parallel CPU programming paradigms such as multithreading are not well-s
 
 The SIMT programming model architecture used by NVIDIA GPUs is designed explicitly for fine-grained parallelism and high throughput.
 However spiking neural networks are not especially well-suited
-
 
 \section{Material and Methods}
 \label{sec:method}
@@ -150,18 +149,29 @@ Therefore GeNN offers
 \subsection{The cell-type specific cortical microcircuit}
 \label{sec:method/microcircuit}
 This model of \SI{1}{\milli\metre\cubed} of early-sensory cortex was first developed by \citet{Potjans2012}.
-The model consists of around \num{80000} leaky integrate-and-fire~(LIF) neurons, divided into layers 2/3, 4, 5 and 6; where each layer is modelled as an excitatory and an inhibitory population.
+The model consists of around \num{80000} neurons, divided into layers 2/3, 4, 5 and 6 and each layer is modelled as an excitatory and an inhibitory population.
 Neurons in each population are connected with population-specific densities derived from an extensive review of the anatomical literature resulting in a total of approximately \num{0.3E9} synapses.
-In addition to this synaptic input, each neuron in the network also receives independent Poisson inputs with population-specific rates representing input from adjacent cortical regions.
-Beside this basic structure, the connectivity is random with both synaptic strengths and transmission delays being normally distributed.
+The connections between a presynaptic population with $N_{pre}$ neurons and a postsynaptic population with $N_{post}$ neurons are specified as a total number of randomly-distributed synapses (a \lstinline{FixedNumberTotal} connector in PyNN).
+The first stage in initialising such connectivity is to determine how many of the total synapses $N$ end up in each row by sampling from the multinomial distribution $Mult[N_{pre} * N_{post}, \{P_{row}, P_{row}, \ldots, P_{row}\}]$ where $P_{row} = \frac{N_{post}}{N}$.
+This operation cannot be efficiently parallelised so must be performed on the host but, once length of each row is determined, the postsynaptic targets of the synapses can be initialised in parallel by sampling from the discrete uniform distribution $Unif[0, N_{post}]$ parallelised across $N_{pre}$ CUDA threads.
+However, although this works mathematically, so as to improve the locality of memory accesses, synapses should be sorted into ascending order.
+This would be trivial to implement in CPU code but, without enough shared memory for each CUDA thread to store a copy of its corresponding row, an in-place sort in global memory would be very slow.
+It would be possible to use a more complex parallel sorting algorithm such as that proposed by \citet{Awan2016} but, as GPU architectures typically have very high floating point maths throughput, we instead take an alterative approach.
+Rather than sampling directly from $Unif[0, N_{post}]$ we sample from its 1st order statistic $Beta[1, N_{post}]$ -- essentially the next smallest value.
+In the general case the Beta distribution cannot be sampled from in constant time.
+However, if $X \sim Beta[1, N_{post}]$, $1 - X \sim Beta[N_{post}, 1]$ and $-ln(1 - X) \sim Exponential[N_{post}]$ -- a much simpler problem as the exponential distribution can be sampled in constant time using the inversion method.
+
+Beside this structured connectivity, all synaptic strengths and transmission delays are normally distributed.
 \todo{Thomas: is it necessary to go into further details of network structure or just refer reader to Potjans2012?}
+In addition to their synaptic input, each neuron in the network also receives independent Poisson inputs with population-specific rates representing input from adjacent cortical regions.
+Neurons are modelled as leaky integrate-and-fire~(LIF) units with exponentially shaped current inputs:
 %
 \begin{align}
     \tau_{m} \frac{dV_{j}}{dt} = & (V_{j} - V_{rest}) + R_{m}(I_{bias} + I_{s_{j}}) \label{eq:lif_neuron}\\
     \tau_{syn} \frac{dI_{s_{j}}}{dt} = & -I_{s_{j}} + \sum_{i=0}^{n} w_{ij} \sum_{t_{i}^{f}}  \delta(t - t_{i}^{f})\label{eq:exp_neuron_input_current}
 \end{align}
 %
-Although these two state variables are coupled, in our GeNN model, the continuous terms of the two equations are solved separately so the synaptic input current $I_{s_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
+Although $V_{j}$ and $I_{s{j}}$ are coupled, in our GeNN model, the continuous terms of the two equations are solved separately so the synaptic input current $I_{s_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
 As \citet{Rotter1999} describes, this approach leads to a delay of one simulation timestep compared to the exact solution, but this separation is not only attractive from an engineering point-of-view by better encapsulating the neurons and synapses, but it also provides a generic way of describing neurons with heterogeneous synaptic input dynamics.
 
 Simulating a homogeneous \textit{population} of neurons is an ideal task for a SIMD or SIMT device such as a GPU: the neurons do not communicate with each other and, aside from the relatively rare times that they spike, each neuron will be running exactly the same code.
@@ -192,23 +202,12 @@ While this parallelism strategy may seem counter-intuitive, it typically perform
 For example, if we consider a population of \num{10000} neurons firing at an average rate of \SI{10}{\hertz}, in a \SI{0.1}{\milli\second} timestep it will only, on average, emit \num{10} spikes in a single timestep.
 However, if this population is connected to another population with the same size with a \SI{10}{\percent} connection probability, the connection matrix will have over \num{1000} columns resulting in 2 orders of magnitude more parallelism being exposed.
 
-Initialising this form of probabilistic connector involves a three stage process:
-%
-\begin{enumerate}
-    \item Sampling from a multinomial distribution to obtain the number of connections per row.
-    \item For each row, sampling the correct number of indices from a uniform distribution.
-    \item Sorting each rows indices into ascending order to improve performance.
-\end{enumerate}
-%
-While the first stage of this process is difficult to parallelise, the second stage is trivially parallelisable and, while sorting is not a particularly GPU-friendly operation, \citet{Awan2016} has shown that simple in-place sorting algorithms such as insertion sort can be used to efficiently sort large numbers of relatively short arrays in parallel on a GPU.
-Therefore a hybrid approach where the row lengths are calculated on the CPU and the rows then populated on the GPU is likely to significantly improve performance.
-
 \subsection{Balanced random network with spike-timing dependant plasticity}
 \label{sec:method/balanced_random}
 The type of one-shot, online learning observed in nature is one of the features of biological neural networks that neuromorphic engineers aspire to emulate.
 Synaptic plasticity -- the family of mechanisms responsible for changing the strength of synaptic connections in response to neural activity -- has been shown to be fundamental to learning~\citep{Nabavi2014} and is therefore a key area of computational neuroscience research.
 Spike Timing Dependant Plasticity~(STDP)~\citep{Bi1998} is a popular theory which postulates that these changes are driven by the difference in timing between presynaptic spikes arriving at a synapse and the times at which the postsynaptic neuron itself spikes.
-In excitatory cortical neurons~\citep{Markram1997} as well as in the hippocampus~\citep{Bi1998}, synapses at which a presynaptic spike is closely followed by a postsynaptic spike are strengthened whereas those at which a postsynaptic spike precedes a presynaptic spike are weakened.
+In excitatory cortical neurons~\citep{Markram1997} as well as in the Hippocampus~\citep{Bi1998}, synapses at which a presynaptic spike is closely followed by a postsynaptic spike are strengthened whereas those at which a postsynaptic spike precedes a presynaptic spike are weakened.
 The intuition behind this relationship is that synapses that are implicated in the firing of the postsynaptic neuron are strengthened and those that are irrelevant are weakened.
 
 However, adding STDP to spiking neural network simulations typically increases the computational cost of simulating them significantly. 
@@ -218,9 +217,9 @@ Furthermore, the dynamics of neural systems with plasticity operating on biologi
 However, \citeauthor{Morrison2007} argue that it is vital to perform experiments on STDP in models with full-scale connectivity, as simplifying connectivity typically results in fewer, stronger incoming synapses per neuron.
 These stronger synaptic inputs are then likely to increase the correlation between neurons and, because STDP is inherently sensitive to correlated neural activity, this is likely to cause artefacts in the learned synaptic weights.
 Therefore \citeauthor{Morrison2007} developed a large balanced random network model~\citep{Brunel2000} with \num{90000} excitatory and \num{22500} inhibitory neurons -- the scale necessary to achieve realistic connection probabilities of $\approx0.1$ and \num{10000} incoming connections per neuron~\citep{braitenberg2013cortex}.
-Balanced random networks have been shown to reproduce some of the dynamics seen in the neocortex~\citep{Brunel1999,Brunel2000} and, by adding STDP, \citeauthor{Morrison2007} showed that STDP does not disrupt these dynamics.
+Balanced random networks have been shown to reproduce some of the dynamics seen in the neocortex~\citep{Brunel1999,Brunel2000} and \citeauthor{Morrison2007} showed that adding STDP to such a network does not disrupt these dynamics and that weights remain stable.
 
-Similarly to the microcircuit model described in the previous section this model uses LIF neurons.
+Similarly to the microcircuit model described in the previous section this model uses LIF neurons with current inputs.
 However, rather than exponentially filtering the incoming synaptic input, this model uses a slightly more complex \textit{alpha} synapses \todo{cite} which provide a closer match to the dynamics of biological ion channels:
 %
 \begin{align}
@@ -229,7 +228,7 @@ However, rather than exponentially filtering the incoming synaptic input, this m
 \end{align}
 %
 Aside from requiring an additional state variable to hold $x_{s_{j}}$, equations~\ref{eq:alpha_neuron_input_current_1}~and~\ref{eq:alpha_neuron_input_current_2} are i
-As well as alternative synaptic plasticity rules using postsynaptic membrane voltage~\citep{Brader2007,Clopath2010c} rather than postsynaptic spike times and those including `third factors' such as dopamine~\citep{Izhikevich2007}, there are a plethora of different STDP formalisations (see \citet{Morrison2008} for a review).
+As well as alternative synaptic plasticity rules which use postsynaptic membrane voltage~\citep{Brader2007,Clopath2010c} rather than postsynaptic spike times and those including `third factors' such as dopamine~\citep{Izhikevich2007}, there are a plethora of different STDP formalisations (see \citet{Morrison2008} for a review).
 However, in the model described in this section, \citet{Morrison2007} chose to use a rule with the following relationship between pre~($t_{pre}$) and postsynaptic~($t_{post}$) spike timing ($\Delta t = t_{post} - t_{pre}$):
 %
 \begin{align}
@@ -240,6 +239,8 @@ However, in the model described in this section, \citet{Morrison2007} chose to u
         \end{cases}
 \end{align}
 %
+This rule can be implemented 
+
 \section{Results}
 \subsection{Correctness}
 \citet{VanAlbada2018} performed an in-depth analysis of the correctness of simulations of the microcircuit model described in section~\ref{sec:method/microcircuit} running on both the SpiNNaker neuromorphic system and NEST running in `grid-based' mode.
@@ -344,9 +345,9 @@ Figure~\ref{fig:microcircuit_power} shows the power usage over time for simulati
         {Model}                 & {Energy to solution}      & {Simulation energy}       & {Energy per synaptic event} \\
                                 & {[\si{\kilo\watt\hour}]}  & {[\si{\kilo\watt\hour}]}  & {[\si{\micro\joule}]} \\
     \midrule
-        GeForce 1050 Ti         & 0.006                     & 0.0055                    & 2.1 \\
+        GeForce 1050 Ti         & 0.0053                    & 0.0051                    & 2.0 \\
         Jetson TX2              & 0.00080                   & 0.00078                   & 0.30  \\
-        Tesla K40c              & 0.0031                    & 0.0027                    & 1.04 \\
+        Tesla K40c              & 0.0030                    & 0.0028                    & 1.08 \\
         SpiNNaker               & {--}                      & 0.017                     & 5.9 \textsuperscript{1}\\
         NEST (lowest energy)    & {--}                      & 0.012                     & 4.4 \\
     \bottomrule
@@ -360,12 +361,23 @@ Figure~\ref{fig:microcircuit_power} shows the power usage over time for simulati
   \label{tab:energy_measures}
 \end{table}
 
-By integrating the power time series using the \lstinline{numpy.trapz} function we we can calculate the energy to solution of each simulation as well as the energy per synaptic event -- a common measure for comparing the energy efficiency of neuromorphic systems.
-While we were unable to measure the energy of the Tesla V100 system directly, both the Tesla cards have built in power monitoring which showed that the Tesla V100 drew a maximum of \SI{88}{\watt} compared to \SI{107}{\watt} for the Tesla K40c.
+By integrating the power time series using the \lstinline{numpy.trapz} function we then calculated the energy to solution for each device as well as the energy per synaptic event -- a common measure for comparing the energy efficiency of neuromorphic systems.
+These energy costs are listed in table~\ref{tab:energy_measures} alongside the energy costs presented by \citet{VanAlbada2018} for simulations running onn SpiNNaker and a CPU-based cluster.
+
+From figure~\ref{fig:microcircuit_power} we can see that even an idling workstation draws on the order of \SI{100}{\watt} and, as \citeauthor{VanAlbada2018} discusses, a single infiniband switch has a TDP of over \SI{200}{\watt}.
+Therefore it is somewhat unsurprising that any accelator that allows equivalent simulations to be run on fewer nodes would significantly improve energy usage.
+Furthermore, as \citeauthor{VanAlbada2018} discusses, slowing SpiNNaker simulations down to this degree and simulating so few neurons on each processor results in very poor energy efficiency.
+However, in a previous study using a much smaller cortical microcircuit model suffering from none of these issues, \citet{Sharp2012} found that the SpiNNaker system's energy usage corresponded to \SI{0.11}{\micro\joule} per synaptic event.
+This suggests that through 
+
+Whilst we were unable to measure the energy of the Tesla V100 system directly, Tesla GPUs have built in power monitoring which shows that the Tesla V100 drew a maximum of \SI{88}{\watt} compared to \SI{107}{\watt} for the Tesla K40c.
 As the workstation containing the Tesla K40c drew \SI{218}{\watt} while simulating the model, compared to an idle power draw of \SI{84}{\watt}, we can estimate that the single CPU core being used by the simulation was drawing \SI{27}{\watt} more than when the system was idle.
 Therefore we can estimate that, if a Tesla V100 was attached to the same workstation, the maximum power draw would be reduced to \SI{199}{\watt} meaning that, based on the reduced simulation time of \SI{22}{\second}, the simulation energy for such a system would be \SI{0.0012}{\kilo\watt\hour} and the energy per synaptic event would be \SI{0.47}{\micro\joule}.
 
 \section{Discussion}
+\begin{itemize}
+    \item Fewer nodes with more specialised accelerators are the only route to lower power HPC simulations.
+\end{itemize}
 
 \subsection{Neurorobotics}
 afa
@@ -398,6 +410,7 @@ The Author Contributions section is mandatory for all articles, including articl
 Details of all funding sources should be provided, including grant numbers if applicable. Please ensure to add all necessary funding information, as after publication this is no longer possible.
 
 \section*{Acknowledgments}
+We would like to thank Andrew Webb for his thoughts on efficient parallel connectivity generation.
 This is a short text to acknowledge the contributions of specific colleagues, institutions, or agencies that aided the efforts of the authors.
 
 \section*{Data Availability Statement}
