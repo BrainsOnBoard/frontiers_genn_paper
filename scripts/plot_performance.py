@@ -6,18 +6,21 @@ import sys
 import plot_settings
 import utils
 
-def plot(data, filename, num_ref, calc_overhead, legend_text, real_time_s=None):
+def plot(data, filename, num_ref, calc_overhead, legend_text, real_time_s=None, group_size=None, log=False):
     columns = zip(*data)
     device = np.asarray(columns[0],  dtype=str)
 
-    # Read times into numpy arrays
-    num_time_columns = len(columns) - 1
-    times = np.empty((num_time_columns, len(device)), dtype=float)
-    for i, col in enumerate(columns[1:]):
-        times[i,:] = col
+    time_col_start = 1 if group_size is None else 2
 
+    # Read times into numpy arrays
+    num_time_columns = len(columns) - time_col_start
+    times = np.empty((num_time_columns, len(device)), dtype=float)
+    for i, col in enumerate(columns[time_col_start:]):
+        times[i,:] = col
+    print times
     # Convert ms to s
     times /= 1000.0
+
 
     # If overheads are being calculated, subtract all preceeding rows from last row
     if calc_overhead:
@@ -25,7 +28,7 @@ def plot(data, filename, num_ref, calc_overhead, legend_text, real_time_s=None):
             times[-1,:-num_ref] -= times[i,:-num_ref]
 
     fig, axis = plt.subplots(figsize=(plot_settings.column_width, 90.0 * plot_settings.mm_to_inches),
-                            frameon=False)
+                             frameon=False)
 
     # Correctly place bars
     bar_width = 0.8
@@ -44,6 +47,7 @@ def plot(data, filename, num_ref, calc_overhead, legend_text, real_time_s=None):
 
     # Plot individual other bars
     if num_ref > 0:
+        print times[-1,-num_ref:]
         axis.bar(bar_x[-num_ref:], times[-1,-num_ref:], bar_width, 0.0)
 
     axis.set_ylabel("Time [s]")
@@ -62,6 +66,9 @@ def plot(data, filename, num_ref, calc_overhead, legend_text, real_time_s=None):
     axis.set_xticks(bar_x)
     axis.set_xticklabels(device, rotation="vertical", ha="center", multialignment="right")
 
+    if log:
+        axis.set_yscale("log", nonposy="clip")
+
     # Add legend
     fig.legend(legend_actors, legend_text, ncol=2, loc="lower center")
 
@@ -78,13 +85,29 @@ microcircuit_data = [("Jetson TX2", 99570.4, 155284, 258350),
                      ("HPC\n(fastest)", 0.0, 0.0, 24296.0),
                      ("SpiNNaker", 0.0, 0.0, 200000)]
 
+microcircuit_init_data = [("Jetson TX2", "Device\ninit", 753.284 + 950.965, 1683.32),
+                          ("Jetson TX2", "Host\ninit", 125.569, 14.438 + 541196 + 85984.6),
+                          ("GeForce 1050ti", "Device\ninit", 347.681 + 499.292, 561.601),
+                          ("GeForce 1050ti", "Host\ninit", 0.0, 19032),
+                          ("Tesla K40c", "Device\ninit", 204.258 + 361.698, 392.913),
+                          ("Tesla K40c", "Host\ninit", 0.0, 18522.8),
+                          ("Tesla V100", "Device\ninit", 58.6588 + 142.279, 445.239),
+                          ("Tesla V100", "Host\ninit", 0.0, 16182.2),
+                          ("HPC\n(fastest)", "", 0.0, 2000.0),
+                          ("SpiNNaker", "", 0.0, 10.0 * 60.0 * 60.0 * 1000.0)]
+
 # Total simulation time, neuron simulation, synapse simulation, postsynaptic learning
 stdp_data = [("Tesla K40m\nBitmask", 435387, 296357, 3925070, 4736610),
              ("Tesla V100\nBitmask", 100144, 82951.6, 307273, 564826),
              ("Tesla V100\nRagged", 99346.3, 85975.4, 307433, 567267)]
 
+plot(microcircuit_init_data, "../figures/microcircuit_init_performance.eps", 2, False,
+     ["Device initialisation", "Host initialisation"], None, 2, True)
+
 plot(microcircuit_data, "../figures/microcircuit_performance.eps", 2, True,
      ["Neuron simulation", "Synapse\nsimulation", "Overhead"], 10.0)
+
 plot(stdp_data, "../figures/stdp_performance.eps", 0, True,
      ["Neuron simulation", "Synapse simulation", "Postsynaptic learning", "Overhead"], 200.0)
+
 plt.show()
