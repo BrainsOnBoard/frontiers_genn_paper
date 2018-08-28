@@ -4,12 +4,12 @@ import plot_settings
 import utils
 
 # CSV filename, 'idle' power, sim time, spike write time
-data = [("microcircuit_power/k40c.csv", 150.0, 41911.5, 6199.62),
-        ("microcircuit_power/1050ti.csv", 70.0, 137592, 15054),
-        ("microcircuit_power/tx2.csv", 6.0, 258350, 14516.2)]
+data = [("microcircuit_power/k40c.csv", 120.0, 140.0, 41911.5, 6199.62),
+        ("microcircuit_power/1050ti.csv", 80.0, 80.0, 137592, 15054),
+        ("microcircuit_power/tx2.csv", 6.0, 6.0, 258350, 14516.2)]
 
 
-fig, axes = plt.subplots(len(data), figsize=(plot_settings.column_width, 90.0 * plot_settings.mm_to_inches))
+fig, axes = plt.subplots(len(data), figsize=(plot_settings.column_width, 90.0 * plot_settings.mm_to_inches), sharex=True)
 
 # How long to plot idle time for
 idle_time_s = 10.0
@@ -33,16 +33,15 @@ for i, (d, a) in enumerate(zip(data, axes)):
     power = trace["power"][valid]
     
     # Find points power trace first crossed idle - assume first and last are experiment start and end times
-    exp_non_idle_indices = np.where(power > d[1])[0]
-    exp_start_index = exp_non_idle_indices[0]
-    exp_end_index = exp_non_idle_indices[-1]
+    exp_start_index = np.where(power > d[1])[0][0]
+    exp_end_index = np.where(power > d[2])[0][-1]
     exp_start_time = time[exp_start_index]
     exp_end_time = time[exp_end_index]
 
-    sim_end_time = exp_end_time - (d[3] / 1000.0)
+    sim_end_time = exp_end_time - (d[4] / 1000.0)
     sim_end_index = np.argmax(time > sim_end_time)
 
-    sim_start_time = sim_end_time - (d[2] / 1000.0)
+    sim_start_time = sim_end_time - (d[3] / 1000.0)
     sim_start_index = np.argmax(time > sim_start_time)
 
     # Make all times relative to experiment start
@@ -92,10 +91,11 @@ for i, (d, a) in enumerate(zip(data, axes)):
     print("\tSimulation energy = %fJ = %fkWh" % (sim_energy, sim_energy / 3600000.0))
     print("\tEnergy per synaptic event = %fuJ" % (energy_per_synaptic_event * 1E6))
 
-    a.axvline(0.0, color="black", linestyle="--")
-    a.axvline(exp_end_time - exp_start_time, color="black", linestyle="--")
-    a.set_xlabel("Simulation time [s]")
+    a.axvline(0.0, color="black", linestyle="--", linewidth=1.0)
+    a.axvline(exp_end_time - exp_start_time, color="black", linestyle="--", linewidth=1.0)
     a.set_ylabel("Power [W]")
+
+axes[-1].set_xlabel("Simulation time [s]")
 
 fig.legend([idle_actor, init_actor, sim_actor, spike_write_actor],
            ["Idle", "Initialisation", "Simulation", "Spike writing"],
