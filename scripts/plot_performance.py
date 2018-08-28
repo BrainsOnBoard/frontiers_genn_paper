@@ -6,19 +6,20 @@ import sys
 import plot_settings
 import utils
 
-def plot(data, filename, num_ref, real_time_s=None):
+def plot(data, filename, num_ref, calc_overhead, real_time_s=None):
     columns = zip(*data)
     device = np.asarray(columns[0],  dtype=str)
 
-    total_sim_time = np.asarray(columns[1],  dtype=float) / 1000.0
-    neuron_sim_time = np.asarray(columns[2],  dtype=float) / 1000.0
-    synapse_sim_time = np.asarray(columns[3],  dtype=float) / 1000.0
+    num_time_columns = len(columns) - 1
+    times = np.empty((num_time_columns, len(device)), dtype=float)
+    for i, col in enumerate(columns[1:]):
+        times[i,:] = col
 
-    post_learn_sim_time = None if (len(columns) < 5) else np.asarray(columns[4],  dtype=float) / 1000.0
+    times /= 1000.0
 
-    overhead = total_sim_time - neuron_sim_time - synapse_sim_time
-    if post_learn_sim_time is not None:
-        overhead -= post_learn_sim_time
+    if calc_overhead:
+        for i in range(times.shape[0] - 1):
+            times[-1,:-num_ref] -= times[i,:-num_ref]
 
     fig, axis = plt.subplots(figsize=(plot_settings.column_width, 90.0 * plot_settings.mm_to_inches),
                             frameon=False)
@@ -33,21 +34,14 @@ def plot(data, filename, num_ref, real_time_s=None):
     # Plot stacked, GPU bars
     gpu_bar_x_slice = np.s_[:] if num_ref == 0 else np.s_[:-num_ref]
 
-    neuron_sim_actor = axis.bar(bar_x[gpu_bar_x_slice], neuron_sim_time[gpu_bar_x_slice], bar_width)[0]
-    offset += neuron_sim_time[gpu_bar_x_slice]
-    synapse_sim_actor = axis.bar(bar_x[gpu_bar_x_slice], synapse_sim_time[gpu_bar_x_slice], bar_width, offset)[0]
-    offset += synapse_sim_time[gpu_bar_x_slice]
-
-    if post_learn_sim_time is not None:
-        post_learn_sim_actor = axis.bar(bar_x[gpu_bar_x_slice], post_learn_sim_time[gpu_bar_x_slice], bar_width, offset)[0]
-        offset += post_learn_sim_time[gpu_bar_x_slice]
-
-    overhead_actor = axis.bar(bar_x[gpu_bar_x_slice], overhead[gpu_bar_x_slice], bar_width, offset)
-    offset += overhead[gpu_bar_x_slice]
+    actors = []
+    for i in range(times.shape[0]):
+        actors.append(axis.bar(bar_x[gpu_bar_x_slice], times[i,gpu_bar_x_slice], bar_width, offset)[0])
+        offset += times[i,gpu_bar_x_slice]
 
     # Plot individual other bars
     if num_ref > 0:
-        axis.bar(bar_x[-num_ref:], total_sim_time[-num_ref:], bar_width, 0.0)
+        axis.bar(bar_x[-num_ref:], times[-1,-num_ref:], bar_width, 0.0)
 
     # Add real-timeness annoation
     #for t, x in zip(total_sim_time, bar_x):
@@ -71,12 +65,12 @@ def plot(data, filename, num_ref, real_time_s=None):
     axis.set_xticks(bar_x)
     axis.set_xticklabels(device, rotation="vertical", ha="center", multialignment="right")
 
-    if post_learn_sim_time is not None:
-        fig.legend([neuron_sim_actor, synapse_sim_actor, post_learn_sim_actor, overhead_actor],
+    if num_time_columns == 4:
+        fig.legend(actors,
                 ["Neuron simulation", "Synapse simulation", "Postsynaptic learning", "Overhead"],
                 ncol=2, loc="lower center")
     else:
-        fig.legend([neuron_sim_actor, synapse_sim_actor, overhead_actor],
+        fig.legend(actors,
                 ["Neuron simulation", "Synapse\nsimulation", "Overhead"],
                 ncol=2, loc="lower center")
 
@@ -86,18 +80,18 @@ def plot(data, filename, num_ref, real_time_s=None):
     fig.savefig(filename)
 
 # Total simulation time, neuron simulation, synapse simulation
-microcircuit_data = [("Jetson TX2", 258350, 99570.4, 155284),
-                     ("GeForce 1050ti", 137592, 20192.6, 21310.1),
-                     ("Tesla K40c", 41911.5, 13636.2, 12431.8),
-                     ("Tesla V100", 21645.4, 3215.88, 3927.9),
-                     ("HPC\n(fastest)", 24296.0, 0.0, 0.0),
-                     ("SpiNNaker", 200000, 0.0, 0.0)]
+microcircuit_data = [("Jetson TX2", 99570.4, 155284, 258350),
+                     ("GeForce 1050ti", 20192.6, 21310.1, 137592),
+                     ("Tesla K40c", 13636.2, 12431.8, 41911.5),
+                     ("Tesla V100", 3215.88, 3927.9, 21645.4),
+                     ("HPC\n(fastest)", 0.0, 0.0, 24296.0),
+                     ("SpiNNaker", 0.0, 0.0, 200000)]
 
 # Total simulation time, neuron simulation, synapse simulation, postsynaptic learning
-stdp_data = [("Tesla K40m\nBitmask", 4736610, 435387, 296357, 3925070),
-             ("Tesla V100\nBitmask", 564826, 100144, 82951.6, 307273),
-             ("Tesla V100\nRagged", 567267, 99346.3, 85975.4, 307433)]
+stdp_data = [("Tesla K40m\nBitmask", 435387, 296357, 3925070, 4736610),
+             ("Tesla V100\nBitmask", 100144, 82951.6, 307273, 564826),
+             ("Tesla V100\nRagged", 99346.3, 85975.4, 307433, 567267)]
 
-plot(microcircuit_data, "../figures/microcircuit_performance.eps", 2, 10.0)
-plot(stdp_data, "../figures/stdp_performance.eps", 0, 200.0)
+plot(microcircuit_data, "../figures/microcircuit_performance.eps", 2, True, 10.0)
+plot(stdp_data, "../figures/stdp_performance.eps", 0, True, 200.0)
 plt.show()
