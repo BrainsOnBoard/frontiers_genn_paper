@@ -241,28 +241,6 @@ However, in the model described in this section, \citet{Morrison2007} chose to u
 %
 This rule can be implemented 
 
-\section{Results}
-\subsection{Correctness}
-\label{sec:results/correctness}
-\citet{VanAlbada2018} performed an in-depth analysis of the correctness of simulations of the microcircuit model described in section~\ref{sec:method/microcircuit} running on both the SpiNNaker neuromorphic system and NEST running in `grid-based' mode.
-While the GPU simulations presented in this paper do not face the issues with quantisation which can affect SpiNNaker, unlike NEST, they all use single rather than the double-precision floating point and therefore have the potential for more numerical instability.
-Additionally, the non-associative nature of floating point operations mean that, if the results from a large number of parallel threads are summed together in a non-deterministic order, can have large error bounds.
-\citet{Villa2009} demonstrated this by calculating the Euclidian sum of \num{28000} double-precision floating point numbers across \num{16000} threads of a CRAY XMT system (which, in this context, has similar properties to a GPU) and found that results varied by up to \SI{24.64}{\percent}.
-However, in this experiment, more numbers were summed than occurs in any of the parallelism schemes described in section~\ref{sec:method} and it is unclear what absolute errors these reported relative errors correspond to.
-Nonetheless, in this section we will confirm the correctness of our simulations using the methodology described by \citet{VanAlbada2018} to compare the results of our microcircuit simulation to those computed using NEST running in `exact integration' mode.
-
-While the randomisation of each neurons initial membrane voltage should reduce any such effects, the first \SI{1}{\second} of spike data from each \SI{10}{\second} simulation is discarded in order to remove any transients.
-We then calculated the average firing rates and the covariance of interspike interval~(CV ISI) for each neuron in the model throughout the remaining \SI{9}{\second} of spiking data using the Elephant~\citep{Yegenoglu2018} package.
-We also picked \num{200} (this was a tradeoff between accuracy and analysis time chosen by \citeauthor{VanAlbada2018}) active neurons from each population, binned their spike trains into \SI{2}{\milli\second} bins (corresponding to the refractory time of the neurons) and calculated the Pearson correlation coefficients matrix.
-
-The same statistics were then calculated from a NEST simulation running in `exact integration' mode.
-
-Histograms of all three measures were then produced using bins calculated with the Freedman-Diaconis rule~\citep{Freedman1981} from the same measures produced from the  model
-All histograms were then smoothed using 
-
-
-Additionally we will compare the results of simulations of the balanced random network model we describe in section~\ref{sec:method/balanced_random} with those presented by \citet{Morrison2007}.
-
 \begin{figure}
     \begin{center}
         \includegraphics[width=180mm]{figures/microcircuit_accuracy}
@@ -276,6 +254,31 @@ Additionally we will compare the results of simulations of the balanced random n
     All measures are calculated over the last \SI{9}{\second} of the simulation and histogram bin widths are determined using the Freedman-Diaconis rule.}
     \label{fig:microcircuit_accuracy}
 \end{figure}
+
+\section{Results}
+\subsection{Correctness}
+\label{sec:results/correctness}
+\citet{VanAlbada2018} performed an in-depth analysis of the correctness of simulations of the microcircuit model described in section~\ref{sec:method/microcircuit} running on both the SpiNNaker neuromorphic system and NEST running in `grid-based' mode.
+While the GPU simulations presented in this paper do not face the issues with quantisation which can affect SpiNNaker, unlike NEST, they all use single rather than the double-precision floating point and therefore have the potential for more numerical instability.
+Additionally, the non-associative nature of floating point operations mean that, if the results from a large number of parallel threads are summed together in a non-deterministic order, can have large error bounds.
+\citet{Villa2009} demonstrated this by calculating the Euclidian sum of \num{28000} double-precision floating point numbers across \num{16000} threads of a CRAY XMT system (which, in this context, has similar properties to a GPU) and found that results varied by up to \SI{24.64}{\percent}.
+However, in this experiment, more numbers were summed than occurs in any of the parallelism schemes described in section~\ref{sec:method} and it is unclear what absolute errors these reported relative errors correspond to.
+Nonetheless, in this section we will confirm the correctness of our simulations using the methodology described by \citet{VanAlbada2018} to compare the results of our microcircuit simulation to those computed using NEST running in `precise' mode.
+
+While the randomisation of each neurons initial membrane voltage should reduce any such effects, the first \SI{1}{\second} of spike data from each \SI{10}{\second} simulation is discarded in order to remove any transients.
+We then calculated the average firing rates and the covariance of interspike interval~(CV ISI) for each neuron in the model throughout the remaining \SI{9}{\second} of spiking data using the Elephant~\citep{Yegenoglu2018} package.
+We also picked \num{200} (this was a tradeoff between accuracy and analysis time chosen by \citeauthor{VanAlbada2018}) active neurons from each population, binned their spike trains into \SI{2}{\milli\second} bins (corresponding to the refractory time of the neurons) and calculated the Pearson correlation coefficients matrix between each disjoint pair of neurons.
+
+The same statistics were then calculated from a NEST simulation running in `precise' mode.
+Histograms of all three measures were then produced using bins calculated with the Freedman-Diaconis rule~\citep{Freedman1981} from the NEST data.
+These histograms were then smoothed using a Gaussian kernel density estimation performed using the \lstinline{scipy.stats.gaussian_kde} function with the bandwidths of \SI{0.3}{\per\second}, \num{0.04} and \num{0.002} for the average firing rates, the CV ISI and the correlation respectively.
+
+Figure~\ref{fig:microcircuit_accuracy} shows the results of this analysis.
+Visually it is clear that the per-population distributions are highly similar and, to quantify this, we calculated the Kullback-Leibler~(KL) divergences using the NEST data as a reference.
+As reported by \citet{VanAlbada2018} for their grid-aligned NEST and SpiNNaker simulations, the divergence between the distributions from the GeNN simulations and those produced by NEST running in `precise' mode are comparable in size to the divergences caused by simply changing the seed used for random number generation.
+This suggests that using single-precision floating point and summing inputs in a non-deterministic order has a minimal effect on the dynamics of the microcircuit model.
+
+Additionally we will compare the results of simulations of the balanced random network model we describe in section~\ref{sec:method/balanced_random} with those presented by \citet{Morrison2007}.
 
 \subsection{Performance}
 \label{sec:results/performance}
@@ -303,9 +306,6 @@ However memory is a harder constraint and, because of this, while all of the GPU
   \label{tab:gpu_devices}
 \end{table}
 
-We measured the performance of both models by querying the \lstinline{std::chrono::high_resolution_clock} on the host computer around the simulation loop to get a total simulation time and, in the case of the microcircuit model, around the code used to calculate the connectivity.
-Additionally we used CUDA's own event timing system~\citep[Section~8.1.2]{NVIDIACorporation2018} to record the time taken by the neuron and synapse simulation kernels as well as the postsynaptic learning kernel in the balanced random network model.
-
 \begin{figure}
     \begin{center}
         \includegraphics[width=85mm]{figures/microcircuit_performance}
@@ -316,8 +316,6 @@ Additionally we used CUDA's own event timing system~\citep[Section~8.1.2]{NVIDIA
     \label{fig:microcircuit_performance}
 \end{figure}
 
-Figure~\ref{fig:microcircuit_performance} shows the durations of simulations of the microcircuit model running on each GPU for \SI{10}{\second} of biological time, including the times taken by neuron and synapse simulation kernels.
-
 \begin{figure}
     \begin{center}
         \includegraphics[width=85mm]{figures/microcircuit_init_performance}
@@ -326,6 +324,12 @@ Figure~\ref{fig:microcircuit_performance} shows the durations of simulations of 
     SpiNNaker and fastest HPC simulation times (32 nodes) presented by \citet{VanAlbada2018} included for comparison.}
     \label{fig:microcircuit_init_performance}
 \end{figure}
+
+We measured the performance of both models by querying the \lstinline{std::chrono::high_resolution_clock} on the host computer around the simulation loop to get a total simulation time and, in the case of the microcircuit model, around the code used to calculate the connectivity.
+Additionally we used CUDA's own event timing system~\citep[Section~8.1.2]{NVIDIACorporation2018} to record the time taken by the neuron and synapse simulation kernels as well as the postsynaptic learning kernel in the balanced random network model.
+
+Figure~\ref{fig:microcircuit_performance} shows the durations of simulations of the microcircuit model running on each GPU for \SI{10}{\second} of biological time, including the times taken by neuron and synapse simulation kernels.
+
 
 As discussed in section~\ref{sec:method/genn}, as well as parallelising neuron and synapse simulation code, GeNN can also parallise the initialisation of model state variables and connectivity.
 Figure~\ref{fig:microcircuit_init_performance} shows the initialisation time of the microcircuit simulation 
