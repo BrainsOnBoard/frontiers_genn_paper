@@ -68,18 +68,21 @@
 
 %%% Leave the Abstract empty if your article does not require one, please see the Summary Table for full details.
 \section{}
-Inspired by the distributed nature of memory and computation in the brain, neuromorphic systems are designed to provide a more energy-efficient substrate for emulating spiking neural networks when compared to simulations running on Von Neumann architectures.
+Inspired by the distributed nature of memory and computation in the brain, neuromorphic systems are being developed to provide a faster and/or more energy-efficient substrate for emulating spiking neural networks (SNNs) when compared to simulations running on Von Neumann architectures.
 
-While neuromorphic systems may be the ultimate platform for \textit{deploying} spiking neural networks, their very distributed nature makes them unwieldy tools for \textit{developing} SNN models.
+While neuromorphic systems may be the ultimate platform for \textit{deploying} spiking neural networks, their distributed nature and optimisation for specific types of models makes them unwieldy tools for \textit{developing} SNN models.
 Instead development and simulation of SNN models tends to be performed on computers with standard Von Neumann CPU architectures and, once models scale above a certain size, clusters of these machines.
-However over the last decade, as well as becoming a common fixture in many workstations, NVIDIA GPU accelerators are now used in \SI{50}{\percent} of the Top 10 super computing sites to increase peak performance while lowering power requirements.
-In many ways, the large amount of available parallelism and the Single Instruction Multiple Thread (SIMT) architecture of GPUs is well suited to simulating large numbers of homogeneous neurons and synapses, however 
-\todo{argument for using GPUs for SNN}
+Over the last decade, as well as becoming a common fixture in many workstations, NVIDIA GPU accelerators have entered the High Performance Computing field and are now used in \SI{50}{\percent} of the Top 10 super computing sites to increase peak performance while lowering power requirements.
+In many ways, the large amount of available parallelism and the Single Instruction Multiple Thread (SIMT) architecture of GPUs is well suited to simulating large numbers of homogeneous neurons and synapses, however it is not without challenges.
+Generally, performance is good when many operations can be performed independently, for example integrating differential equations describing neuron dynamics.
+When communication between threads is necessary, in particular for propagating spikes across synapses between neurons, performance can drop, in particular if connection patterns are random.
+GPUs nevertheless can be very competitive for simulating SNNs with respect to speed and energy efficiency as spike events are less frequent than the time-step based updates of neuron and synapse equations that often make up the bulk of the required computation. 
+\todo{argument for using GPUs for SNN -TN: I added a bit ... see whether you think it's enough}
 
-In this paper we re-implement two large-scale point neuron network models with levels of connectivity and sparseness matching those in the neocortex using our GeNN code generator, discussing how they are mapped to GPU hardware.
-We then verify the correctness of our GPU simulations before comparing the performance and energy usage against published data for traditional CPU-based HPC as well as neuromorphic hardware where it is available.
-We show that a full-scale model of a cortical column can be simulated at speeds approaching $0.5\times$ real-time using a single NVIDIA Tesla V100 accelerator -- faster than is possible using a CPU based cluster or the SpiNNaker neuromorphic system.
-Additionally we show that, across a range of GPU systems, the energy to solution as well as the energy per synaptic event of the microcircuit simulation is as much as $14\times$ lower than either SpiNNaker or a CPU-based simulation.
+In this paper we use our GeNN code generator to re-implement two large-scale point neuron network models with levels of connectivity and sparseness matching those in the neocortex and discuss how they are mapped to GPU hardware.
+We then verify the correctness of our GPU simulations against prior results obtained with NEST on traditional HPC hardware and compare the performance with respect to speed and energy consumption against published data from CPU-based HPC and neuromorphic hardware.
+We show that a full-scale model of a cortical column can be simulated at speeds approaching $0.5\times$ real-time using a single NVIDIA Tesla V100 accelerator -- faster than is currently possible using a CPU based cluster or the SpiNNaker neuromorphic system.
+In addition, we find that, across a range of GPU systems, the energy to solution as well as the energy per synaptic event of the microcircuit simulation is as much as $14\times$ lower than either on SpiNNaker or in CPU-based simulations.
 
 \tiny
  \keyFont{\section{Keywords:} GPU, high-performance computing, parallel computing, accuracy of simulation, energy to solution, benchmarking, computational neuroscience} %All article types: you may provide up to 8 keywords; at least 5 are mandatory.
@@ -88,25 +91,48 @@ Additionally we show that, across a range of GPU systems, the energy to solution
 \section{Introduction}
 
 \begin{itemize}
-    \item Neuromorphic hardware families - limitations, scales etc
-    \item HPC - Neuron, NEST etc, recent benchmarks
-    \item GPU hardware introduction - blocks, global memory, L2 cache, shared memory etc
+    \item Neuromorphic hardware families - limitations, scales etc \todo{add to what I did below}
+    \item HPC - Neuron, NEST etc, recent benchmarks \todo{add to what I did below}
+    \item GPU hardware introduction - blocks, global memory, L2 cache, shared memory etc \todo{do we really need this?}
 \end{itemize}
 
 Elderly review- \citep{Brette2012}.
-\begin{itemize}
-    \item CARLsim~\citep{Chou2018} - Only supports a fixed number of neuron models
-    \item EDLUT~\citep{Garrido2011} -- Initially event-driven using lookup tables to determine where an event `moves' model in state space. Now supports hybrid event + time-driven simulation
-    \item ANNarchy~\citep{Vitay2015} -- Code generation from Python to multi-core CPU or GPU code, focus on hybrid rate and spiking models, neuron models specified as equations -- as such equation has to be solved symbolically or numerically -- euler or midpoint only. CUDA limitations? Nearest neighbour STDP only. No GPU performance analysis available
-    \item NCS6~\citep{Hoang2013} (no update for 3 years)
-    \item Myriad~\citep{Rittner2016} (no update for 2 years) -- 
-    \item NeMo~\citep{Fidjeland2009} (no update for 4 years) -- 
-\end{itemize}
-Since the end of ``the free lunch'' -- the point at which it became impractical to continue building ever faster and more complex single-core CPUs -- the only way processor designers have been able to extract more performance from the increasing number of transistors offered by newer fabrication technologies was by build multi-core CPUs. \todo{citations}
+%% \begin{itemize}
+%%     \item CARLsim~\citep{Chou2018} - Only supports a fixed number of neuron models
+%%     \item EDLUT~\citep{Garrido2011} -- Initially event-driven using lookup tables to determine where an event `moves' model in state space. Now supports hybrid event + time-driven simulation
+%%     \item ANNarchy~\citep{Vitay2015} -- Code generation from Python to multi-core CPU or GPU code, focus on hybrid rate and spiking models, neuron models specified as equations -- as such equation has to be solved symbolically or numerically -- euler or midpoint only. CUDA limitations? Nearest neighbour STDP only. No GPU performance analysis available
+%%     \item NCS6~\citep{Hoang2013} (no update for 3 years)
+%%     \item Myriad~\citep{Rittner2016} (no update for 2 years) -- 
+%%     \item NeMo~\citep{Fidjeland2009} (no update for 4 years) -- 
+%% \end{itemize}
+Since the end of ``the free lunch'' -- the point at which it became impractical to continue building ever faster and more complex single-core CPUs -- the only way processor designers have been able to extract more performance from the increasing number of transistors offered by newer fabrication technologies was by building multi-core processors. \todo{citations}
 However parallel CPU programming paradigms such as multithreading are not well-suited to the type of \textit{fine-grained} parallelism required to harness hundreds of cores.\todo{citations}
 
+The currently most common way to accelerate large scale SNN simulations are large scale CPU-based HPC clusters using simulators such as NEST~\citep{} and parallel Neuron~\citep{}.
+A more radical proposition is neuromorphic hardware, i.e. dedicated hardware  built to mimic aspects of brain circuits.
+The SpiNNaker system \citep{}, developed with the Human Brain project is a neuromorphic computer based on a large collection of ARM cores, connected with a bio-mimetic routing method optimised for spike-like communication.
+Another system is the BrainScaleS system developed within HBP at Heidelberg \citep{}, in which analog circuits are configured to physically act like point neurons, which can be connected in programmable network morphhologies through digital spike propagation logic.
+Other neuromorphic systems with a variety of digita, analog and mixed paradigms include the Loihi chip\citep{IntelXXX} developed by Intel, the True North chip\citep{TrueNorth} built by IBM and the Dynapse system\cite{Dynapse} developed at University of Zurich.
+
+In a recent publication van Albada et al. \cite{} investigated the comparative performance of simulations of a micro-column model in NEST-based simulations on an HPC cluster and when implemented on the SpiNNaker neuromorphic system.
+They found that (summarize van Albada)
+
+In this paper we investigate the performance of a GPU based simulation of the same network model and a second XXX model to competitively benchmark a GPU based solution for SNN simulations. 
 The SIMT programming model architecture used by NVIDIA GPUs is designed explicitly for fine-grained parallelism and high throughput.
-However spiking neural networks are not especially well-suited
+Spiking neural networks are a good application for massively parallel architectures such as GPUs because a large percentage of compute operations can be performed fully in parallel.
+In a typical SNN this includes computing timestep-based updates of the neuron dynamics in terms of neurons' membrane potential and timestep-based updates on synaptic dynamics, e.g. the time course of neurotransmitter release and re-uptake.
+However, parallelising the simulation of an SNN does not come without challenges. In addition to the timestep based updates, simulating an SNN also involves the propagation of spike events beteween neurons along synaptic connections.
+At this step, computations need to be sychrnoized and clever update algorithms are required to make use of parallelization while at the same time avoiding conflicts in memory access, e.g. when spikes from different neurons arri`ve at the same post-synaptic site.
+A different kind of challenge comes from the rapidly developing GPU hardware which necessitates specific optimisations for each specific GPU architecture.
+Many aspects of this are being taken care of by the Compute Unified Device Architecture (CUDA) application programming interface and nvcc compiler developed by NVIDIA Corporation.
+CUDA offers an abstraction layer that allows programmers to work in a common programming model of threads, warps and blocks across generations of CUDA enabled devices.
+However, some details such as parallelisation strategies, block sizes and memory access patterns remain to be optimised for each device by the programmer.
+As described elsewhere~\cite{Yavuz2016}, GeNN solves these complications using a code generation system that lets users define SNNs and their dynamics in abstract form and takes care of the underlying CUDA programming.
+
+There is a number of active SNN simulator projects that are tergetting GPUs. Carlsim~\citep{Chou2018} is a C++ based simulator runnning on NVIDIA CUDA with similar goals as GeNN but is not based on code generation and hence less felxible in the types of models it can support.
+EDLUT~\citep{Garrido2011} was initially an event drive CPU based simulator for SNNs but now has become a hybrid CPU/GPU system with a timestep based GPU accelerator.
+ANNarchy~\citep{Vitay2015} is a code generation based simulator translating Python models descriptions into multi-core CPU or GPU code with a focus on hybrid rate- and spiking models.
+Other simulators that have seen less development in the last 2-4 years include NCS6~\citep{Hoang2013}, Myriad~\citep{Rittner2016}, and NeMo~\citep{Fidjeland2009}.
 
 \section{Material and Methods}
 \label{sec:method}
@@ -117,7 +143,7 @@ However spiking neural networks are not especially well-suited
 \end{itemize}
 
 GeNN neuron models are defined by writing a class defining the model parameters and snippets of C-like code that describe how it should be simulated.
-For example the following \lstinline{LIF} class describes a very simple leaky integrate-and-fire neuron with normalised units, solved algebraically:
+For example the following \lstinline{LIF} class describes a leaky integrate-and-fire neuron with normalised units, solved algebraically:
 
 \lstinputlisting[firstline=2,lastline=15]{code_snippets.cc}
 
@@ -128,23 +154,22 @@ Finally, the \lstinline{SET_VARS} macro specifies the names and types of the per
 These macros provide some `syntactic sugar' but are entirely optional -- users can instead override the underlying virtual functions themselves.
 In GeNN synapse models are defined using very similar classes with the option to define code snippets for time-driven and event-driven updates.
 Event-driven updates can be triggered by pre or postsynaptic spikes as well as by custom events for example the pre or postsynaptic neuron's membrane voltages crossing a threshold.
-Once the required models have been defined, the parameters and initial state variables values can be set and \textit{populations} of neurons can be added to a network:
+Once the required models have been defined, the values of parameters and initial state variables can be set and \textit{populations} of neurons can be added to a network:
 %
 \lstinputlisting[firstline=17,lastline=20]{code_snippets.cc}
 
-This listing also illustrate how the approach used for defining models can also be used to define how variables are initialised.
+\todo{we need to say somewhere that this is new ... maybe in the introduction}This listing also illustrates how the approach used for defining models can also be used to define how variables are initialised.
 The membrane voltage \lstinline{V} of our \num{1000} LIF neurons is sampled from the uniform distribution using one of GeNN's built in \textit{variable initialisation snippets}.
-These are definied in a similar manner to the neuron and synapse models previously described allowing network initialisation to be parallelised uisng the same strategies used for simulating models on the GPU to be applied to initialising their parameters.
-This approach is advantageous as it both removes the need to transfer model state from the CPU to the GPU and allows the GPU to be used to accelerate potentially costly initialisation such as sampling random numbers.
+These are definied in a similar manner to the neuron and synapse models previously described, allowing network initialisation to be parallelised using the same strategies used for simulating models on the GPU for initialising their parameters.
+This approach is advantageous as it both removes the need to transfer the model state from the CPU to the GPU and it allows the GPU to be used to accelerate potentially costly initialisation operations such as sampling random numbers.
 %While the PCI express bus typically used to connect the GPU to the host system is relatively fast (up to \SI{16}{\giga\byte\per\second}), initialising millions of synaptic weights on the CPU and then uploading them at the start of the simulation can still considerably slow down the time it takes to iterate the model.
 
 Once network models have been defined using the C++ interface described in the preceding section, GeNN will generate the CUDA code to simulate the network and this can be linked against a simple simulation loop provided by the user:
 
 \lstinputlisting[firstline=22,lastline=32]{code_snippets.cc}
 
-While this approach allows a lot of flexibility and means that visualisation tools and closed-loop robotics can be tightly coupled to GeNN simulations, when combined with the use of C++ for model definition, this does make using GeNN a somewhat daunting prospect to users more used to Python-based simulations such as Brian~\citep{Stimberg2014} or PyNN~\citep{Davison2008a}.
-Therefore GeNN offers
-\todo{Brian2GeNN, SpineML, PyNN}
+While this approach allows a lot of flexibility and means that visualisation tools and closed-loop robotics can be tightly coupled to GeNN simulations, when combined with the use of C++ for model definition, this does make using GeNN a somewhat daunting prospect to users more used to Python-based simulations such as Brian~\citep{Stimberg2014} or PyNN~\citep{Davison2008a} or graphical tools such as SpineCreator~\cite{}.
+For these users GeNN offers interfaces to use it from these other simulators. Brian2GeNN~\citep{} allows to define models in Brian 2 and translates them using code generation into a valid GeNN simulation. Using Brian 2's backend device design, using GeNN through Brian2GeNN is as simple as issuing the command \lstinline{set_device(}'\lstinline{brian2genn}'\lstinline{)} within a standard Brian 2 script. Similar connectors exist for SpineML~\citep{}, which underlies SpineCreator and PyNN~\citep{}.
 
 \subsection{The cell-type specific cortical microcircuit}
 \label{sec:method/microcircuit}
@@ -153,16 +178,16 @@ The model consists of around \num{80000} neurons, divided into layers 2/3, 4, 5 
 Neurons in each population are connected with population-specific densities derived from an extensive review of the anatomical literature resulting in a total of approximately \num{0.3E9} synapses.
 The connections between a presynaptic population with $N_{pre}$ neurons and a postsynaptic population with $N_{post}$ neurons are specified as a total number of randomly-distributed synapses (a \lstinline{FixedNumberTotal} connector in PyNN).
 The first stage in initialising such connectivity is to determine how many of the total synapses $N$ end up in each row by sampling from the multinomial distribution $Mult[N_{pre} * N_{post}, \{P_{row}, P_{row}, \ldots, P_{row}\}]$ where $P_{row} = \frac{N_{post}}{N}$.
-This operation cannot be efficiently parallelised so must be performed on the host but, once length of each row is determined, the postsynaptic targets of the synapses can be initialised in parallel by sampling from the discrete uniform distribution $Unif[0, N_{post}]$ parallelised across $N_{pre}$ CUDA threads.
+This operation cannot be efficiently parallelised so must be performed on the host but, once the length of each row is determined, the postsynaptic targets of the synapses can be initialised in parallel by sampling from the discrete uniform distribution $Unif[0, N_{post}]$ parallelised across $N_{pre}$ CUDA threads.
 However, although this works mathematically, so as to improve the locality of memory accesses, synapses should be sorted into ascending order.
 This would be trivial to implement in CPU code but, without enough shared memory for each CUDA thread to store a copy of its corresponding row, an in-place sort in global memory would be very slow.
-It would be possible to use a more complex parallel sorting algorithm such as that proposed by \citet{Awan2016} but, as GPU architectures typically have very high floating point maths throughput, we instead take an alterative approach.
+It would be possible to use a more complex parallel sorting algorithm such as that proposed by \citet{Awan2016} but, as GPU architectures typically have very high floating point maths throughput, we instead take an alternative approach.
 Rather than sampling directly from $Unif[0, N_{post}]$ we sample from its 1st order statistic $Beta[1, N_{post}]$ -- essentially the next smallest value.
 In the general case the Beta distribution cannot be sampled from in constant time.
 However, if $X \sim Beta[1, N_{post}]$, $1 - X \sim Beta[N_{post}, 1]$ and $-ln(1 - X) \sim Exponential[N_{post}]$ -- a much simpler problem as the exponential distribution can be sampled in constant time using the inversion method.
 
 Beside this structured connectivity, all synaptic strengths and transmission delays are normally distributed.
-\todo{Thomas: is it necessary to go into further details of network structure or just refer reader to Potjans2012?}
+\todo{Thomas: is it necessary to go into further details of network structure or just refer reader to Potjans2012? - TN: I think we should not go deeper into this and refer to the Potjans paper}
 In addition to their synaptic input, each neuron in the network also receives independent Poisson inputs with population-specific rates representing input from adjacent cortical regions.
 Neurons are modelled as leaky integrate-and-fire~(LIF) units with exponentially shaped current inputs:
 %
