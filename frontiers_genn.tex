@@ -89,46 +89,44 @@ In addition, we find that, across a range of GPU systems, the energy to solution
 \end{abstract}
 
 \section{Introduction}
+Currently, the most common way to accelerate large-scale SNN simulations is to use CPU-based HPC clusters running software simulators such as NEST~\todo{cite}, parallel Neuron~\todo{cite} or Arbor~\todo{cite}.
+However spiking neural networks simulations have a large amount of \textit{fine-grained} parallelism which parallel CPU programming paradigms such as multithreading are not well-suited to exploiting.
+Furthermore, although the timestep based updates of neuron and synapse dynamics are trivially parallelisable, simulating an SNN also involves the low-latency propagation of spike events between neurons along synaptic connections which is not a good match for standard interconnect technologies such as MPI.
 
-\begin{itemize}
-    \item Neuromorphic hardware families - limitations, scales etc \todo{add to what I did below}
-    \item HPC - Neuron, NEST etc, recent benchmarks \todo{add to what I did below}
-    \item GPU hardware introduction - blocks, global memory, L2 cache, shared memory etc \todo{do we really need this?}
-\end{itemize}
+Neuromorphic systems use dedicated hardware, inspired by aspects of the brain, to address the problems of parallelism and efficient spike communications.
+The SpiNNaker system~\citep{Furber2014}, developed as part of the Human Brain project, is a neuromorphic computer consisting of up to a million ARM cores, connected with an interconnect topology optimised for spike-like communication.
+Rather than using digital processors, the BrainScaleS system developed within HBP at Heidelberg~\citep{Schemmel2017}, uses analog circuit elements to emulate the dynamics if point neurons.
+Spikes then propogate between these circuit elements through a digital interconnect network.
+Other neuromorphic systems based a variety of combinations of digital and analog hardware include the Loihi chip~\citep{Davies2018} developed by Intel, the True North chip~\citep{Merolla2014} built by IBM and the Dynapse system~\cite{Qiao2015} developed at University of Zurich.
 
-
-The currently most common way to accelerate large scale SNN simulations are large scale CPU-based HPC clusters using simulators such as NEST~\citep{} and parallel Neuron~\citep{}.
-
-Since the end of ``the free lunch'' -- the point at which it became impractical to continue building ever faster and more complex single-core CPUs -- the only way processor designers have been able to extract more performance from the increasing number of transistors offered by newer fabrication technologies was by building multi-core processors. \todo{citations}
-However parallel CPU programming paradigms such as multithreading are not well-suited to the type of \textit{fine-grained} parallelism required to harness hundreds of cores.\todo{citations}
-
-A more radical proposition is neuromorphic hardware, i.e. dedicated hardware  built to mimic aspects of brain circuits.
-The SpiNNaker system~\citep{Furber2014}, developed with the Human Brain project is a neuromorphic computer based on a large collection of ARM cores, connected with a bio-mimetic routing method optimised for spike-like communication.
-Another system is the BrainScaleS system developed within HBP at Heidelberg~\citep{Schemmel2017}, in which analog circuits are configured to physically act like point neurons, which can be connected in programmable network morphhologies through digital spike propagation logic.
-Other neuromorphic systems with a variety of digita, analog and mixed paradigms include the Loihi chip~\citep{Davies2018} developed by Intel, the True North chip~\citep{Merolla2014} built by IBM and the Dynapse system~\cite{Qiao2015} developed at University of Zurich.
-
+While neuromorphic systems offer significant theoretical advantages in terms of power efficiency and simulation speed, this often comes at the expense of flexibility.
+\todo{make coherant}
 In a recent publication \citet{VanAlbada2018} investigated the comparative performance of simulations of a micro-column model~\citep{Potjans2012} in NEST-based simulations on an HPC cluster and when implemented on the SpiNNaker neuromorphic system.
 They found that both architectures achieved the same accuracy in simulation results when SpiNNaker was run at 20 times slower than realtime, while NEST on HPC achieved 3 times slower than realtime. 
 The lowest energy consumption for NEST was achieved with 144 parallel threads when it ran at 4.6 times slower than realtime. 
-At this speed SPiNNaker and NEST and SpiNNaker consumed about the same energy \SI{6}{\micro\joule} per simulated synaptic event.
+At this speed SpiNNaker and NEST and SpiNNaker consumed about the same energy \SI{6}{\micro\joule} per simulated synaptic event.
 
-In this paper we investigate the performance of a GPU based simulation of the same network model and a second XXX model to competitively benchmark a GPU based solution for SNN simulations. 
+\todo{make coherant}
+Additionally, while a lack of global synchronisation is indeed biomimetic and makes very large-scale distributed systems like SpiNNaker possible, it makes traditional debugging techniques impossible a
+\todo{FPGA}
+Alternatively, GPU architectures are specifically designed for high throughput applications with large amounts of fine-grained paralelism.
+They sacrifice the large coherant caches that modern CPU architectures rely upon to improve performance for high-perforamance
 The SIMT programming model architecture used by NVIDIA GPUs is designed explicitly for fine-grained parallelism and high throughput.
-Spiking neural networks are a good application for this architecture a large percentage of compute operations can be performed fully in parallel.
-In a typical SNN this includes computing timestep-based updates of the neuron dynamics in terms of neurons' membrane potential and timestep-based updates on synaptic dynamics, e.g. the time course of neurotransmitter release and re-uptake.
-However, parallelising the simulation of an SNN does not come without challenges. In addition to the timestep based updates, simulating an SNN also involves the propagation of spike events beteween neurons along synaptic connections.
-At this step, computations need to be sychrnoized and clever update algorithms are required to make use of parallelization while at the same time avoiding conflicts in memory access, e.g. when spikes from different neurons arrive at the same post-synaptic site.
-
-There is a number of active SNN simulator projects that are tergetting GPUs. Carlsim~\citep{Chou2018} is a C++ based simulator runnning on NVIDIA CUDA with similar goals as GeNN but is not based on code generation and hence less flexible in the types of models it can support.
+\todo{make coherant}
+%At this step, computations need to be synchronised and clever update algorithms are required to make use of parallelization while at the same time avoiding conflicts in memory access, e.g. when spikes from different neurons arrive at the same post-synaptic site.
+As such, there is a number of active SNN simulator projects that are tergetting GPUs. Carlsim~\citep{Chou2018} is a C++ based simulator runnning on NVIDIA CUDA with similar goals as GeNN but is not based on code generation and hence less flexible in the types of models it can support.
 EDLUT~\citep{Garrido2011} was initially an event drive CPU based simulator for SNNs but now has become a hybrid CPU/GPU system with a timestep based GPU accelerator.
 ANNarchy~\citep{Vitay2015} is a code generation based simulator translating Python models descriptions into multi-core CPU or GPU code with a focus on hybrid rate- and spiking models.
 Other simulators that have seen less development in the last 2-4 years include NCS6~\citep{Hoang2013}, Myriad~\citep{Rittner2016}, and NeMo~\citep{Fidjeland2009} (see \citet{Brette2012} for a review).
+\todo{something about GeNN}
+
+In this paper we investigate the performance of a GPU based simulation of the same network model as well as a model using STDP in a highly connected network~\citep{Morrison2007} to competitively benchmark a GPU based solution for SNN simulations.
 
 \section{Material and Methods}
 \label{sec:method}
 \subsection{GeNN}
 \label{sec:method/genn}
-A different kind of challenge comes from the rapidly developing GPU hardware which necessitates specific optimisations for each specific GPU architecture.
+\todo{Make coherant}A different kind of challenge comes from the rapidly developing GPU hardware which necessitates specific optimisations for each specific GPU architecture.
 Many aspects of this are being taken care of by the Compute Unified Device Architecture (CUDA) application programming interface and nvcc compiler developed by NVIDIA Corporation.
 CUDA offers an abstraction layer that allows programmers to work in a common programming model of threads, warps and blocks across generations of CUDA enabled devices.
 However, some details such as parallelisation strategies, block sizes and memory access patterns remain to be optimised for each device by the programmer.
