@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 import plot_settings
 import utils
 from scipy.stats import norm
@@ -11,10 +12,11 @@ weights = np.fromfile("mad_data/weights.bin", dtype=np.float32)
 weights *= 1000.0
 
 # Calculate weight histogram
-hist, bin_x = np.histogram(weights, bins=40, range=(30.0, 60.0))
+hist, bin_x = np.histogram(weights, bins=40, range=(30.0, 60.0), density=True)
 
 # Normalise
-hist = np.divide(hist, len(weights), dtype=float)
+#hist = np.divide(hist, len(weights), dtype=float)
+#print np.sum(hist)
 
 # Convert bin edges to bin centres
 bin_centre_x = bin_x[:-1] + ((bin_x[1:] - bin_x[:-1]) * 0.5)
@@ -22,10 +24,12 @@ bin_centre_x = bin_x[:-1] + ((bin_x[1:] - bin_x[:-1]) * 0.5)
 # Plot histogram
 fig, axis = plt.subplots(figsize=(plot_settings.column_width, 90.0 * plot_settings.mm_to_inches),
                          frameon=False)
-axis.bar(bin_centre_x, hist, width=bin_x[1] - bin_x[0])
+
+pal = sns.color_palette()
+axis.bar(bin_centre_x, hist, width=bin_x[1] - bin_x[0], color=pal[0])
 
 # Plot weight distribution from original paper
-axis.plot(bin_centre_x, norm.pdf(bin_centre_x, 45.65, 3.99))
+axis.plot(bin_centre_x, norm.pdf(bin_centre_x, 45.65, 3.99), color=pal[1])
 
 axis.set_xlabel("Weight [pA]")
 axis.set_ylabel("Fraction of synapses")
