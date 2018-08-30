@@ -114,12 +114,14 @@ The SpiNNaker system \citep{}, developed with the Human Brain project is a neuro
 Another system is the BrainScaleS system developed within HBP at Heidelberg \citep{}, in which analog circuits are configured to physically act like point neurons, which can be connected in programmable network morphhologies through digital spike propagation logic.
 Other neuromorphic systems with a variety of digita, analog and mixed paradigms include the Loihi chip\citep{IntelXXX} developed by Intel, the True North chip\citep{TrueNorth} built by IBM and the Dynapse system\cite{Dynapse} developed at University of Zurich.
 
-In a recent publication van Albada et al. \cite{} investigated the comparative performance of simulations of a micro-column model in NEST-based simulations on an HPC cluster and when implemented on the SpiNNaker neuromorphic system.
-They found that (summarize van Albada)
+In a recent publication van Albada et al. \cite{vanAlbada2018} investigated the comparative performance of simulations of a micro-column model\citep{Potjans2012} in NEST-based simulations on an HPC cluster and when implemented on the SpiNNaker neuromorphic system.
+They found that both architectures achieved the same accuracy in simulation results when SpiNNaker was run at 20 times slower than realtime, while NEST on HPC achieved 3 times slower than realtime. 
+The lowest energy consumption for NEST was achieved with 144 parallel threads when it ran at 4.6 times slower than realtime. 
+At this speed SPiNNaker and NEST and SpiNNaker consumed about the same energy 6$\mu$J per simulated synaptic event.
 
 In this paper we investigate the performance of a GPU based simulation of the same network model and a second XXX model to competitively benchmark a GPU based solution for SNN simulations. 
 The SIMT programming model architecture used by NVIDIA GPUs is designed explicitly for fine-grained parallelism and high throughput.
-Spiking neural networks are a good application for massively parallel architectures such as GPUs because a large percentage of compute operations can be performed fully in parallel.
+Spiking neural networks are a good application for this architecture a large percentage of compute operations can be performed fully in parallel.
 In a typical SNN this includes computing timestep-based updates of the neuron dynamics in terms of neurons' membrane potential and timestep-based updates on synaptic dynamics, e.g. the time course of neurotransmitter release and re-uptake.
 However, parallelising the simulation of an SNN does not come without challenges. In addition to the timestep based updates, simulating an SNN also involves the propagation of spike events beteween neurons along synaptic connections.
 At this step, computations need to be sychrnoized and clever update algorithms are required to make use of parallelization while at the same time avoiding conflicts in memory access, e.g. when spikes from different neurons arri`ve at the same post-synaptic site.
