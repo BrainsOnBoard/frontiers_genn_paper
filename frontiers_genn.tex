@@ -106,8 +106,14 @@ They found that both architectures achieved the same accuracy in simulation resu
 The lowest energy consumption for NEST was achieved with 144 parallel threads when it ran at 4.6 times slower than realtime. 
 At this speed SpiNNaker and NEST and SpiNNaker consumed about the same energy \SI{6}{\micro\joule} per simulated synaptic event.
 
+\todo{We need to make some statements about how network creation and
+  initialisation are a problem that has been identified only recently
+  to have major impacts on runtime and energy efficiency (and cite
+  Diamond 2016 paper). Maybe here. I think this paper is as much about your new
+  parallel init stuff as about beating SpiNNaker and NEST ... ?}
+
 \todo{make coherant}
-Additionally, while a lack of global synchronisation is indeed biomimetic and makes very large-scale distributed systems like SpiNNaker possible, it makes traditional debugging techniques impossible a
+Additionally, while a lack of global synchronisation is indeed biomimetic and makes very large-scale distributed systems like SpiNNaker possible, it makes traditional debugging techniques impossible \todo{is debugging relevant to this paper? feels like a loose end} a
 \todo{FPGA}
 Alternatively, GPU architectures are specifically designed for high throughput applications with large amounts of fine-grained paralelism.
 They sacrifice the large coherant caches that modern CPU architectures rely upon to improve performance for high-perforamance
@@ -120,7 +126,7 @@ ANNarchy~\citep{Vitay2015} is a code generation based simulator translating Pyth
 Other simulators that have seen less development in the last 2-4 years include NCS6~\citep{Hoang2013}, Myriad~\citep{Rittner2016}, and NeMo~\citep{Fidjeland2009} (see \citet{Brette2012} for a review).
 \todo{something about GeNN}
 
-In this paper we investigate the performance of a GPU based simulation of the same network model as well as a model using STDP in a highly connected network~\citep{Morrison2007} to competitively benchmark a GPU based solution for SNN simulations.
+In this paper we introduce novel methods for parallel initialisation of neuronal network models in our GeNN simulator and investigate the performance of a GPU based simulation in GeNN of the micro-column network model \cite{Potjans2012,vanAlbada2018} as well as a model using STDP in a highly connected network~\citep{Morrison2007} to competitively benchmark a GPU based solution for SNN simulations.
 
 \section{Material and Methods}
 \label{sec:method}
