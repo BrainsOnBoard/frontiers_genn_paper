@@ -104,13 +104,13 @@ However parallel CPU programming paradigms such as multithreading are not well-s
 
 A more radical proposition is neuromorphic hardware, i.e. dedicated hardware  built to mimic aspects of brain circuits.
 The SpiNNaker system~\citep{Furber2014}, developed with the Human Brain project is a neuromorphic computer based on a large collection of ARM cores, connected with a bio-mimetic routing method optimised for spike-like communication.
-Another system is the BrainScaleS system developed within HBP at Heidelberg \citep{}, in which analog circuits are configured to physically act like point neurons, which can be connected in programmable network morphhologies through digital spike propagation logic.
+Another system is the BrainScaleS system developed within HBP at Heidelberg~\citep{Schemmel2017}, in which analog circuits are configured to physically act like point neurons, which can be connected in programmable network morphhologies through digital spike propagation logic.
 Other neuromorphic systems with a variety of digita, analog and mixed paradigms include the Loihi chip~\citep{Davies2018} developed by Intel, the True North chip~\citep{Merolla2014} built by IBM and the Dynapse system~\cite{Qiao2015} developed at University of Zurich.
 
-In a recent publication van Albada et al. \cite{vanAlbada2018} investigated the comparative performance of simulations of a micro-column model\citep{Potjans2012} in NEST-based simulations on an HPC cluster and when implemented on the SpiNNaker neuromorphic system.
+In a recent publication \citet{VanAlbada2018} investigated the comparative performance of simulations of a micro-column model~\citep{Potjans2012} in NEST-based simulations on an HPC cluster and when implemented on the SpiNNaker neuromorphic system.
 They found that both architectures achieved the same accuracy in simulation results when SpiNNaker was run at 20 times slower than realtime, while NEST on HPC achieved 3 times slower than realtime. 
 The lowest energy consumption for NEST was achieved with 144 parallel threads when it ran at 4.6 times slower than realtime. 
-At this speed SPiNNaker and NEST and SpiNNaker consumed about the same energy 6$\mu$J per simulated synaptic event.
+At this speed SPiNNaker and NEST and SpiNNaker consumed about the same energy \SI{6}{\micro\joule} per simulated synaptic event.
 
 In this paper we investigate the performance of a GPU based simulation of the same network model and a second XXX model to competitively benchmark a GPU based solution for SNN simulations. 
 The SIMT programming model architecture used by NVIDIA GPUs is designed explicitly for fine-grained parallelism and high throughput.
@@ -119,7 +119,7 @@ In a typical SNN this includes computing timestep-based updates of the neuron dy
 However, parallelising the simulation of an SNN does not come without challenges. In addition to the timestep based updates, simulating an SNN also involves the propagation of spike events beteween neurons along synaptic connections.
 At this step, computations need to be sychrnoized and clever update algorithms are required to make use of parallelization while at the same time avoiding conflicts in memory access, e.g. when spikes from different neurons arrive at the same post-synaptic site.
 
-There is a number of active SNN simulator projects that are tergetting GPUs. Carlsim~\citep{Chou2018} is a C++ based simulator runnning on NVIDIA CUDA with similar goals as GeNN but is not based on code generation and hence less felxible in the types of models it can support.
+There is a number of active SNN simulator projects that are tergetting GPUs. Carlsim~\citep{Chou2018} is a C++ based simulator runnning on NVIDIA CUDA with similar goals as GeNN but is not based on code generation and hence less flexible in the types of models it can support.
 EDLUT~\citep{Garrido2011} was initially an event drive CPU based simulator for SNNs but now has become a hybrid CPU/GPU system with a timestep based GPU accelerator.
 ANNarchy~\citep{Vitay2015} is a code generation based simulator translating Python models descriptions into multi-core CPU or GPU code with a focus on hybrid rate- and spiking models.
 Other simulators that have seen less development in the last 2-4 years include NCS6~\citep{Hoang2013}, Myriad~\citep{Rittner2016}, and NeMo~\citep{Fidjeland2009} (see \citet{Brette2012} for a review).
@@ -161,7 +161,10 @@ Once network models have been defined using the C++ interface described in the p
 \lstinputlisting[firstline=22,lastline=32]{code_snippets.cc}
 
 While this approach allows a lot of flexibility and means that visualisation tools and closed-loop robotics can be tightly coupled to GeNN simulations, when combined with the use of C++ for model definition, this does make using GeNN a somewhat daunting prospect to users more used to Python-based simulations such as Brian~\citep{Stimberg2014} or PyNN~\citep{Davison2008a} or graphical tools such as SpineCreator~\cite{}.
-For these users GeNN offers interfaces to use it from these other simulators. Brian2GeNN~\citep{} allows to define models in Brian 2 and translates them using code generation into a valid GeNN simulation. Using Brian 2's backend device design, using GeNN through Brian2GeNN is as simple as issuing the command \lstinline{set_device(}'\lstinline{brian2genn}'\lstinline{)} within a standard Brian 2 script. Similar connectors exist for SpineML~\citep{}, which underlies SpineCreator and PyNN~\citep{}.
+For these users GeNN can be used as a backend for other other simulators.
+Brian2GeNN~\citep{Stimberg2018} allows models to be defined in Brian 2 and translates them using code generation into a valid GeNN simulation. 
+Using Brian 2's backend device design, using GeNN through Brian2GeNN is as simple as issuing the command \lstinline[language=python]{set_device("brian2genn")} within a standard Brian 2 script. 
+A similar interface exist for SpineML~\citep{Richmond2014} and an interface to PyNN~\citep{Davison2008a} is currently being developed.
 
 \subsection{The cell-type specific cortical microcircuit}
 \label{sec:method/microcircuit}
