@@ -126,7 +126,7 @@ ANNarchy~\citep{Vitay2015} is a code generation based simulator translating Pyth
 Other simulators that have seen less development in the last 2-4 years include NCS6~\citep{Hoang2013}, Myriad~\citep{Rittner2016}, and NeMo~\citep{Fidjeland2009} (see \citet{Brette2012} for a review).
 \todo{something about GeNN}
 
-In this paper we introduce novel methods for parallel initialisation of neuronal network models in our GeNN simulator and investigate the performance of a GPU based simulation in GeNN of the micro-column network model \cite{Potjans2012,vanAlbada2018} as well as a model using STDP in a highly connected network~\citep{Morrison2007} to competitively benchmark a GPU based solution for SNN simulations.
+In this paper we introduce novel methods for parallel initialisation of neuronal network models in our GeNN simulator and investigate the performance of a GPU based simulation in GeNN of the micro-column network model \cite{Potjans2012,VanAlbada2018} as well as a model using STDP in a highly connected network~\citep{Morrison2007} to competitively benchmark a GPU based solution for SNN simulations.
 
 \section{Material and Methods}
 \label{sec:method}
@@ -164,7 +164,7 @@ Once network models have been defined using the C++ interface described in the p
 
 \lstinputlisting[firstline=22,lastline=32]{code_snippets.cc}
 
-While this approach allows a lot of flexibility and means that visualisation tools and closed-loop robotics can be tightly coupled to GeNN simulations, when combined with the use of C++ for model definition, this does make using GeNN a somewhat daunting prospect to users more used to Python-based simulations such as Brian~\citep{Stimberg2014} or PyNN~\citep{Davison2008a} or graphical tools such as SpineCreator~\cite{}.
+While this approach allows a lot of flexibility and means that visualisation tools and closed-loop robotics can be tightly coupled to GeNN simulations, when combined with the use of C++ for model definition, this does make using GeNN a somewhat daunting prospect to users more used to Python-based simulations such as Brian~\citep{Stimberg2014} or PyNN~\citep{Davison2008a} or graphical tools such as SpineCreator~\todo{cite}.
 For these users GeNN can be used as a backend for other other simulators.
 Brian2GeNN~\citep{Stimberg2018} allows models to be defined in Brian 2 and translates them using code generation into a valid GeNN simulation. 
 Using Brian 2's backend device design, using GeNN through Brian2GeNN is as simple as issuing the command \lstinline[language=python]{set_device("brian2genn")} within a standard Brian 2 script. 
@@ -251,19 +251,45 @@ However, rather than exponentially filtering the incoming synaptic input, this m
     \tau_{syn} \frac{dx_{s_{j}}}{dt} = & -x_{s_{j}} + \sum_{i=0}^{n} w_{ij} \sum_{t_{i}^{f}}  \delta(t - t_{i}^{f}) \label{eq:alpha_neuron_input_current_2}
 \end{align}
 %
-Aside from requiring an additional state variable to hold $x_{s_{j}}$, equations~\ref{eq:alpha_neuron_input_current_1}~and~\ref{eq:alpha_neuron_input_current_2} are i
-As well as alternative synaptic plasticity rules which use postsynaptic membrane voltage~\citep{Brader2007,Clopath2010c} rather than postsynaptic spike times and those including `third factors' such as dopamine~\citep{Izhikevich2007}, there are a plethora of different STDP formalisations (see \citet{Morrison2008} for a review).
+Aside from requiring an additional state variable to hold $x_{s_{j}}$, equations~\ref{eq:alpha_neuron_input_current_1}~and~\ref{eq:alpha_neuron_input_current_2} have trivial algebraic solutions meaning they can be simulated using the same scheme described in the previous section.
+
+Even leaving aside synaptic plasticity rules which use postsynaptic membrane voltage~\citep{Brader2007,Clopath2010c} rather than postsynaptic spike times or include `third factors' such as dopamine~\citep{Izhikevich2007}, there are a plethora of different STDP formalisations (see \citet{Morrison2008} for a review).
 However, in the model described in this section, \citet{Morrison2007} chose to use a rule with the following relationship between pre~($t_{pre}$) and postsynaptic~($t_{post}$) spike timing ($\Delta t = t_{post} - t_{pre}$):
 %
 \begin{align}
-    \Delta w_{ij} & = \
+    \Delta w_{ij} = \
         \begin{cases}
             \lambda w_{0}^{1-\mu} w_{ij}^{\mu} e^{-\frac{|\Delta t|}{\tau}} & if\, \Delta t>0\\
             -\lambda \alpha w_{ij} e^{-\frac{|\Delta t|}{\tau}}             & if\, \Delta t\leq0
-        \end{cases}
+        \end{cases}\label{eq:mad_stdp}
 \end{align}
 %
-This rule can be implemented 
+\citet{Morrison2007} use this rule with an \textit{all-to-all} spike-pairing scheme meaning that each of the pairs formed by a presynaptic spike and all preceding postsynaptic spikes (and vice-versa) should be considered.
+Rather than repeatedly evaluating equation~\ref{eq:mad_stdp}, we calculate these updates based on pre and postsynaptic \textit{spike traces}~\citep{Song2000, Morrison2007} with the following dynamics:
+%
+\begin{align}
+    \frac{ds_{i}}{dt} & = -\frac{s_{i}}{\tau} + \sum_{t_{i}^{f}}\delta(t - t_{i}^{f}) \label{eq:stdp_trace}\\
+\end{align}
+%
+These traces are then used to calculate the magnitude of $\Delta w_{ij}$ when a pre or postsynaptic spike arrives at the synapse:
+%
+\begin{align}
+  \Delta w_{ij}^{-}(t_{i}^{f}) & = \lambda \alpha w_{ij} s_{j}(t_{i}^{f})\label{eq:stdp_update_pre_pair}\\
+  \Delta w_{ij}^{+}(t_{j}^{f}) & = \lambda w_{0}^{1-\mu} w_{ij}^{\mu} s_{i}(t_{j}^{f})\label{eq:stdp_update_post_pair}
+\end{align}
+%
+In GeNN, if a neuron has fired in the current timestep, its trace variables are updated in the neuron kernel.
+Synaptic depression (equation~\ref{eq:stdp_update_pre_pair}) is applied in the synapse kernel described in the previous section.
+Applying synaptic potentiation (equation~\ref{eq:stdp_update_post_pair}) is a little more tricky as it needs to be applied to each synapse in the column of the data structure shown in figure~\ref{fig:ragged_matrix} associated with a spiking postsynaptic neuron.
+
+Some small-scale neuromorphic systems have tried to solve this problem in hardware using custom SRAM memories which allow both column-wise and row-wise accesses~\citep{Seo2011}.
+However this is expensive in terms of silicon area so many neuromorphic systems avoid the problem entirely by implementing synaptic plasticity rules where the postsynaptic membrane voltage rather than the spike times is required meaning that no \textit{backpropagation} of postsynaptic spikes is required~\citep{Frenkel2018,Qiao2015}.
+Intel's Loihi system~\citep{Davies2018} defers all STDP updates triggered by postsynaptic spikes until the end of a ``learning epoch'' after which time they are processed sequentially using 
+NEST~\todo{cite} and SpiNNaker~\citep{Knight2016} both buffer postsynaptic spikes until the next presynaptic spike occurs meaning that they can be applied in order without having to make column-wise updates to the synaptic matrix. 
+However this approach makes access to postsynaptic variables difficult as the previous state of postsynaptic variables would need to be buffered for an indeterminate length of time until the next presynaptic spike occurs.
+
+
+
 
 \begin{figure}
     \begin{center}
@@ -291,7 +317,7 @@ Nonetheless, in this section we will confirm the correctness of our simulations 
 
 While the randomisation of each neurons initial membrane voltage should reduce any such effects, the first \SI{1}{\second} of spike data from each \SI{10}{\second} simulation is discarded in order to remove any transients.
 We then calculated the average firing rates and the covariance of interspike interval~(CV ISI) for each neuron in the model throughout the remaining \SI{9}{\second} of spiking data using the Elephant~\citep{Yegenoglu2018} package.
-We also picked \num{200} (this was a tradeoff between accuracy and analysis time chosen by \citeauthor{VanAlbada2018}) active neurons from each population, binned their spike trains into \SI{2}{\milli\second} bins (corresponding to the refractory time of the neurons) and calculated the Pearson correlation coefficients matrix between each disjoint pair of neurons.
+We also picked \num{200} (this was a trade-off between accuracy and analysis time chosen by \citeauthor{VanAlbada2018}) active neurons from each population, binned their spike trains into \SI{2}{\milli\second} bins (corresponding to the refractory time of the neurons) and calculated the Pearson correlation coefficients matrix between each disjoint pair of neurons.
 
 The same statistics were then calculated from a NEST simulation running in `precise' mode.
 Histograms of all three measures were then produced using bins calculated with the Freedman-Diaconis rule~\citep{Freedman1981} from the NEST data.
@@ -299,7 +325,7 @@ These histograms were then smoothed using a Gaussian kernel density estimation p
 
 Figure~\ref{fig:microcircuit_accuracy} shows the results of this analysis.
 Visually it is clear that the per-population distributions are highly similar and, to quantify this, we calculated the Kullback-Leibler~(KL) divergences using the NEST data as a reference.
-As reported by \citet{VanAlbada2018} for their grid-aligned NEST and SpiNNaker simulations, the divergence between the distributions from the GeNN simulations and those produced by NEST running in `precise' mode are comparable in size to the divergences caused by simply changing the seed used for random number generation.
+Similarly to the KL divergences \citet{VanAlbada2018} reported for their grid-aligned NEST and SpiNNaker simulations, the divergence between the distributions from the GeNN simulations and those produced by NEST running in `precise' mode are comparable in size to the divergences caused by simply changing the seed used for random number generation.
 This suggests that using single-precision floating point and summing inputs in a non-deterministic order has a minimal effect on the dynamics of the microcircuit model.
 
 Additionally we will compare the results of simulations of the balanced random network model we describe in section~\ref{sec:method/balanced_random} with those presented by \citet{Morrison2007}.
@@ -353,7 +379,6 @@ We measured the performance of both models by querying the \lstinline{std::chron
 Additionally we used CUDA's own event timing system~\citep[Section~8.1.2]{NVIDIACorporation2018} to record the time taken by the neuron and synapse simulation kernels as well as the postsynaptic learning kernel in the balanced random network model.
 
 Figure~\ref{fig:microcircuit_performance} shows the durations of simulations of the microcircuit model running on each GPU for \SI{10}{\second} of biological time, including the times taken by neuron and synapse simulation kernels.
-
 
 As discussed in section~\ref{sec:method/genn}, as well as parallelising neuron and synapse simulation code, GeNN can also parallise the initialisation of model state variables and connectivity.
 Figure~\ref{fig:microcircuit_init_performance} shows the initialisation time of the microcircuit simulation 
