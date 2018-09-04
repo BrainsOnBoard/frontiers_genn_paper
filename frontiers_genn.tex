@@ -280,16 +280,20 @@ These traces are then used to calculate the magnitude of $\Delta w_{ij}$ when a 
 %
 In GeNN, if a neuron has fired in the current timestep, its trace variables are updated in the neuron kernel.
 Synaptic depression (equation~\ref{eq:stdp_update_pre_pair}) is applied in the synapse kernel described in the previous section.
-Applying synaptic potentiation (equation~\ref{eq:stdp_update_post_pair}) is a little more tricky as it needs to be applied to each synapse in the column of the data structure shown in figure~\ref{fig:ragged_matrix} associated with a spiking postsynaptic neuron.
+However applying synaptic potentiation (equation~\ref{eq:stdp_update_post_pair}) is a little more tricky as it needs to be applied to each synapse in the \textbf{column} of the data structure shown in figure~\ref{fig:ragged_matrix} associated with a spiking postsynaptic neuron.
+Sparse matrix data structure seldom support efficient accesses to both rows and columns, making this a problem for many large-scale SNN simulators.
 
-Some small-scale neuromorphic systems have tried to solve this problem in hardware using custom SRAM memories which allow both column-wise and row-wise accesses~\citep{Seo2011}.
-However this is expensive in terms of silicon area so many neuromorphic systems avoid the problem entirely by implementing synaptic plasticity rules where the postsynaptic membrane voltage rather than the spike times is required meaning that no \textit{backpropagation} of postsynaptic spikes is required~\citep{Frenkel2018,Qiao2015}.
-Intel's Loihi system~\citep{Davies2018} defers all STDP updates triggered by postsynaptic spikes until the end of a ``learning epoch'' after which time they are processed sequentially using 
-NEST~\todo{cite} and SpiNNaker~\citep{Knight2016} both buffer postsynaptic spikes until the next presynaptic spike occurs meaning that they can be applied in order without having to make column-wise updates to the synaptic matrix. 
-However this approach makes access to postsynaptic variables difficult as the previous state of postsynaptic variables would need to be buffered for an indeterminate length of time until the next presynaptic spike occurs.
+Some small-scale neuromorphic systems have solved this problem in hardware using custom SRAM memories which allow both column-wise and row-wise accesses~\citep{Seo2011}.
+However, custom SRAMs are expensive in terms of silicon area, so many neuromorphic systems avoid the problem entirely by implementing synaptic plasticity rules based on the postsynaptic membrane voltage rather than the postsynaptic spike times meaning that  no updates triggered by postsynaptic spikes are required~\citep{Frenkel2018,Qiao2015}.
+Intel's Loihi system~\citep{Davies2018} defers all STDP updates triggered by postsynaptic spikes until the end of a ``learning epoch'' after which time they are processed sequentially row by row.
+NEST~\citep{Morrison2007} and SpiNNaker~\citep{Knight2016} both buffer postsynaptic spikes until the next presynaptic spike occurs -- allowing weight updates resulting from spikes to be applied in order without having to make any column-wise accesses to the synaptic matrix. 
+However this approach makes access to postsynaptic variables difficult as they would need to be buffered for an unbounded length of time until the next presynaptic spike occurs.
 
-
-
+Deferring STDP updates ideally requires a dynamic memory structure to store postsynaptic events and, when combined with the subsequent searching within this data structure for events to apply, this approach does not appear to be well suited to GPU implementation.
+Furthermore, GeNN aims to support a wide range of synaptic plasticity rules with full access to pre and postsynaptic neuron variables.
+Therefore GeNN builds an addition \textbf{column-wise} sparse matrix using the same data structure shown in figure~\ref{fig:ragged_matrix}, containing indices into the original row-wise arrays containing synaptic weights etc.
+This has the downside of doubling the memory requirements of connections when STDP is required -- the reason that the model described in this section only runs on Tesla GPUs with larger amounts of memory.
+Additionally \citet{Yavuz2016} showed that the non-coalesced accesses to the synaptic matrix this approach results in leads to poor performance on lower-end GPUs.
 
 \begin{figure}
     \begin{center}
@@ -321,7 +325,7 @@ We also picked \num{200} (this was a trade-off between accuracy and analysis tim
 
 The same statistics were then calculated from a NEST simulation running in `precise' mode.
 Histograms of all three measures were then produced using bins calculated with the Freedman-Diaconis rule~\citep{Freedman1981} from the NEST data.
-These histograms were then smoothed using a Gaussian kernel density estimation performed using the \lstinline{scipy.stats.gaussian_kde} function with the bandwidths of \SI{0.3}{\per\second}, \num{0.04} and \num{0.002} for the average firing rates, the CV ISI and the correlation respectively.
+These histograms were then smoothed using a Gaussian kernel density estimation performed using the \lstinline{scipy.stats.gaussian_kde} function with the bandwidths of \SI{0.3}{\per\second}, \num{0.04} and \num{0.002} for the average firing rates, CV ISI and correlation respectively.
 
 Figure~\ref{fig:microcircuit_accuracy} shows the results of this analysis.
 Visually it is clear that the per-population distributions are highly similar and, to quantify this, we calculated the Kullback-Leibler~(KL) divergences using the NEST data as a reference.
