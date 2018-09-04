@@ -155,14 +155,14 @@ microcircuit_data = [("Jetson TX2", 99570.4, 155284, 258350),
                      ("HPC\n(fastest)", 0.0, 0.0, 24296.0),
                      ("SpiNNaker", 0.0, 0.0, 200000)]
 
-microcircuit_init_data = [("Jetson TX2", "Device initialisation", 753.284 + 950.965 + 1683.32),
-                          ("Jetson TX2", "Host initialisation", 125.569 + 14.438 + 541196 + 85984.6),
-                          ("GeForce 1050ti", "Device initialisation", 347.681 + 499.292 + 561.601),
-                          ("GeForce 1050ti", "Host initialisation", 362.013 + 7.14622 + 19110 + 49768.2),
-                          ("Tesla K40c", "Device initialisation", 204.258 + 361.698 + 392.913),
-                          ("Tesla K40c", "Host initialisation", 18522.8),
-                          ("Tesla V100", "Device initialisation", 58.6588 + 142.279 + 445.239),
-                          ("Tesla V100", "Host initialisation", 16182.2),
+microcircuit_init_data = [("Jetson TX2", "GPU initialisation", 753.284 + 950.965 + 1683.32),
+                          ("Jetson TX2", "CPU initialisation", 125.569 + 14.438 + 541196 + 85984.6),
+                          ("GeForce 1050ti", "GPU initialisation", 347.681 + 499.292 + 561.601),
+                          ("GeForce 1050ti", "CPU initialisation", 362.013 + 7.14622 + 19110 + 49768.2),
+                          ("Tesla K40c", "GPU initialisation", 204.258 + 361.698 + 392.913),
+                          ("Tesla K40c", "CPU initialisation", 18522.8),
+                          ("Tesla V100", "GPU initialisation", 58.6588 + 142.279 + 445.239),
+                          ("Tesla V100", "CPU initialisation", 16182.2),
                           ("HPC (fastest)", "", 2000.0),
                           ("SpiNNaker", "", 10.0 * 60.0 * 60.0 * 1000.0)]
 
