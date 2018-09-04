@@ -26,7 +26,7 @@
 % Visible TODO notes
 \newcommand{\todo}[1]{\textbf{\textsc{\textcolor{red}{(TODO: #1)}}}}
 
-\lstset{language=C++,showstringspaces=false,basicstyle=\tiny,upquote=true}
+\lstset{language=C++,showstringspaces=false,basicstyle=\tiny,upquote=true,identifierstyle=\ttfamily\color{black}}
 
 \linenumbers
 
@@ -292,8 +292,7 @@ However this approach makes access to postsynaptic variables difficult as they w
 Deferring STDP updates ideally requires a dynamic memory structure to store postsynaptic events and, when combined with the subsequent searching within this data structure for events to apply, this approach does not appear to be well suited to GPU implementation.
 Furthermore, GeNN aims to support a wide range of synaptic plasticity rules with full access to pre and postsynaptic neuron variables.
 Therefore GeNN builds an addition \textbf{column-wise} sparse matrix using the same data structure shown in figure~\ref{fig:ragged_matrix}, containing indices into the original row-wise arrays containing synaptic weights etc.
-This has the downside of doubling the memory requirements of connections when STDP is required -- the reason that the model described in this section only runs on Tesla GPUs with larger amounts of memory.
-Additionally \citet{Yavuz2016} showed that the non-coalesced accesses to the synaptic matrix this approach results in leads to poor performance on lower-end GPUs.
+This has the downside of doubling the memory requirements of connections when STDP is required and additionally, as \citet{Yavuz2016} demonstrated, the resultant non-coalesced accesses to the synaptic matrix reduce performance on lower-end GPUs.
 
 \begin{figure}
     \begin{center}
@@ -333,12 +332,13 @@ Similarly to the KL divergences \citet{VanAlbada2018} reported for their grid-al
 This suggests that using single-precision floating point and summing inputs in a non-deterministic order has a minimal effect on the dynamics of the microcircuit model.
 
 Additionally we will compare the results of simulations of the balanced random network model we describe in section~\ref{sec:method/balanced_random} with those presented by \citet{Morrison2007}.
+\todo{Fiddle more and get these working}
 
 \subsection{Performance}
 \label{sec:results/performance}
 To assess the performance of our GPU simulations we chose the selection of GPUs listed in table~\ref{tab:gpu_devices} -- covering a range of financial and power budgets.
 CUDA abstracts away the degree of parallelism exposed by the application from the amount of hardware parallelism available so we can run a model that uses \num{80000} threads on a GPU with many fewer CUDA cores.
-However memory is a harder constraint and, because of this, while all of the GPUs listed in table~\ref{tab:gpu_devices} can run the microcircuit model described in section~\ref{sec:method/microcircuit}, only the two `Tesla' GPUs have enough memory to run the balanced random network model described in section~\ref{sec:method/balanced_random}.
+However memory is a harder constraint so, while all of the GPUs listed in table~\ref{tab:gpu_devices} can run the microcircuit model described in section~\ref{sec:method/microcircuit}, due to the increased memory requirements of STDP connections, only the two `Tesla' GPUs have enough memory to run the balanced random network model described in section~\ref{sec:method/balanced_random}.
 
 \begin{table}
   \centering
