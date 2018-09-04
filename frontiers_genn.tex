@@ -383,10 +383,30 @@ We measured the performance of both models by querying the \lstinline{std::chron
 Additionally we used CUDA's own event timing system~\citep[Section~8.1.2]{NVIDIACorporation2018} to record the time taken by the neuron and synapse simulation kernels as well as the postsynaptic learning kernel in the balanced random network model.
 
 Figure~\ref{fig:microcircuit_performance} shows the durations of simulations of the microcircuit model running on each GPU for \SI{10}{\second} of biological time, including the times taken by neuron and synapse simulation kernels.
+Compared to the smaller point neuron benchmark presented by \citet{Yavuz2016}, even though each neuron in our model receives up to $10\times$ as many synaptic inputs, the simulation time is more evenly split between the simulation of neurons and synapses.
+This is partly because our simulations are running with a smaller \SI{0.1}{\milli\second} timestep meaning that less presynaptic spikes are processed each timestep.
+Additionally, in the newer version of GeNN used in this paper, the generation of Poisson noise takes place in the neuron kernel rather than in the separate kernel used by \citeauthor{Yavuz2016}.
 
-As discussed in section~\ref{sec:method/genn}, as well as parallelising neuron and synapse simulation code, GeNN can also parallise the initialisation of model state variables and connectivity.
-Figure~\ref{fig:microcircuit_init_performance} shows the initialisation time of the microcircuit simulation 
+In general, as one would expect, the two Tesla GPUs perform the best with the newer Tesla V100 system achieving a faster simulation speed than was possible on the CPU-based HPC cluster.
+However, even the GeForce 1050ti, which is a low-end gaming GPU can simulate the model faster than the SpiNNaker system.
 
+Because the Jetson TX2 is a system-on-chip in which the CPU and GPU cores share the same physical memory, the same blocks of memory can be directly accessed from both CPU and GPU code.
+Therefore, unlike on the other GPU systems benchmarked, spike recording can be implemented without copying data from the GPU to the CPU every time step.
+We believe that this is the reason that the `overhead' of the simulation running on the Jetson TX2 is significantly smaller than on any of the other systems.
+
+As discussed in section~\ref{sec:method/genn}, as well as parallelising neuron and synapse simulation code, GeNN also parallelises the initialisation of model state variables and connectivity using the GPU.
+Figure~\ref{fig:microcircuit_init_performance} shows the initialisation time of the microcircuit simulation when initialisation is performed on the CPU compared to the GPU.
+Even on the two Tesla systems which have powerful Intel Xeon CPUs with high single-thread performance, using the GPU for initialisation, results in a speedup of around $20\times$.
+Furthermore, on the Jetson TX2 with its much slower ARM A57 CPU, GPU initialisation is more than $150\times$ faster.
+
+Figure~\ref{fig:microcircuit_init_performance} also includes the initialisation times for SpiNNaker and the fastest HPC configuration presented by \citeauthor{VanAlbada2018}.
+The scaling plot for HPC initialisation confirms the trivially parallelisable nature of network initialisation compared to simulation with performance continuing to increase with up to 32 nodes rather than only 12.
+However, even with 32 CPU based HPC nodes, all three desktop GPU systems can still perform the network initialisation in a shorter time.
+\citet{Diamond2018} concluded that initialisation and loading time was a big problem for neuromorphic systems and
+SpiNNaker clearly still has issues in this area.
+Initialising the microcircuit network and loading it onto the SpiNNaker system takes approximately \SI{10}{\hour} which is approximately $50\times$ slower than the Jetson TX2 when only a single ARM core is used for initialisation.
+
+%
 \begin{figure}
     \begin{center}
         \includegraphics[width=85mm]{figures/stdp_performance}
@@ -395,7 +415,8 @@ Figure~\ref{fig:microcircuit_init_performance} shows the initialisation time of 
     `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.}
     \label{fig:stdp_performance}
 \end{figure}
-
+%
+\todo{discussion of STDP performance once it's working}
 \todo{volta `Independent Thread Scheduling' may be part of the reason why second model works so well}
 
 \subsection{Power and energy}
@@ -433,20 +454,20 @@ Figure~\ref{fig:microcircuit_power} shows the power usage over time for simulati
 
   \caption{Energy cost of simulations.
   Energy to solution and simulation energy of GPU are calculated using the \lstinline{numpy.trapz} and the simulation energy is divided by the total number of synaptic events processed to obtain the energy per synaptic event.
-  For comparison, simulation energies for SpiNNaker and the NEST simulation with the lowest simulation energy (2 nodes)are read off the figure presented by \citet{VanAlbada2018}.
+  For comparison, simulation energies for SpiNNaker and the NEST simulation with the lowest simulation energy (2 nodes) are read off the figure presented by \citet{VanAlbada2018}.
   Energies per synaptic event for SpiNNaker and the NEST are those reported by \citet{VanAlbada2018}.\\
   \textsuperscript{1}~This energy per synaptic event is calculated after the `idle' power of the SpiNNaker system has been taken into account.}
   \label{tab:energy_measures}
 \end{table}
 
 By integrating the power time series using the \lstinline{numpy.trapz} function we then calculated the energy to solution for each device as well as the energy per synaptic event -- a common measure for comparing the energy efficiency of neuromorphic systems.
-These energy costs are listed in table~\ref{tab:energy_measures} alongside the energy costs presented by \citet{VanAlbada2018} for simulations running onn SpiNNaker and a CPU-based cluster.
+These energy costs are listed in table~\ref{tab:energy_measures} alongside the energy costs presented by \citet{VanAlbada2018} for simulations running on SpiNNaker and a CPU-based cluster.
 
 From figure~\ref{fig:microcircuit_power} we can see that even an idling workstation draws on the order of \SI{100}{\watt} and, as \citeauthor{VanAlbada2018} discusses, a single infiniband switch has a TDP of over \SI{200}{\watt}.
-Therefore it is somewhat unsurprising that any accelator that allows equivalent simulations to be run on fewer nodes would significantly improve energy usage.
+Therefore it is somewhat unsurprising that any accelerator that allows equivalent simulations to be run on fewer nodes would significantly improve energy usage.
 Furthermore, as \citeauthor{VanAlbada2018} discusses, slowing SpiNNaker simulations down to this degree and simulating so few neurons on each processor results in very poor energy efficiency.
 However, in a previous study using a much smaller cortical microcircuit model suffering from none of these issues, \citet{Sharp2012} measured the power usage of a SpiNNaker system energy usage corresponded to \SI{0.11}{\micro\joule} per synaptic event.
-This suggests that through 
+This suggests that through \todo{Jetson TX2 not far off!}
 
 Whilst we were unable to measure the energy of the Tesla V100 system directly, Tesla GPUs have built in power monitoring which shows that the Tesla V100 drew a maximum of \SI{88}{\watt} compared to \SI{107}{\watt} for the Tesla K40c.
 As the workstation containing the Tesla K40c drew \SI{218}{\watt} while simulating the model, compared to an idle power draw of \SI{84}{\watt}, we can estimate that the single CPU core being used by the simulation was drawing \SI{27}{\watt} more than when the system was idle.
