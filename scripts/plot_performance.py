@@ -99,18 +99,12 @@ def plot(data, filename, num_ref, calc_overhead, legend_text, real_time_s=None, 
 
     axis.set_ylabel("Time [s]")
 
-    # Add legend
-    axis.legend(loc="upper right", ncol=3)
-
     # Add realtime line
     if real_time_s is not None:
         axis.axhline(real_time_s, color="black", linestyle="--")
 
     # Remove vertical grid
     axis.xaxis.grid(False)
-
-    # Add x ticks
-
 
     # Default tight layout rectangle
     tight_layout_rect = [0.0, 0.0, 1.0, 1.0]
