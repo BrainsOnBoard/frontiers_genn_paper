@@ -70,16 +70,15 @@
 \section{}
 Inspired by the distributed nature of memory and computation in the brain, neuromorphic systems are being developed to provide a faster and/or more energy-efficient substrate for emulating spiking neural networks (SNNs) when compared to simulations running on Von Neumann architectures.
 
-While neuromorphic systems may be the ultimate platform for \textit{deploying} spiking neural networks, their distributed nature and optimisation for specific types of models makes them unwieldy tools for \textit{developing} SNN models.
+However, while neuromorphic systems may be the ultimate platform for \textit{deploying} spiking neural networks, their distributed nature and optimisation for specific types of models makes them unwieldy tools for \textit{developing} SNN models.
 Instead development and simulation of SNN models tends to be performed on computers with standard Von Neumann CPU architectures and, once models scale above a certain size, clusters of these machines.
 Over the last decade, as well as becoming a common fixture in many workstations, NVIDIA GPU accelerators have entered the High Performance Computing field and are now used in \SI{50}{\percent} of the Top 10 super computing sites to increase peak performance while lowering power requirements.
 In many ways, the large amount of available parallelism and the Single Instruction Multiple Thread (SIMT) architecture of GPUs is well suited to simulating large numbers of homogeneous neurons and synapses.
 However, this large amount of available parallelism comes at the expense of the SRAM which typically occupies a large proportion of the die area of neuromorphic chips, meaning that GPU performance is often constrained by external memory bandwidth.
 
-Nonetheless, by employing the latest in memory and fabrication technologies, GPUs can still be very competitive for simulating SNNs in terms of speed and energy efficiency.
-In this paper we use our GeNN code generator to re-implement two large-scale point neuron network models with levels of connectivity and sparseness matching those in the neocortex and discuss how they are mapped to GPU hardware.
-We show that by 
-We then verify the correctness of our GPU simulations against prior results obtained with NEST on traditional HPC hardware and compare the performance with respect to speed and energy consumption against published data from CPU-based HPC and neuromorphic hardware.
+Nonetheless, driven by the demands of the deep-learning community, GPUs employ the latest in memory and fabrication technologies making them very competitive for simulating SNNs in terms of speed and energy efficiency.
+In this paper we use our GeNN code generator to re-implement two large-scale point SNNs with levels of connectivity and sparseness matching those in the neocortex and discuss how they are mapped to GPU hardware.
+We then verify the correctness of our GPU simulations against prior results obtained with NEST running on traditional HPC hardware and compare the performance with respect to speed and energy consumption against published data from CPU-based HPC and neuromorphic hardware.
 We show that a full-scale model of a cortical column can be simulated at speeds approaching $0.5\times$ real-time using a single NVIDIA Tesla V100 accelerator -- faster than is currently possible using a CPU based cluster or the SpiNNaker neuromorphic system.
 In addition, we find that, across a range of GPU systems, the energy to solution as well as the energy per synaptic event of the microcircuit simulation is as much as $14\times$ lower than either on SpiNNaker or in CPU-based simulations.
 
@@ -119,6 +118,7 @@ However, although FPGA-based systems of this sort may have potential as more fle
 
 Alternatively, GPU architectures are specifically designed for high throughput applications with large amounts of fine-grained parallelism.
 They swap the large coherent caches, relied upon by modern CPU architectures to improve performance, for large numbers of vector floating point arithmetic units supplied by high-bandwidth external memory.
+\todo{something about GPUs enabling deep-learning}
 The SIMT programming model architecture used by NVIDIA GPUs is designed explicitly for fine-grained parallelism and high throughput.
 \todo{make coherant}
 %At this step, computations need to be synchronised and clever update algorithms are required to make use of parallelization while at the same time avoiding conflicts in memory access, e.g. when spikes from different neurons arrive at the same post-synaptic site.
@@ -166,11 +166,11 @@ Once network models have been defined using the C++ interface described in the p
 
 \lstinputlisting[firstline=22,lastline=32]{code_snippets.cc}
 
-While this approach allows a lot of flexibility and means that visualisation tools and closed-loop robotics can be tightly coupled to GeNN simulations, when combined with the use of C++ for model definition, this does make using GeNN a somewhat daunting prospect to users more used to Python-based simulations such as Brian~\citep{Stimberg2014} or PyNN~\citep{Davison2008a} or graphical tools such as SpineCreator~\todo{cite}.
+While this approach allows a lot of flexibility and means that visualisation tools and closed-loop robotics can be tightly coupled to GeNN simulations, when combined with the use of C++ for model definition, this does make using GeNN a somewhat daunting prospect to users more used to Python-based simulations such as Brian~\citep{Stimberg2014} or PyNN~\citep{Davison2008a} or graphical tools such as SpineCreator~\citep{Cope2017}.
 For these users GeNN can be used as a backend for other other simulators.
 Brian2GeNN~\citep{Stimberg2018} allows models to be defined in Brian 2 and translates them using code generation into a valid GeNN simulation. 
 Using Brian 2's backend device design, using GeNN through Brian2GeNN is as simple as issuing the command \lstinline[language=python]{set_device("brian2genn")} within a standard Brian 2 script. 
-A similar interface exist for SpineML~\citep{Richmond2014} and an interface to PyNN~\citep{Davison2008a} is currently being developed.
+A similar interface exist for SpineCreator and an interface to PyNN~\citep{Davison2008a} is currently being developed.
 
 \subsection{The cell-type specific cortical microcircuit}
 \label{sec:method/microcircuit}
@@ -351,7 +351,7 @@ However memory is a harder constraint so, while all of the GPUs listed in table~
                         &                   &                   & {cores}   & {[\si{\giga\byte}]}   & {[\si{\giga\byte\per\second}]}& {[GFLOPS]}\\
     \midrule
         GeForce 1050 Ti & 75                & Pascal            & 768       & 4                     & 112                           & 2100\\
-        Jetson TX2      & 15                & Pascal            & 256       & 4\textsuperscript{1}  & 58.4                          & 600??\\
+        Jetson TX2      & 15                & Pascal            & 256       & 4\textsuperscript{1}  & 58.4                          & 750\\
         Tesla K40c      & 235               & Kepler            & 2880      & 12                    & 288                           & 4290\\
         Tesla V100      & 250               & Volta             & 5120      & 16                    & 900                           & 14000\\
     \bottomrule
@@ -491,25 +491,13 @@ asfs
 
 \subsection{Further optimisation and GPU architectures}
 Because GPUs architectures do not require the complex centralized structures such as coherant caches which makes simply adding more CPU cores to symmetric multiprocessors difficult~\todo{citation}, it is expected that GPU hardware will continue to scale~\todo{citation}.
-However, when simulating SNNs, GPU performance is likely to be bound by the memory bandwidth of the device.
-Although new, even higher speed memory technologies such as HBM3~\todo{citation} will double the memory bandwidth available compared to HBM2 devices such as the Tesla V100, this comes at a significant power cost meaning that these memory technologies are unlikely to make their way into embedded systems.
-
-Therefore alternative strategies are going to be required to best utilise future GPUs for SNN simulation as well as to increase the size of models that can be simulated using current embedded GPUs such as the Jetson TX2 in the type of neurorobotic applications discussed in section~\ref{sec:discussion/neurobotics}.
+However, when simulating SNNs, a GPU's performance is likely to be bound by its memory bandwidth.
+Although upcoming technologies such as third generation High Bandwidth Memory~(HBM3) are likely to offer increases in memory bandwidth in the future, alternative strategies are still going to be required to better utilise current GPUs for SNN simulation as well as to increase the size of models that can be simulated using current embedded GPUs such as the Jetson TX2 in the type of neurorobotic applications discussed in section~\ref{sec:discussion/neurobotics}.
 
 As we discussed in the introduction, the computational requirements of training Artificial Neural Networks~(ANNs) of ever-increasing size and complexity has been a major driver in the development of GPU hardware.\todo{cite}
-However these applications and the growing need to deploy ready-trained ANNs to perform inference in real time on low-power `edge computing' devices means that, here to, available memory bandwidth is beginning to limit performance.
+These applications and the growing need to deploy ready-trained ANNs to perform inference in real time on low-power `edge computing' devices mean that, here to, available memory bandwidth is beginning to limit performance.
 One solution has been to use lower precision \SI{16}{\bit} floating point and even fixed point integer representations for weights~\citep{Micikevicius2017}.
-
-Although training artidis a somewhat less As the ANNs used in machine learning continue to grow
-
-\begin{itemize}
-    \item Half precision float, ILP - should double performance on TX1
-\end{itemize}
-
-\begin{itemize}
-    \item HBM3 - further doubling of memory bandwidth
-    \item FP16 - half memory bandwidth, double arithmetic throughput
-\end{itemize}
+These `half precisison' floating point numbers 
 
 \section*{Conflict of Interest Statement}
 The authors declare that the research was conducted in the absence of any commercial or financial relationships that could be construed as a potential conflict of interest.
@@ -517,8 +505,8 @@ The authors declare that the research was conducted in the absence of any commer
 \section*{Author Contributions}
 JK and TN wrote the paper.
 TN is the original developer of GeNN.
-JK is currently the primary GeNN developer.
-JK performed the experiments whose results are presented in this work.
+JK is currently the primary GeNN developer and was responsible for extending the code generation approach to the parallel initialisation of networks.
+JK performed the experiments and the analysis of their results which are presented in this work.
 
 \section*{Funding}
 Details of all funding sources should be provided, including grant numbers if applicable. Please ensure to add all necessary funding information, as after publication this is no longer possible.
