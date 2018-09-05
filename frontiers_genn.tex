@@ -73,14 +73,12 @@ Inspired by the distributed nature of memory and computation in the brain, neuro
 While neuromorphic systems may be the ultimate platform for \textit{deploying} spiking neural networks, their distributed nature and optimisation for specific types of models makes them unwieldy tools for \textit{developing} SNN models.
 Instead development and simulation of SNN models tends to be performed on computers with standard Von Neumann CPU architectures and, once models scale above a certain size, clusters of these machines.
 Over the last decade, as well as becoming a common fixture in many workstations, NVIDIA GPU accelerators have entered the High Performance Computing field and are now used in \SI{50}{\percent} of the Top 10 super computing sites to increase peak performance while lowering power requirements.
-In many ways, the large amount of available parallelism and the Single Instruction Multiple Thread (SIMT) architecture of GPUs is well suited to simulating large numbers of homogeneous neurons and synapses, however it is not without challenges.
-The large amount of available parallelism comes at the expense of the SRAM that typically occupies a large proportion of the die area of neuromorphic chips.
-Generally, performance is good when many operations can be performed independently, for example integrating differential equations describing neuron dynamics.
-When communication between threads is necessary, in particular for propagating spikes across synapses between neurons, performance can drop, in particular if connection patterns are random.
-GPUs nevertheless can be very competitive for simulating SNNs with respect to speed and energy efficiency as spike events are less frequent than the time-step based updates of neuron and synapse equations that often make up the bulk of the required computation. 
-\todo{argument for using GPUs for SNN -TN: I added a bit ... see whether you think it's enough}
+In many ways, the large amount of available parallelism and the Single Instruction Multiple Thread (SIMT) architecture of GPUs is well suited to simulating large numbers of homogeneous neurons and synapses.
+However, this large amount of available parallelism comes at the expense of the SRAM which typically occupies a large proportion of the die area of neuromorphic chips, meaning that GPU performance is often constrained by external memory bandwidth.
 
+Nonetheless, by employing the latest in memory and fabrication technologies, GPUs can still be very competitive for simulating SNNs in terms of speed and energy efficiency.
 In this paper we use our GeNN code generator to re-implement two large-scale point neuron network models with levels of connectivity and sparseness matching those in the neocortex and discuss how they are mapped to GPU hardware.
+We show that by 
 We then verify the correctness of our GPU simulations against prior results obtained with NEST on traditional HPC hardware and compare the performance with respect to speed and energy consumption against published data from CPU-based HPC and neuromorphic hardware.
 We show that a full-scale model of a cortical column can be simulated at speeds approaching $0.5\times$ real-time using a single NVIDIA Tesla V100 accelerator -- faster than is currently possible using a CPU based cluster or the SpiNNaker neuromorphic system.
 In addition, we find that, across a range of GPU systems, the energy to solution as well as the energy per synaptic event of the microcircuit simulation is as much as $14\times$ lower than either on SpiNNaker or in CPU-based simulations.
@@ -164,7 +162,7 @@ These are definied in a similar manner to the neuron and synapse models previous
 This approach is advantageous as it both removes the need to transfer the model state from the CPU to the GPU and it allows the GPU to be used to accelerate potentially costly initialisation operations such as sampling random numbers.
 %While the PCI express bus typically used to connect the GPU to the host system is relatively fast (up to \SI{16}{\giga\byte\per\second}), initialising millions of synaptic weights on the CPU and then uploading them at the start of the simulation can still considerably slow down the time it takes to iterate the model.
 
-Once network models have been defined using the C++ interface described in the preceding section, GeNN will generate the CUDA code to simulate the network and this can be linked against a simple simulation loop provided by the user:
+Once network models have been defined using the C++ interface described in the preceding section, GeNN will generate the CUDA code to simulate the network and this can be linked against a simulation loop provided by the user:
 
 \lstinputlisting[firstline=22,lastline=32]{code_snippets.cc}
 
@@ -410,7 +408,6 @@ However, even with 32 CPU based HPC nodes, all three desktop GPU systems can sti
 SpiNNaker clearly still has issues in this area.
 Initialising the microcircuit network and loading it onto the SpiNNaker system takes approximately \SI{10}{\hour} which is approximately $50\times$ slower than the Jetson TX2 when only a single ARM core is used for initialisation.
 
-%
 \begin{figure}
     \begin{center}
         \includegraphics[width=85mm]{figures/stdp_performance}
@@ -419,12 +416,15 @@ Initialising the microcircuit network and loading it onto the SpiNNaker system t
     `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.}
     \label{fig:stdp_performance}
 \end{figure}
-%
-\todo{discussion of STDP performance once it's working}
-\todo{volta `Independent Thread Scheduling' may be part of the reason why second model works so well}
+
+Figure~\ref{fig:stdp_performance} shows the runtime of simulations of the balanced random network model described in section~\ref{sec:method/balanced_random}.
+While the simulations of the cortical microcircuit model ran approximately twice as fast on the newer Tesla V100 GPU -- potentially simply reflecting its higher memory bandwidth -- the simulations of the plastic model ran more than $10\times$ faster on the V100 GPU due almost entirely to the postsynaptic learning kernel.
+This kernel is where synaptic potentiation is applied using the approach outlined in section~\ref{sec:method/balanced_random} in which an additional column-wise sparse matrix structure is used to select weights to update in response to postsynaptic spikes.
+We believe that two new features of the Volta architecture~\citep{Nvidia2017} used by the V100 GPU are playing a crucial role in accelerating this process.
+Firstly, Volta GPUs have \SI{6144}{\kibi\byte} of L2 cache compared to only \SI{1536}{\kibi\byte} in the older Kepler architecture used by the Tesla K40c which helps overcome the cost of the non-coalesced accesses to synaptic weights.
+Additionally, Volta GPUs can now simultaneously execute integer and floating point operations, meaning that the pointer arithmetic required to calculate the indices into the synaptic weight matrix can be performed simultaneously with the actual learning rule update.
 
 \subsection{Power and energy}
-
 \begin{figure}
     \begin{center}
         \includegraphics[width=85mm]{figures/microcircuit_power}
@@ -483,16 +483,24 @@ Therefore we can estimate that, if a Tesla V100 was attached to the same worksta
 \end{itemize}
 
 \subsection{Neurorobotics}
+\label{sec:discussion/neurobotics}
 afa
 
 \subsection{Interactive simulation}
 asfs
 
 \subsection{Further optimisation and GPU architectures}
+Because GPUs architectures do not require the complex centralized structures such as coherant caches which makes simply adding more CPU cores to symmetric multiprocessors difficult~\todo{citation}, it is expected that GPU hardware will continue to scale~\todo{citation}.
+However, when simulating SNNs, GPU performance is likely to be bound by the memory bandwidth of the device.
+Although new, even higher speed memory technologies such as HBM3~\todo{citation} will double the memory bandwidth available compared to HBM2 devices such as the Tesla V100, this comes at a significant power cost meaning that these memory technologies are unlikely to make their way into embedded systems.
 
-Because the SIMT programming model used by GPUs does not require the complex coherant caches which is making simply adding more CPU cores to symmetric multiprocessing difficult~\todo{citation}, it is expected that GPU hardware will continue to scale~ \todo{citation}.
-However, even with new even higher speed memory technologies such as HBM3~\todo{citation}, memory bandwidth has historically always lagged behind processing performance.
+Therefore alternative strategies are going to be required to best utilise future GPUs for SNN simulation as well as to increase the size of models that can be simulated using current embedded GPUs such as the Jetson TX2 in the type of neurorobotic applications discussed in section~\ref{sec:discussion/neurobotics}.
 
+As we discussed in the introduction, the computational requirements of training Artificial Neural Networks~(ANNs) of ever-increasing size and complexity has been a major driver in the development of GPU hardware.\todo{cite}
+However these applications and the growing need to deploy ready-trained ANNs to perform inference in real time on low-power `edge computing' devices means that, here to, available memory bandwidth is beginning to limit performance.
+One solution has been to use lower precision \SI{16}{\bit} floating point and even fixed point integer representations for weights~\citep{Micikevicius2017}.
+
+Although training artidis a somewhat less As the ANNs used in machine learning continue to grow
 
 \begin{itemize}
     \item Half precision float, ILP - should double performance on TX1
@@ -507,7 +515,10 @@ However, even with new even higher speed memory technologies such as HBM3~\todo{
 The authors declare that the research was conducted in the absence of any commercial or financial relationships that could be construed as a potential conflict of interest.
 
 \section*{Author Contributions}
-The Author Contributions section is mandatory for all articles, including articles by sole authors. If an appropriate statement is not provided on submission, a standard one will be inserted during the production process. The Author Contributions statement must describe the contributions of individual authors referred to by their initials and, in doing so, all authors agree to be accountable for the content of the work. Please see  \href{http://home.frontiersin.org/about/author-guidelines#AuthorandContributors}{here} for full authorship criteria.
+JK and TN wrote the paper.
+TN is the original developer of GeNN.
+JK is currently the primary GeNN developer.
+JK performed the experiments whose results are presented in this work.
 
 \section*{Funding}
 Details of all funding sources should be provided, including grant numbers if applicable. Please ensure to add all necessary funding information, as after publication this is no longer possible.
