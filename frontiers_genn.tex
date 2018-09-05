@@ -72,16 +72,20 @@ Inspired by the distributed nature of memory and computation in the brain, neuro
 
 However, while neuromorphic systems may be the ultimate platform for \textit{deploying} spiking neural networks, their distributed nature and optimisation for specific types of models makes them unwieldy tools for \textit{developing} SNN models.
 Instead development and simulation of SNN models tends to be performed on computers with standard Von Neumann CPU architectures and, once models scale above a certain size, clusters of these machines.
-Over the last decade, as well as becoming a common fixture in many workstations, NVIDIA GPU accelerators have entered the High Performance Computing field and are now used in \SI{50}{\percent} of the Top 10 super computing sites to increase peak performance while lowering power requirements.
+Over the last decade, as well as becoming a common fixture in many workstations, NVIDIA GPU accelerators have entered the High Performance Computing~(HPC) field and are now used in \SI{50}{\percent} of the Top 10 super computing sites to increase peak performance while lowering power requirements.
 In many ways, the large amount of available parallelism and the Single Instruction Multiple Thread (SIMT) architecture of GPUs is well suited to simulating large numbers of homogeneous neurons and synapses.
 However, this large amount of available parallelism comes at the expense of the SRAM which typically occupies a large proportion of the die area of neuromorphic chips, meaning that GPU performance is often constrained by external memory bandwidth.
-
 Nonetheless, driven by the demands of the deep-learning community, GPUs employ the latest in memory and fabrication technologies making them very competitive for simulating SNNs in terms of speed and energy efficiency.
-In this paper we use our GeNN code generator to re-implement two large-scale point SNNs with levels of connectivity and sparseness matching those in the neocortex and discuss how they are mapped to GPU hardware.
+
+In this paper we use our GeNN code generator to re-implement two large-scale SNNs with levels of connectivity and sparseness matching those in the neocortex and discuss how they are mapped to GPU hardware.
 We then verify the correctness of our GPU simulations against prior results obtained with NEST running on traditional HPC hardware and compare the performance with respect to speed and energy consumption against published data from CPU-based HPC and neuromorphic hardware.
 We show that a full-scale model of a cortical column can be simulated at speeds approaching $0.5\times$ real-time using a single NVIDIA Tesla V100 accelerator -- faster than is currently possible using a CPU based cluster or the SpiNNaker neuromorphic system.
 In addition, we find that, across a range of GPU systems, the energy to solution as well as the energy per synaptic event of the microcircuit simulation is as much as $14\times$ lower than either on SpiNNaker or in CPU-based simulations.
+\todo{not sure if this belongs at the end of the abstract}
+Being able to rapidly initialise large SNN models enables rapid iteration and parameter sweeping -- both vital parts of an effective development workflow.
+To support this, as well as generating code to simulate SNNs using GPU hardware, GeNN also parallelises their \textit{initialisation}.
 
+\todo{this abstract needs to be < 350 words}
 \tiny
  \keyFont{\section{Keywords:} GPU, high-performance computing, parallel computing, accuracy of simulation, energy to solution, benchmarking, computational neuroscience} %All article types: you may provide up to 8 keywords; at least 5 are mandatory.
 \end{abstract}
@@ -160,9 +164,8 @@ Once the required models have been defined, the values of parameters and initial
 The membrane voltage \lstinline{V} of our \num{1000} LIF neurons is sampled from the uniform distribution using one of GeNN's built in \textit{variable initialisation snippets}.
 These are definied in a similar manner to the neuron and synapse models previously described, allowing network initialisation to be parallelised using the same strategies used for simulating models on the GPU for initialising their parameters.
 This approach is advantageous as it both removes the need to transfer the model state from the CPU to the GPU and it allows the GPU to be used to accelerate potentially costly initialisation operations such as sampling random numbers.
-%While the PCI express bus typically used to connect the GPU to the host system is relatively fast (up to \SI{16}{\giga\byte\per\second}), initialising millions of synaptic weights on the CPU and then uploading them at the start of the simulation can still considerably slow down the time it takes to iterate the model.
 
-Once network models have been defined using the C++ interface described in the preceding section, GeNN will generate the CUDA code to simulate the network and this can be linked against a simulation loop provided by the user:
+Once network models have been defined using the C++ interface described in the preceding section, GeNN will generate the CUDA code to initialise and simulate the network which can then be linked against a simulation loop provided by the user:
 
 \lstinputlisting[firstline=22,lastline=32]{code_snippets.cc}
 
@@ -174,11 +177,13 @@ A similar interface exist for SpineCreator and an interface to PyNN~\citep{Davis
 
 \subsection{The cell-type specific cortical microcircuit}
 \label{sec:method/microcircuit}
-This model of \SI{1}{\milli\metre\cubed} of early-sensory cortex was first developed by \citet{Potjans2012}.
-The model consists of around \num{80000} neurons, divided into layers 2/3, 4, 5 and 6 and each layer is modelled as an excitatory and an inhibitory population.
+This model of \SI{1}{\milli\metre\cubed} of early-sensory cortex was developed by \citet{Potjans2012} and consists of around \num{80000} neurons, divided into layers 2/3, 4, 5 and 6 -- each of which is modelled as an excitatory and an inhibitory population.
 Neurons in each population are connected with population-specific densities derived from an extensive review of the anatomical literature resulting in a total of approximately \num{0.3E9} synapses.
-The connections between a presynaptic population with $N_{pre}$ neurons and a postsynaptic population with $N_{post}$ neurons are specified as a total number of randomly-distributed synapses (a \lstinline{FixedNumberTotal} connector in PyNN).
-The first stage in initialising such connectivity is to determine how many of the total synapses $N$ end up in each row by sampling from the multinomial distribution $Mult[N_{pre} * N_{post}, \{P_{row}, P_{row}, \ldots, P_{row}\}]$ where $P_{row} = \frac{N_{post}}{N}$.
+For a full description of the model please refer to \citeauthor{Potjans2012}.
+In the remainder of the this section we will concentrate on describing the strategies used to parallelise the initialisation and subsequent simulation of this network.
+
+In this model the density of the synaptic connections between a pair of neuronal populations is specified in terms of a total number of random synapses (a \lstinline{FixedNumberTotal} connector in PyNN).
+The first stage in initialising such connectivity between a presynaptic population with $N_{pre}$ neurons and a postsynaptic population with $N_{post}$ neurons is to determine how many of the total synapses $N$ end up in each row by sampling from the multinomial distribution $Mult[N_{pre} * N_{post}, \{P_{row}, P_{row}, \ldots, P_{row}\}]$ where $P_{row} = \frac{N_{post}}{N}$.
 This operation cannot be efficiently parallelised so must be performed on the host but, once the length of each row is determined, the postsynaptic targets of the synapses can be initialised in parallel by sampling from the discrete uniform distribution $Unif[0, N_{post}]$ parallelised across $N_{pre}$ CUDA threads.
 However, although this works mathematically, so as to improve the locality of memory accesses, synapses should be sorted into ascending order.
 This would be trivial to implement in CPU code but, without enough shared memory for each CUDA thread to store a copy of its corresponding row, an in-place sort in global memory would be very slow.
@@ -188,7 +193,6 @@ In the general case the Beta distribution cannot be sampled from in constant tim
 However, if $X \sim Beta[1, N_{post}]$, $1 - X \sim Beta[N_{post}, 1]$ and $-ln(1 - X) \sim Exponential[N_{post}]$ -- a much simpler problem as the exponential distribution can be sampled in constant time using the inversion method.
 
 Beside this structured connectivity, all synaptic strengths and transmission delays are normally distributed.
-\todo{Thomas: is it necessary to go into further details of network structure or just refer reader to Potjans2012? - TN: I think we should not go deeper into this and refer to the Potjans paper}
 In addition to their synaptic input, each neuron in the network also receives independent Poisson inputs with population-specific rates representing input from adjacent cortical regions.
 Neurons are modelled as leaky integrate-and-fire~(LIF) units with exponentially shaped current inputs:
 %
@@ -233,17 +237,19 @@ However, if this population is connected to another population with the same siz
 The type of one-shot, online learning observed in nature is one of the features of biological neural networks that neuromorphic engineers aspire to emulate.
 Synaptic plasticity -- the family of mechanisms responsible for changing the strength of synaptic connections in response to neural activity -- has been shown to be fundamental to learning~\citep{Nabavi2014} and is therefore a key area of computational neuroscience research.
 Spike Timing Dependant Plasticity~(STDP)~\citep{Bi1998} is a popular theory which postulates that these changes are driven by the difference in timing between presynaptic spikes arriving at a synapse and the times at which the postsynaptic neuron itself spikes.
-In excitatory cortical neurons~\citep{Markram1997} as well as in the Hippocampus~\citep{Bi1998}, synapses at which a presynaptic spike is closely followed by a postsynaptic spike are strengthened whereas those at which a postsynaptic spike precedes a presynaptic spike are weakened.
+In excitatory cortical neurons~\citep{Markram1997} as well as in the Hippocampus~\citep{Bi1998}, synapses at which a presynaptic spike is closely followed by a postsynaptic spike are strengthened, whereas those at which a postsynaptic spike precedes a presynaptic spike are weakened.
 The intuition behind this relationship is that synapses that are implicated in the firing of the postsynaptic neuron are strengthened and those that are irrelevant are weakened.
 
 However, adding STDP to spiking neural network simulations typically increases the computational cost of simulating them significantly. 
 \citet{Morrison2007} reported that adding plasticity to their simulations slowed them down by ``a factor of less than 10'' and \citet{Knight2016b} found that, in the \textbf{best} case, simple STDP plasticity reduced the performance of the SpiNNaker neuromorphic system by approximately $6\times$.
-Furthermore, the dynamics of neural systems with plasticity operating on biologically-plausible time scales also take several orders of magnitude more time to stabilise.
+Furthermore, the dynamics of neural systems with plasticity operating on biologically-plausible time scales take several orders of magnitude more time to stabilise.
 %Perhaps because of these issues, there are relatively few large-scale network models with synaptic plasticity.
 However, \citeauthor{Morrison2007} argue that it is vital to perform experiments on STDP in models with full-scale connectivity, as simplifying connectivity typically results in fewer, stronger incoming synapses per neuron.
 These stronger synaptic inputs are then likely to increase the correlation between neurons and, because STDP is inherently sensitive to correlated neural activity, this is likely to cause artefacts in the learned synaptic weights.
-Therefore \citeauthor{Morrison2007} developed a large balanced random network model~\citep{Brunel2000} with \num{90000} excitatory and \num{22500} inhibitory neurons -- the scale necessary to achieve realistic connection probabilities of $\approx0.1$ and \num{10000} incoming connections per neuron~\citep{braitenberg2013cortex}.
+With this aim, \citeauthor{Morrison2007} developed a large balanced random network model~\citep{Brunel2000} with \num{90000} excitatory and \num{22500} inhibitory neurons, the scale necessary to achieve realistic connection probabilities of $\approx0.1$ and \num{10000} incoming connections per neuron~\citep{braitenberg2013cortex}.
 Balanced random networks have been shown to reproduce some of the dynamics seen in the neocortex~\citep{Brunel1999,Brunel2000} and \citeauthor{Morrison2007} showed that adding STDP to such a network does not disrupt these dynamics and that weights remain stable.
+Again, for the full description of this model, please refer to \citeauthor{Morrison2007}.
+In the remainder of this section we will concentrate on describing how models with synaptic plasticity are parallelised using GeNN.
 
 Similarly to the microcircuit model described in the previous section this model uses LIF neurons with current inputs.
 However, rather than exponentially filtering the incoming synaptic input, this model uses a slightly more complex \textit{alpha} synapses \todo{cite} which provide a closer match to the dynamics of biological ion channels:
