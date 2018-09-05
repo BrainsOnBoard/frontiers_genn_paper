@@ -26,7 +26,10 @@ def plot(data, filename, num_ref, calc_overhead, legend_text, real_time_s=None, 
     # If overheads are being calculated, subtract all preceeding rows from last row
     if calc_overhead:
         for i in range(times.shape[0] - 1):
-            times[-1,:-num_ref] -= times[i,:-num_ref]
+            if num_ref == 0:
+                times[-1,:] -= times[i,:]
+            else:
+                times[-1,:-num_ref] -= times[i,:-num_ref]
 
     fig, axis = plt.subplots(figsize=(plot_settings.column_width, 90.0 * plot_settings.mm_to_inches),
                              frameon=False)
