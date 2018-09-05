@@ -186,6 +186,8 @@ pop_corr_axis_col_sharex = [None] * 2
 pop_corr_axis_row_sharey = [None] * 4
 
 # Loop through populations
+genn_actor = None
+nest_actor = None
 rate_kl = []
 isi_kl = []
 corr_kl = []
@@ -225,8 +227,8 @@ for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in 
                                 sharey=pop_rate_axis_row_sharey[row])
     fig.add_subplot(pop_rate_axis)
     pop_rate_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_rate_axis.transAxes)
-    pop_rate_axis.plot(rate_bin_x, rate_hist, linewidth=0.5)
-    pop_rate_axis.plot(rate_bin_x, nest_rate_hist, linewidth=0.5)
+    genn_actor = pop_rate_axis.plot(rate_bin_x, rate_hist, linewidth=0.5)[0]
+    nest_actor =pop_rate_axis.plot(rate_bin_x, nest_rate_hist, linewidth=0.5)[0]
     
     # Plot rate histogram
     pop_cv_isi_axis = plt.Subplot(fig, gs_cv_isi_axes[3 - row, col],
@@ -304,7 +306,10 @@ raster_axis.set_ylim((0, neuron_id_offset[-1]))
 
 raster_axis.set_title("A", loc="left")
 
-fig.tight_layout(pad=0.0)
+fig.legend([genn_actor, nest_actor], ["GeNN", "NEST 'precise'"],
+           ncol=2, loc="lower center")
+
+fig.tight_layout(pad=0.0, rect=(0, 0.075, 1, 1))
 
 # Save figure
 utils.save_raster_figure(fig, "../figures/microcircuit_accuracy")
