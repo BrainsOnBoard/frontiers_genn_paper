@@ -1,19 +1,22 @@
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 import numpy as np
-#import pickle
 import plot_settings
 import re
 import utils
 
 from os import path
+
 from scipy.stats import entropy, gaussian_kde, iqr
 
 from elephant.conversion import BinnedSpikeTrain
 from elephant.statistics import isi, cv
 from elephant.spike_train_correlation import corrcoef
 
+from pandas import read_csv
+
 from neo import SpikeTrain
+
 from quantities import s, ms
 
 N_full = {
@@ -37,12 +40,12 @@ def load_spikes(filename):
 
     # Load spikes
     spike_path = path.join("potjans_spikes", filename)
-    spikes = np.loadtxt(spike_path, skiprows=1, delimiter=",",
-                        dtype={"names": ("time", "id", ), "formats": (float, int)})
+    spikes = read_csv(spike_path, header=None, skiprows=1, delimiter=",",
+                      names=["time", "id"], dtype={"time":float, "id":int})
 
     # Convert CSV columns to numpy
-    spike_times = spikes["time"]
-    spike_neuron_id = spikes["id"]
+    spike_times = spikes["time"].values
+    spike_neuron_id = spikes["id"].values
 
     post_transient = (spike_times > 1000.0)
     spike_times = spike_times[post_transient]
@@ -51,12 +54,12 @@ def load_spikes(filename):
     # Load NEST spikes
     # **NOTE** retrospectively using NEO for all spike io would be better
     nest_spike_path = path.join("potjans_spikes", "nest", "spikes_L" + name + ".dat")
-    nest_spikes = np.loadtxt(nest_spike_path, delimiter="\t",
-                             dtype={"names": ("time", "id", ), "formats": (float, float)})
+    nest_spikes = read_csv(nest_spike_path, header=None, comment="#", delimiter="\t",
+                           names=["time", "id"], dtype={"time":float, "id":int})
 
     # Convert CSV columns to numpy
-    nest_spike_times = nest_spikes["time"]
-    nest_spike_neuron_id = nest_spikes["id"].astype(int)
+    nest_spike_times = nest_spikes["time"].values
+    nest_spike_neuron_id = nest_spikes["id"].values
     nest_post_transient = (nest_spike_times > 1000.0)
     nest_spike_times = nest_spike_times[nest_post_transient]
     nest_spike_neuron_id = nest_spike_neuron_id[nest_post_transient]
