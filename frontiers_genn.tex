@@ -147,7 +147,7 @@ Once the required models have been defined, the values of parameters and initial
 \lstinputlisting[firstline=17,lastline=20]{code_snippets.cc}
 
 This listing also illustrates how the approach used for defining models now can also be used to define how variables are initialised, a new mechanism added since GeNN 3.xx:
-The membrane voltage \lstinline{V} of our \num{1000} LIF neurons is sampled from the uniform distribution using one of GeNN's built in \textit{variable initialisation snippets}, are definied in a similar manner to the neuron and synapse code snippets. Using this mechanism allows to parallelise network initialisation employing the same parallelisation strategies for initialisation on the GPU as for simulating the models.
+The membrane voltage \lstinline{V} of our \num{1000} LIF neurons is sampled from the uniform distribution using one of GeNN's built in \textit{variable initialisation snippets}, which are definied in a similar manner to the neuron and synapse code snippets. Using this mechanism allows GeNN to parallelise network initialisation employing the same parallelisation strategies for initialisation on the GPU as for simulating the models.
 This approach is advantageous as it both, removes the need to transfer the model state from the CPU to the GPU and allows the GPU to be used to accelerate potentially costly initialisation operations such as sampling random numbers.
 
 Once network models have been defined using the C++ interface, GeNN will generate the CUDA code to initialise and simulate the network which can then be linked against a simulation loop provided by the user:
@@ -160,7 +160,7 @@ Brian2GeNN~\citep{Stimberg2018} allows models to be defined in Brian 2 and it tr
 Using Brian 2's backend device design, using GeNN through Brian2GeNN is as simple as issuing the command \lstinline[language=python]{set_device("brian2genn")} within a standard Brian 2 script. 
 A similar interface exist for SpineCreator and an interface to PyNN~\citep{Davison2008a} is currently being developed.
 
-\subsection{The cell-type specific cortical microcircuit \todo{why ``cell-type'' specific??}}
+\subsection{The cortical microcircuit model}
 \label{sec:method/microcircuit}
 This model of \SI{1}{\milli\metre\cubed} of early-sensory cortex was developed by \citet{Potjans2012} and consists of around \num{80000} neurons, divided into layers 2/3, 4, 5 and 6.
 Each layer is modelled by an excitatory and an inhibitory neuron population.
@@ -187,7 +187,7 @@ Neurons are modelled as leaky integrate-and-fire~(LIF) units with exponentially 
     \tau_{syn} \frac{dI_{s_{j}}}{dt} = & -I_{s_{j}} + \sum_{i=0}^{n} w_{ij} \sum_{t_{i}^{f}}  \delta(t - t_{i}^{f})\label{eq:exp_neuron_input_current}
 \end{align}
 %
-Although $V_{j}$ and $I_{s{j}}$ are coupled, in our GeNN model, the continuous terms of the two equations are solved separately sosuch that the synaptic input current $I_{s_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
+Although $V_{j}$ and $I_{s{j}}$ are coupled, in our GeNN model, the continuous terms of the two equations are solved separately such that the synaptic input current $I_{s_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
 As \citet{Rotter1999} describes, this approach leads to a delay of one simulation timestep compared to the exact solution, but this separation is not only attractive from an engineering point-of-view by better encapsulating neurons and synapses, but it also provides a generic way of describing neurons with heterogeneous synaptic input dynamics.\todo{I do not understand this second part of the sentence}
 
 Simulating a homogeneous \textit{population} of neurons is an ideal task for a SIMD or SIMT device such as a GPU: the neurons do not communicate with each other and, aside from the relatively rare times that they spike, each neuron will be running exactly the same code.
@@ -306,7 +306,8 @@ This has the downside of doubling the memory requirements of connections when ST
 \subsection{Correctness}
 \label{sec:results/correctness}
 \citet{VanAlbada2018} performed an in-depth analysis of the correctness of simulations of the microcircuit model described in section~\ref{sec:method/microcircuit} \citep{Potjans2012}  both on the SpiNNaker neuromorphic system and on NEST running in `grid-based' mode.
-While the GPU simulations presented in this paper do not face the issues with quantisation of values to relatively low precision fixed point arithmeitic, which can affect SpiNNaker, unlike NEST, they all use single rather than double-precision floating point and therefore have the potential for more numerical instability.
+The GPU simulations presented in this paper do not face the issues with quantisation which can affect SpiNNaker due to its use of relatively low-precision fixed-point arithmetic.
+However, unlike NEST, our GPU simulations use single rather than double-precision floating point and therefore have the potential for more numerical instability.
 Additionally, the non-associative nature of floating point operations means that, if the results from a large number of parallel threads are summed together in a non-deterministic order, this can lead to large differences between runs due to rounding errors.
 \citet{Villa2009} demonstrated this by calculating the sum of \num{28000} double-precision floating point numbers across \num{16000} threads of a CRAY XMT system (which, in this context, has similar properties to a GPU) and found that results varied by up to \SI{24.64}{\percent}.
 However, in this experiment, more numbers were summed than might occur in any of the parallelisation schemes described in section~\ref{sec:method} and it is unclear what absolute errors these reported relative errors correspond to. A more detailed treatment of the expected rounding errors in parallel simulations of SNNs on GPUs will be published elsewhere \citep{Turner2019}. In this section we will focus on confirming the correctness of our simulations using the methodology described by \citet{VanAlbada2018} to compare the results of our microcircuit simulation to those obtained using NEST running in `precise' mode.
@@ -395,7 +396,7 @@ Furthermore, on the Jetson TX2 with its much slower ARM A57 CPU, GPU initialisat
 Figure~\ref{fig:microcircuit_init_performance} also includes the initialisation times for SpiNNaker and the fastest HPC configuration presented by \citeauthor{VanAlbada2018}.
 The scaling plot for HPC initialisation confirms the trivially parallelisable nature of network initialisation compared to simulation.
 Performance continues to increase up to using 32 nodes rather than only 12 in the simulation.
-However, even with 32 CPU based HPC nodes, all three desktop GPU systems still perform network initialisation in a shorter time than the HPC system.
+However, all three desktop GPU systems still perform network initialisation in a shorter time than the HPC system.
 \citet{Diamond2018} concluded that initialisation and loading time was a big problem for neuromorphic systems and SpiNNaker clearly still has issues in this area.
 Initialising the microcircuit network and loading it onto the SpiNNaker system takes approximately \SI{10}{\hour} which is approximately $50\times$ slower than the Jetson TX2 when only a single ARM core is used for initialisation.
 
