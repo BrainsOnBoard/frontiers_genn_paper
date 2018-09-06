@@ -68,24 +68,18 @@
 
 %%% Leave the Abstract empty if your article does not require one, please see the Summary Table for full details.
 \section{}
-Inspired by the distributed nature of memory and computation in the brain, neuromorphic systems are being developed to provide a faster and/or more energy-efficient substrate for emulating spiking neural networks (SNNs) when compared to simulations running on Von Neumann architectures.
-
-However, while neuromorphic systems may be the ultimate platform for \textit{deploying} spiking neural networks, their distributed nature and optimisation for specific types of models makes them unwieldy tools for \textit{developing} SNN models.
+While neuromorphic systems may be the ultimate platform for \textit{deploying} spiking neural networks, their distributed nature and optimisation for specific types of models makes them unwieldy tools for \textit{developing} SNN models.
 Instead development and simulation of SNN models tends to be performed on computers with standard Von Neumann CPU architectures and, once models scale above a certain size, clusters of these machines.
-Over the last decade, as well as becoming a common fixture in many workstations, NVIDIA GPU accelerators have entered the High Performance Computing~(HPC) field and are now used in \SI{50}{\percent} of the Top 10 super computing sites to increase peak performance while lowering power requirements.
+Over the last decade, as well as becoming a common fixture in many workstations, NVIDIA GPU accelerators have entered the High Performance Computing field and are now used in \SI{50}{\percent} of the Top 10 super computing sites to increase peak performance while lowering power requirements.
 In many ways, the large amount of available parallelism and the Single Instruction Multiple Thread (SIMT) architecture of GPUs is well suited to simulating large numbers of homogeneous neurons and synapses.
-However, this large amount of available parallelism comes at the expense of the SRAM which typically occupies a large proportion of the die area of neuromorphic chips, meaning that GPU performance is often constrained by external memory bandwidth.
-Nonetheless, driven by the demands of the deep-learning community, GPUs employ the latest in memory and fabrication technologies making them very competitive for simulating SNNs in terms of speed and energy efficiency.
+However, this large amount of available parallelism comes at the expense of the on-chip memory which typically occupies a large proportion of the die area of neuromorphic chips, meaning that GPU performance is often constrained by external memory bandwidth.
+While single GPUs are never going to be capable of simulating the largest models currently simulated using CPU-based HPC, by employing the latest in memory and fabrication technologies, GPUs are very competitive for simulating circuit-scale ($10^5$--$10^6$ neurons) SNNs in terms of speed and energy efficiency.
 
-In this paper we use our GeNN code generator to re-implement two large-scale SNNs with levels of connectivity and sparseness matching those in the neocortex and discuss how they are mapped to GPU hardware.
+In this paper we use our GeNN code generator to re-implement two circuit-scale point neuron network models with levels of connectivity and sparseness matching those in the neocortex and discuss how they are mapped to GPU hardware.
 We then verify the correctness of our GPU simulations against prior results obtained with NEST running on traditional HPC hardware and compare the performance with respect to speed and energy consumption against published data from CPU-based HPC and neuromorphic hardware.
 We show that a full-scale model of a cortical column can be simulated at speeds approaching $0.5\times$ real-time using a single NVIDIA Tesla V100 accelerator -- faster than is currently possible using a CPU based cluster or the SpiNNaker neuromorphic system.
 In addition, we find that, across a range of GPU systems, the energy to solution as well as the energy per synaptic event of the microcircuit simulation is as much as $14\times$ lower than either on SpiNNaker or in CPU-based simulations.
-\todo{not sure if this belongs at the end of the abstract}
-Being able to rapidly initialise large SNN models enables rapid iteration and parameter sweeping -- both vital parts of an effective development workflow.
-To support this, as well as generating code to simulate SNNs using GPU hardware, GeNN also parallelises their \textit{initialisation}.
 
-\todo{this abstract needs to be < 350 words}
 \tiny
  \keyFont{\section{Keywords:} GPU, high-performance computing, parallel computing, accuracy of simulation, energy to solution, benchmarking, computational neuroscience} %All article types: you may provide up to 8 keywords; at least 5 are mandatory.
 \end{abstract}
