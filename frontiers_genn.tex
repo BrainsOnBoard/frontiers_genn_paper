@@ -490,7 +490,16 @@ Although upcoming technologies such as third generation High Bandwidth Memory~(H
 As we discussed in the introduction, the computational requirements of training Artificial Neural Networks~(ANNs) of ever-increasing size and complexity has been a major driver in the development of GPU hardware.\todo{cite}
 These applications and the growing need to deploy ready-trained ANNs to perform inference in real time on low-power `edge computing' devices mean that, here to, available memory bandwidth is beginning to limit performance.
 One solution has been to use lower precision \SI{16}{\bit} floating point and even fixed point integer representations for weights~\citep{Micikevicius2017}.
-These `half precisison' floating point numbers 
+These `half precision' floating point numbers 
+
+In this paper we have only considered single GPU simulations of circuit-scale SNN models.
+However, using supercomputer systems, models with around a billion neurons can now be simulated~\citep{Jordan2018} and computational neuroscientists are beginning to use this capability to investigate the interactions of multiple circuit-scale models.
+For example, \citet{Schmidt2015} developed a model of the Macaque visual cortex consisting of 32 cortical areas, each modelled as a customised version of the model described in section~\ref{sec:method/microcircuit}.
+Even if half-precision floating point weights were employed, a single GPU would not have enough memory to store such a model.
+However, systems such as the NVIDIA DGX-2~\todo{cite} are now available which contain several Tesla V100 GPUs, connected through a crossbar with a \SI{900}{\giga\byte\per\second} bisection bandwidth.
+While targetting multi-GPU systems is not currently a priority for GeNN development, because the GPUs in such a system are still all connected to a single host system many of the advantages of GPU simulations \todo{finish}
+Beyond this scale, an additional level of parallelism could be achieved using MPI to distribute GPU-accelerated simulations across multiple HPC nodes.
+While, communication overheads would , NVIDIA's GPUDirect technology allows data to be transferred directly between remote GPUs via compatible network cards.
 
 \section*{Conflict of Interest Statement}
 The authors declare that the research was conducted in the absence of any commercial or financial relationships that could be construed as a potential conflict of interest.
