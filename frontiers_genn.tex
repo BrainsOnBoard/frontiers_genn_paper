@@ -75,7 +75,7 @@ In this paper we use our GeNN code generator to re-implement two circuit-scale p
 We verify the correctness of our GPU simulations against prior results obtained with NEST running on traditional HPC hardware and compare the performance with respect to speed and energy consumption against published data from CPU-based HPC and neuromorphic hardware.
 A full-scale model of a cortical column can be simulated at speeds approaching $0.5\times$ real-time using a single NVIDIA Tesla V100 accelerator -- faster than is currently possible using a CPU based cluster or the SpiNNaker neuromorphic system.
 In addition, we find that, across a range of GPU systems, the energy to solution as well as the energy per synaptic event of the microcircuit simulation is as much as $14\times$ lower than either on SpiNNaker or in CPU-based simulations.
-Besides performance in terms of speed and energy consumption for the actual simulation, it has recenty been found that efficient initialisation of simulations can be crucial for the utility of different hardware substrates.
+Besides performance in terms of speed and energy consumption for the actual simulation, it has recenty been identifird that efficient initialisation of simulations can be crucial for the utility of different hardware substrates, in particular in a research context where repeated runs and parameter scanning are required. 
 In this paper we therefore also introduce the novel parallel initialisation methods of GeNN and demonstrate how they afford further speed and energy advantages.
 
 \tiny
@@ -102,9 +102,9 @@ They found that both architectures achieved the same accuracy in simulation resu
 The lowest energy consumption for NEST was achieved with \num{144} parallel threads when it ran at $4.6\times$ slower than realtime. 
 At this speed SpiNNaker and NEST consumed about the same energy of \SI{6}{\micro\joule} per simulated synaptic event.
 
-Besides measuring the performance in simulation speed, \citet{VanAlbada2018} also identified that \textit{initialising} large-scale models efficiently remains a computational challenge.
+Besides measuring the performance in simulation speed, \citet{VanAlbada2018} also identified that \textit{initialising} large-scale models efficiently remains a computational challenge. 
 The model of a cortical microcircuit developed by \citet{Potjans2012}, for instance, has \num{0.3E9} synapses each of which has a normally distributed synaptic weight and transmission delay, causing a setup time of \SI{10}{\hour} on SpiNNaker.
-This confirms earlier observations \citep{Diamond2018} that prototype neuromorphic systems are not efficient yet in accelerating their initialisation. Both SpiNNaker and a previous generation of the BrainScaleS system spent a significant amount of time and energy initialising network models on a host machine. 
+This confirms earlier observations \citep{Diamond2018} that prototype neuromorphic systems are not efficient yet in accelerating their initialisation: Both SpiNNaker and a previous generation of the BrainScaleS system spent a significant amount of time and energy initialising network models on a host machine. 
 
 These factors suggest that when \textit{developing} SNNs, more flexible accelerators which can accelerate both the construction and initialisation and the simulation of large-scale SNNs are required.
 Field-Programmable Gate Arrays (FPGAs) are devices consisting of a large number of lookup-table based logic blocks, connected using a programmable fabric.
