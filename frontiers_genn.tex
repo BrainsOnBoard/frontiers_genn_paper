@@ -95,16 +95,18 @@ Other neuromorphic systems based on a variety of combinations of digital and ana
 
 While neuromorphic systems offer significant theoretical advantages in terms of power efficiency and simulation speed, this often comes at the expense of flexibility.
 In systems where physical circuit elements are used to model individual neurons and synapses the most obvious restriction is that the physical circuits dictate what neuron models are supported.
-Furthermore these systems suffer from Liebig's law -- that growth is restricted by the scarcest resource rather than the total amount of resources -- in this case\todo{finish thought}
-Even fully-programmable systems such as SpiNNaker suffer from this issue -- more computationally expensive neuron or synapse models leave memory under-utilised and higher degrees of connectivity \todo{something missing here?}.
+Furthermore, in neuromorphic systems of this type, these circuits are instantiated in a fixed ratio (for example 64k synapses to 256 neurons) meaning that Liebig's law dictates that their scalability is limited by the availability of the scarcest of these circuits.
+Even fully-programmable systems such as SpiNNaker suffer from this issue as, for example, handling high incoming spike rates consumes a large number of CPU cycles, reducing the number of neurons that can be simulated on each core.
 Some of these issues are illustrated in a recent publication by \citet{VanAlbada2018} who investigated the comparative performance of simulations of a micro-column model~\citep{Potjans2012} in NEST-based simulations on an HPC cluster and an implementation on the SpiNNaker neuromorphic system.
-They found that both architectures achieved the same accuracy in simulation results when SpiNNaker was run at $20\times$ slower than realtime, while NEST on HPC achieved runtimes of $3\times$ slower than realtime. 
-The lowest energy consumption for NEST was achieved with \num{144} parallel threads when it ran at $4.6\times$ slower than realtime. 
-At this speed SpiNNaker and NEST consumed about the same energy of \SI{6}{\micro\joule} per simulated synaptic event.
+This model required smaller simulation timesteps and denser connectivity than SpiNNaker was designed for meaning that, although SpiNNaker achieved the same accuracy as the HPC system, it had to be run $20\times$ slower than realtime. 
+Running the model this slowly meant that the theoretical energy and performance advantages of using the SpiNNaker system -- which had been previously demonstrated using models more specifically tuned to it's characteristics~\citep{Sharp2012,Sharp2014,Knight2016} -- were lost and the model not only ran faster on the HPC system but also consumed less energy.
+%This was not only slower than NEST running on HPC which achieved runtimes of $3\times$ slower than realtime, but also meant
+%The lowest energy consumption for NEST was achieved with \num{144} parallel threads when it ran at $4.6\times$ slower than realtime. 
+%At this speed SpiNNaker and NEST consumed about the same energy of \SI{6}{\micro\joule} per simulated synaptic event.
 
-Besides measuring the performance in simulation speed, \citet{VanAlbada2018} also identified that \textit{initialising} large-scale models efficiently remains a computational challenge. 
+Besides measuring the performance in simulation speed, \citet{VanAlbada2018} also identified that \textit{initialising} large-scale mdels efficiently remains a computational challenge. 
 The model of a cortical microcircuit developed by \citet{Potjans2012}, for instance, has \num{0.3E9} synapses each of which has a normally distributed synaptic weight and transmission delay, causing a setup time of \SI{10}{\hour} on SpiNNaker.
-This confirms earlier observations \citep{Diamond2018} that prototype neuromorphic systems are not efficient yet in accelerating their initialisation: Both SpiNNaker and a previous generation of the BrainScaleS system spent a significant amount of time and energy initialising network models on a host machine. 
+This confirms earlier observations~\citep{Diamond2018} that prototype neuromorphic systems are not efficient at accelerating their initialisation: Both SpiNNaker and a previous generation of the BrainScaleS system spent a significant amount of time and energy initialising network models on a host machine. 
 
 These factors suggest that when \textit{developing} SNNs, more flexible accelerators which can accelerate both the construction and initialisation and the simulation of large-scale SNNs are required.
 Field-Programmable Gate Arrays (FPGAs) are devices consisting of a large number of lookup-table based logic blocks, connected using a programmable fabric.
