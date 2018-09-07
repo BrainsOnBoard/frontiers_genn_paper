@@ -176,7 +176,7 @@ This would be trivial to implement in CPU code but, without enough shared memory
 It would be possible to use a more complex parallel sorting algorithm such as that proposed by \citet{Awan2016} but, as GPU architectures typically have very high floating point maths throughput, we instead take an alternative approach.
 Rather than sampling directly from $\text{Unif}[0, N_{\text{post}}]$ we sample from its 1st order statistic $\text{Beta}[1, N_{\text{post}}]$ -- essentially the next smallest value.
 In the general case the Beta distribution cannot be sampled from in constant time.
-However, if $X \sim \text{Beta}[1, N_{\text{post}}]$, $1 - X \sim \text{Beta}[N_{\text{post}}, 1]$ and $-ln(1 - X) \sim \text{Exponential}[N_{\text{post}}]$ -- a much simpler problem as the exponential distribution can be sampled in constant time using the inversion method.
+However, if $X \sim \text{Beta}[1, N_{\text{post}}]$, $1 - X \sim \text{Beta}[N_{\text{post}}, 1]$ and $-ln(1 - X) \sim \text{Exponential}[N_{\text{post}}]$ -- a much simpler problem as the exponential distribution can be sampled in constant time using the inversion method~\citep{DevroyeLuc2013}.
 
 Beside this structured connectivity, all synaptic strengths and transmission delays are normally distributed.
 In addition to their synaptic input, each neuron in the network also receives independent Poisson inputs with population-specific rates representing input from adjacent cortical regions.
@@ -233,6 +233,13 @@ Furthermore, the dynamics of neural systems with plasticity operating on biologi
 However, \citeauthor{Morrison2007} argue that it is vital to perform experiments on STDP in models with full-scale connectivity, as simplifying connectivity typically results in fewer, stronger incoming synapses per neuron.
 These stronger synaptic inputs are then likely to increase the correlation between neurons and, because STDP is inherently sensitive to correlated neural activity, this is likely to cause artefacts in the learned synaptic weights.
 On this basis, \citeauthor{Morrison2007} developed a large balanced random network model~\citep{Brunel2000} with \num{90000} excitatory and \num{22500} inhibitory neurons, the scale necessary to achieve realistic connection probabilities of $\approx 0.1$ and number of incoming connections per neuron of $\approx 10000$ ~\citep{braitenberg2013cortex}.
+
+When the density of the synaptic connections is described using a probability of connection $P$, whether a synapse exists between a pair of pre and postsynaptic neurons can be modelled using the Bernoulli distribution $\text{Bern}[P]$.
+While the Bernoulli distribution can be sampled by repeatedly drawing from the uniform distribution $\text{Unif}[0, 1]$ and comparing each sample to $P$, this is innefficient for sparse connectivity.
+Instead we sample from the geometric distribution $\text{Geom}[P]$ which describes how the number of Bernoulli trials required to get a success (i.e. a synapse) is distributed.
+The geometric distribution can be sampled in constant time by inverting the CDF of the equivalent continuous distribution (the exponential distribution) to obtain $\frac{log(\text{Unif}[0, 1])}{log(1 - P)}$~\citep{DevroyeLuc2013}.
+Using this approach, generating fixed probability connectivity can be performed entirely in parallel by initialising each row of connectivity with an independent CUDA thread.
+
 Balanced random networks have been shown to reproduce some of the dynamics seen in the neocortex~\citep{Brunel1999,Brunel2000} and \citeauthor{Morrison2007} showed that adding STDP to such a network does not disrupt these dynamics and weights remain stable.
 For the full description of this model, please refer to \citeauthor{Morrison2007}.
 In the remainder of this section we will concentrate on describing how models with synaptic plasticity are parallelised using GeNN.
