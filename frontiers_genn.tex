@@ -501,7 +501,9 @@ Although upcoming technologies such as third generation High Bandwidth Memory~(H
 As we discussed in the introduction, the computational requirements of training Artificial Neural Networks~(ANNs) of ever-increasing size and complexity has been a major driver in the development of GPU hardware.\todo{cite}
 These applications and the growing need to deploy ready-trained ANNs to perform inference in real time on low-power `edge computing' devices mean that, here to, available memory bandwidth is beginning to limit performance.
 One solution has been to use lower precision \SI{16}{\bit} floating point and even fixed point integer representations for weights~\citep{Micikevicius2017}.
-These `half precision' floating point numbers \todo{say why they're great}
+Using smaller data types not only saves memory and memory bandwidth but, on some newer GPU hardware including the Jetson TX2, each CUDA thread can perform four \SI{8}{\bit} or two \SI{16}{\bit} operations simultaneously -- significantly increasing peak performance.
+While lower precision types are unlikely to provide enough numerical stability for storing neuron state variables, as discussed by \citet{VanAlbada2018}, the \SI{16}{\bit} synaptic weights used by SpiNNaker provide sufficient accuracy for the microcircuit model described in section~\ref{sec:method/microcircuit}.
+GeNN does not currently support these lower-precision types, but we plan on extending the algorithms described in section~\ref{sec:method} to support \SI{16}{\bit} floating point synaptic weights which should offer a significant performance improvement while not sacrificing the flexibility of floating point programming.
 
 In this paper we have only considered single GPU simulations of circuit-scale SNN models.
 However, using supercomputer systems, models with around a billion neurons can now be simulated~\citep{Jordan2018} and computational neuroscientists are beginning to use this capability to investigate the interactions between multiple circuit-scale models.
@@ -510,7 +512,7 @@ Even if half-precision floating point weights were employed, a single GPU would 
 However, systems such as the NVIDIA DGX-2~\todo{cite} are now available which contain several Tesla V100 GPUs, connected through a crossbar with a \SI{900}{\giga\byte\per\second} bisection bandwidth.
 While GeNN does not currently target such multi-GPU systems, because the GPUs in such a system are still all connected to a single host system, many of the advantages of GPU simulations \todo{finish}
 Beyond this scale, an additional level of parallelism could be achieved using MPI to distribute GPU-accelerated simulations across multiple HPC nodes.
-While, communication overheads would , NVIDIA's GPUDirect~\todo{cite} technology allows data to be transferred directly between GPUs via compatible network cards rather than having to go via the host computers main memory.
+While, the communication latencies would , NVIDIA's GPUDirect~\todo{cite} technology allows data to be transferred directly between GPUs via compatible network cards rather than having to go via the host computers main memory.
 
 \subsection{Interactive simulation}
 As discussed in the introduction, one of the major uses of SNN simulations in computational neuroscience is for characterising and exploring the subset of model's parameter space left under-constrained by experimental data.
@@ -524,7 +526,7 @@ With the development of large-scale models such as those discussed in the previo
 
 \citet{Nowke2018} developed a computational steering system for visualising and steering NEST simulations.
 However, when running this system across a CPU-based HPC system, \citeauthor{Nowke2018} found that its scalability was dictated by the amount of data that had to be transferred across the network at each simulation timestep.
-%The next generation of supercomputer systems are being designed specifically to address these issues~\todo{cite lippert 2014 ideally after he sends me a preprint}.
+The next generation of supercomputer systems are being designed specifically to address these issues~\todo{cite Lippert 2014 ideally after he sends me a preprint}.
 However, as discussed in section~\ref{sec:discussion/neurobotics}, GPUs are much more suited to this type of tight interaction between visualisation and simulation as they exist within the host system's memory space allowing data to be exchanged at the speed of the PCI express bus rather than an external network.
 Additionally, because CUDA can interact directly with graphics APIs such as OpenGL, some simple visualisations could be rendered without any interaction with the host computers CPU at all.
 
