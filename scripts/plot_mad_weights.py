@@ -12,11 +12,11 @@ weights = np.fromfile("mad_data/weights.bin", dtype=np.float32)
 weights *= 1000.0
 
 # Calculate weight histogram
-hist, bin_x = np.histogram(weights, bins=40, range=(30.0, 60.0), density=True)
+hist, bin_x = np.histogram(weights, bins=200, density=True)
 
-# Normalise
-#hist = np.divide(hist, len(weights), dtype=float)
-#print np.sum(hist)
+mean = np.average(weights)
+std = np.std(weights)
+print("Min:%f, max:%f, mean:%f, sd:%f" % (np.amin(weights), np.amax(weights), mean, std))
 
 # Convert bin edges to bin centres
 bin_centre_x = bin_x[:-1] + ((bin_x[1:] - bin_x[:-1]) * 0.5)
@@ -29,8 +29,10 @@ pal = sns.color_palette()
 axis.bar(bin_centre_x, hist, width=bin_x[1] - bin_x[0], color=pal[0])
 
 # Plot weight distribution from original paper
+#axis.plot(bin_centre_x, norm.pdf(bin_centre_x, mean, std), color=pal[1])
 axis.plot(bin_centre_x, norm.pdf(bin_centre_x, 45.65, 3.99), color=pal[1])
 
+axis.set_xlim((30.0, 60.0))
 axis.set_xlabel("Weight [pA]")
 axis.set_ylabel("Fraction of synapses")
 
