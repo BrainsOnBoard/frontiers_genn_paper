@@ -126,13 +126,8 @@ In this paper we introduce novel methods for parallel initialisation of SNNs in 
 \label{sec:method}
 \subsection{GeNN}
 \label{sec:method/genn}
-\todo{Make coherent}
-%A different kind of challenge comes from the rapidly developing GPU hardware which necessitates specific optimisations for each specific GPU architecture.
-%Many aspects of this are being taken care of by the Compute Unified Device Architecture (CUDA) application programming interface and nvcc compiler developed by NVIDIA Corporation.
-%CUDA offers an abstraction layer that allows programmers to work in a common programming model of threads, warps and blocks across generations of CUDA enabled devices.
-%However, some details such as parallelisation strategies, block sizes and memory access patterns remain to be optimised for each device by the programmer.
-As described elsewhere~\cite{Yavuz2016}, GeNN is a code-generation based system that generates model- and platform-optimised CUDA (Compute Unified Device Architecture \cite{CUDA}) code for GPU accelerated SNN simulations.
-In brief, in GeNN neuron models are defined by writing a class defining the model parameters and snippets of C-like code that describe how it should be simulated.
+As described by \citet{Yavuz2016}, GeNN is a code-generation based system that generates model- and platform-optimised CUDA (Compute Unified Device Architecture \cite{CUDA}) code for GPU accelerated SNN simulations.
+In brief, GeNN neuron models are defined by writing a class defining the model parameters and snippets of C-like code that describe how it should be simulated.
 For example the following \lstinline{LIF} class describes a leaky integrate-and-fire neuron with normalised units, solved algebraically:
 
 \lstinputlisting[firstline=2,lastline=15]{code_snippets.cc}
