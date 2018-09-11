@@ -190,7 +190,10 @@ Neurons are modelled as leaky integrate-and-fire~(LIF) units with exponentially 
 \end{align}
 %
 Although $V_{j}$ and $I_{s{j}}$ are coupled, in our GeNN model, the continuous terms of the two equations are solved separately such that the synaptic input current $I_{s_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
-As \citet{Rotter1999} describes, this approach leads to a delay of one simulation timestep compared to the exact solution, but this separation is not only attractive from an engineering point-of-view by better encapsulating neurons and synapses, but it also provides a generic way of describing neurons with heterogeneous synaptic input dynamics.\todo{I do not understand this second part of the sentence}
+As \citet{Rotter1999} explain, this approach leads to a delay of one simulation timestep compared to the exact solution.
+However, by separating the solving of these equations, different types of input synapse with different dynamics can be trivially supported.
+For example, while a single exponential may be a good approximation of some inhibitory synapses, for other types of synapse the rise time of the post synaptic potential may be vital~\citep{VanVreeswijk1994}.
+Additionally, from a software engineering point-of-view, separating the solving of these equations improves the encapsulation of neurons and synapses.
 
 Simulating a homogeneous \textit{population} of neurons is an ideal task for a SIMD or SIMT device such as a GPU: the neurons do not communicate with each other and, aside from the relatively rare times that they spike, each neuron will be running exactly the same code.
 This means that they can be trivially parallelised by simulating each neuron on a single thread which fetches the neuron's state variables from global memory into registers at the start of each timestep, then advances the simulation state and writes back the state variables.
@@ -247,7 +250,7 @@ For the full description of this model, please refer to \citeauthor{Morrison2007
 In the remainder of this section we will concentrate on describing how models with synaptic plasticity are parallelised using GeNN.
 
 Similarly to the microcircuit model described in the previous section this model uses LIF neurons with current inputs.
-However, rather than exponentially filtering the incoming synaptic input, this model uses slightly more complex \textit{alpha} synapses \todo{cite} which provide a closer match to the dynamics of biological ion channels:
+However, rather than exponentially filtering the incoming synaptic input, this model uses slightly more complex \textit{alpha} synapses~\citep{Rall1967} which provide a closer match to the dynamics of biological ion channels:
 %
 \begin{align}
     \tau_{syn} \frac{dI_{s_{j}}}{dt} = & x_{s_{j}} - I_{s_{j}} \label{eq:alpha_neuron_input_current_1}\\ 
@@ -477,16 +480,15 @@ Figure~\ref{fig:microcircuit_power} shows the power usage over time for simulati
 
 By integrating the power time series using the \lstinline{numpy.trapz} function we then calculated the energy to solution for each device as well as the energy per synaptic event -- a common measure for comparing the energy efficiency of neuromorphic systems.
 These energy costs are listed in table~\ref{tab:energy_measures} alongside the energy costs presented by \citet{VanAlbada2018} for simulations running on SpiNNaker and a CPU-based cluster.
+Whilst we were unable to measure the energy of the Tesla V100 system directly, Tesla GPUs have built in power monitoring which shows that the Tesla V100 drew a maximum of \SI{88}{\watt} compared to \SI{107}{\watt} for the Tesla K40c.
+As the workstation containing the Tesla K40c drew \SI{218}{\watt} while simulating the model, compared to an idle power draw of \SI{84}{\watt}, we can estimate that the single CPU core being used by the simulation was drawing \SI{27}{\watt} more than when the system was idle.
+Therefore we can estimate that, if a Tesla V100 was attached to the same workstation, the maximum power draw would be reduced to \SI{199}{\watt} suggesting that, based on the reduced simulation time of \SI{22}{\second}, the simulation energy for such a system would be \SI{0.0012}{\kilo\watt\hour} and the energy per synaptic event would be \SI{0.47}{\micro\joule}.
 
 From figure~\ref{fig:microcircuit_power} we can see that even an idling workstation draws on the order of \SI{100}{\watt} and, as \citeauthor{VanAlbada2018} discusses, a single infiniband switch has a TDP of over \SI{200}{\watt}.
 Therefore it is somewhat unsurprising that any accelerator that allows equivalent simulations to be run on fewer nodes would significantly improve energy usage.
 Furthermore, as \citeauthor{VanAlbada2018} discusses, slowing SpiNNaker simulations down to this degree and simulating so few neurons on each processor results in very poor energy efficiency.
 However, in a previous study using a much smaller cortical microcircuit model suffering from none of these issues, \citet{Sharp2012} measured the power usage of a SpiNNaker system and found energy usage corresponding to \SI{0.11}{\micro\joule} per synaptic event.
-This suggests that through \todo{Jetson TX2 not far off!}
-
-Whilst we were unable to measure the energy of the Tesla V100 system directly, Tesla GPUs have built in power monitoring which shows that the Tesla V100 drew a maximum of \SI{88}{\watt} compared to \SI{107}{\watt} for the Tesla K40c.
-As the workstation containing the Tesla K40c drew \SI{218}{\watt} while simulating the model, compared to an idle power draw of \SI{84}{\watt}, we can estimate that the single CPU core being used by the simulation was drawing \SI{27}{\watt} more than when the system was idle.
-Therefore we can estimate that, if a Tesla V100 was attached to the same workstation, the maximum power draw would be reduced to \SI{199}{\watt} meaning that, based on the reduced simulation time of \SI{22}{\second}, the simulation energy for such a system would be \SI{0.0012}{\kilo\watt\hour} and the energy per synaptic event would be \SI{0.47}{\micro\joule}.
+This suggests that although, even fully-programmable neuromorphic systems such as SpiNNaker use less energy than the most energy-efficient GPU, this is only by a margin of around $3-5\times$ when compared to newer GPUs such as the Tesla V100 and the Jetson TX2.
 
 \section{Discussion}
 \subsection{Neurorobotics}
