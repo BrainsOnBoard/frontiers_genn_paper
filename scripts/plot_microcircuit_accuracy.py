@@ -227,8 +227,8 @@ for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in 
                                 sharey=pop_rate_axis_row_sharey[row])
     fig.add_subplot(pop_rate_axis)
     pop_rate_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_rate_axis.transAxes)
-    genn_actor = pop_rate_axis.plot(rate_bin_x, rate_hist, linewidth=0.5)[0]
-    nest_actor =pop_rate_axis.plot(rate_bin_x, nest_rate_hist, linewidth=0.5)[0]
+    nest_actor =pop_rate_axis.plot(rate_bin_x, nest_rate_hist)[0]
+    genn_actor = pop_rate_axis.plot(rate_bin_x, rate_hist, linestyle=":")[0]
     
     # Plot rate histogram
     pop_cv_isi_axis = plt.Subplot(fig, gs_cv_isi_axes[3 - row, col],
@@ -236,8 +236,8 @@ for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in 
                                   sharey=pop_cv_isi_axis_row_sharey[row])
     fig.add_subplot(pop_cv_isi_axis)
     pop_cv_isi_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_cv_isi_axis.transAxes)
-    pop_cv_isi_axis.plot(isi_bin_x, isi_hist, linewidth=0.5)
-    pop_cv_isi_axis.plot(isi_bin_x, nest_isi_hist, linewidth=0.5)
+    pop_cv_isi_axis.plot(isi_bin_x, nest_isi_hist)
+    pop_cv_isi_axis.plot(isi_bin_x, isi_hist, linestyle=":")
 
     # Plot correlation histogram
     pop_corr_axis = plt.Subplot(fig, gs_corr_axes[3 - row, col],
@@ -245,8 +245,8 @@ for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in 
                                 sharey=pop_corr_axis_row_sharey[row])
     fig.add_subplot(pop_corr_axis)
     pop_corr_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_corr_axis.transAxes)
-    pop_corr_axis.plot(corr_bin_x, corr_hist, linewidth=0.5)
-    pop_corr_axis.plot(corr_bin_x, nest_corr_hist, linewidth=0.5)
+    pop_corr_axis.plot(corr_bin_x, nest_corr_hist)
+    pop_corr_axis.plot(corr_bin_x, corr_hist, linestyle=":")
 
     # Remove axis junk
     utils.remove_axis_junk(pop_rate_axis)
