@@ -91,7 +91,7 @@ Neuromorphic systems use dedicated hardware, inspired by aspects of the brain, t
 The SpiNNaker system~\citep{Furber2014}, developed as part of the Human Brain project (HBP) in Manchester, is a neuromorphic computer consisting of up to a million ARM cores, connected with an interconnect topology optimised for spike-like communication.
 The BrainScaleS system developed within HBP at Heidelberg~\citep{Schemmel2017}, uses analog circuit elements rather than digital processors, to emulate the dynamics of point neurons.
 Spikes then propagate between these circuit elements through a digital interconnect network.
-Other neuromorphic systems based on a variety of combinations of digital and analog hardware include the Loihi chip~\citep{Davies2018} developed by Intel, the True North chip~\citep{Merolla2014} built by IBM and the Dynapse system~\cite{Qiao2015} developed at University of Zurich.
+Other neuromorphic systems based on a variety of combinations of digital and analog hardware include the Loihi chip~\citep{Davies2018} developed by Intel, the TrueNorth chip~\citep{Merolla2014} built by IBM and the Dynapse system~\cite{Qiao2015} developed at University of Zurich.
 
 While neuromorphic systems offer significant theoretical advantages in terms of power efficiency and simulation speed, this often comes at the expense of flexibility.
 In systems where physical circuit elements are used to model individual neurons and synapses the most obvious restriction is that the physical circuits dictate what neuron models are supported.
@@ -491,7 +491,17 @@ Therefore we can estimate that, if a Tesla V100 was attached to the same worksta
 \section{Discussion}
 \subsection{Neurorobotics}
 \label{sec:discussion/neurobotics}
-afa
+Neurorobotics involves the development of robots with controllers inspired by the brain, allowing neural function to be studied in an embodied context.
+Neuro robots have been developed with controllers inspired by the mammalian Hippocampus~\citep{Krichmar2005} as well as the honey bee~\citep{Cope2016} and other insects~\citep{Blanchard2000}.
+However computational constraints have meant that these systems have either had to be operated in simulation or that their brain-inspired controllers have had to be simulated externally to the robot. \todo{latency}
+
+The low power requirements and real-time performance of neuromorphic systems make them obvious candidate for building neuro robotics controllers.
+However, in order to interface with the robot's hardware and convert sensor data into spike trains, these systems typically need to be accompanied by a standard CPU.
+For example, \citet{Kreiser2018} developed a path integration model on the Dynapse~\citep{Qiao2015} neuromorphic system which used a Parallela~\citep{Olofsson2015} board to interface with the robot and \citet{Hwu2017} developed a self-driving robot using a spiking convolutional neural network running on a TrueNorth NS1e development board which includes a Zynq SoC~\todo{cite}.
+While both the Dynapse and TrueNorth systems have a negligible power consumption, the NS1e development board draws between \SIrange{2}{3}{\watt}~\citep{Sawada2016} and the Parallela \SI{5}{\watt}, somewhat out-weighing their theoretical advantages over embedded GPUs such as the Jetson TX2 which draws a maximum of \SI{15}{\watt}.
+
+Because SpiNNaker is based on programmable ARM cores which can be used to interface with robot hardware it can be directly interfaced with a variety of robots developed at the Technical University of Munich~\citep{Denk2013}.
+However, the 48 chip SpiNNaker board used on the robot developed by \citeauthor{Conradt2015} is around $10\times$ larger than a Jetson TX2, restricting its use to large ground-based robots whereas the Jetson TX2 is small and light enough to be used on both ground and aerial robots.
 
 \subsection{Further optimisation and GPU architectures}
 Because GPUs architectures do not require the complex centralized structures such as coherent caches which makes simply adding more CPU cores to symmetric multiprocessors difficult~\todo{citation}, it is expected that GPU hardware will continue to scale~\todo{citation}.
@@ -526,7 +536,7 @@ With the development of large-scale models such as those discussed in the previo
 
 \citet{Nowke2018} developed a computational steering system for visualising and steering NEST simulations.
 However, when running this system across a CPU-based HPC system, \citeauthor{Nowke2018} found that its scalability was dictated by the amount of data that had to be transferred across the network at each simulation timestep.
-The next generation of supercomputer systems are being designed specifically to address these issues~\todo{cite Lippert 2014 ideally after he sends me a preprint}.
+The next generation of supercomputer systems are being designed specifically to address these issues~\cite{Lippert2014}.
 However, as discussed in section~\ref{sec:discussion/neurobotics}, GPUs are much more suited to this type of tight interaction between visualisation and simulation as they exist within the host system's memory space allowing data to be exchanged at the speed of the PCI express bus rather than an external network.
 Additionally, because CUDA can interact directly with graphics APIs such as OpenGL, some simple visualisations could be rendered without any interaction with the host computers CPU at all.
 
