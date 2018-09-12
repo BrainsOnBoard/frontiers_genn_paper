@@ -437,7 +437,8 @@ This is partly because our simulations are running with a smaller \SI{0.1}{\mill
 Additionally, in the newer version of GeNN used in this paper, the generation of Poisson noise takes place in the neuron kernel rather than in the separate kernel used by \citeauthor{Yavuz2016}.
 
 In general, as one would expect, the two Tesla GPUs perform best with the newer Tesla V100 system achieving a faster simulation speed than was possible on the CPU-based HPC cluster \citep{VanAlbada2018}.
-However, even the GeForce 1050ti, which is a low-end gaming GPU can simulate the model faster than the SpiNNaker system.
+However even the GeForce 1050ti, which is a low-end gaming GPU, can simulate the model faster than the SpiNNaker system although this system has a much higher overhead than any of the other GPUs.
+We believe that this overhead is likely to be due to a combination of the slower PCI express bus in this machine (PCIe Gen 2 rather than Gen 3) and issues using CUDA on display devices under Windows.
 
 Because the Jetson TX2 is a system-on-chip in which the CPU and GPU cores share the same physical memory, the same blocks of memory can be directly accessed from both CPU and GPU code.
 Therefore, unlike on the other GPU systems benchmarked, spike recording can be implemented without copying data from the GPU to the CPU every time step.
@@ -481,7 +482,7 @@ Additionally, Volta GPUs can now simultaneously execute integer and floating poi
     Power was measured using consumer power measurement device with minimum resolution of \SI{0.1}{\watt} at mains socket.\\
     \textbf{(A)} Tesla K40c in a workstation with a Intel Xeon E5-1620 v2 processor running Ubuntu 16.04 LTS.\\
     \textbf{(B)} GeForce 1050Ti in a desktop PC with an Intel Core i5 750 processor running Windows 7.\\
-    \textbf{(C)} NVIDIA Jetson TX2 development kit running Ubuntu 16.04 LTS in maximum performance mode. \todo{figure out JetPack version}}
+    \textbf{(C)} NVIDIA Jetson TX2 development kit running Ubuntu 16.04 LTS and JetPack 3.2.1 in maximum performance mode.}
     \label{fig:microcircuit_power}
 \end{figure}
 
