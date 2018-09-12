@@ -313,10 +313,43 @@ This has the downside of doubling the memory requirements of connections when ST
     \begin{center}
         \includegraphics[width=85mm]{figures/mad_weights}
     \end{center}
-    \caption{Histogram of the equilibrium synaptic weight distribution calculated after \SI{200}{\second} of simulation time.\todo{2000 would be better}.
-    The solid green line shows the equilibrium synaptic weight distribution obtained by \citet{Morrison2007} ($\mu = 45.65$ and $\sigma = 3.99$).}
+    \caption{Histogram of the equilibrium synaptic weight distribution calculated after \SI{2000}{\second} of simulation.
+    The solid green line shows the gaussian distribution with $\mu_{w} = 46.25$ and $\sigma_{w} = 4.07$.}
     \label{fig:mad_weights}
 \end{figure}
+
+% \begin{table}
+%   \centering
+%   \begin{tabular}{r S S S S S}
+%     \toprule
+%         {Simulation}         & {Mean weight}             & {Weight standard deviation} & {Mean spike rate} & {Covariance of interspike interval} & {Fano factor}\\
+%     \midrule
+%         \citet{Morrison2007}    & 45.65 & 4.07 & 8.8 & 0.88 & 8.5\\
+%         GeNN                    & 46.25 & 3.99 & 8.8 & 0.86 & 8.3\\
+%     \bottomrule
+%   \end{tabular}
+% 
+%   \caption{GPU devices.}
+%   \label{tab:mad_stats}
+% \end{table}
+\begin{table}
+  \centering
+  \begin{tabular}{r S S}
+    \toprule
+        {Statistic}                                     & {Value reported by}       & {Value obtained from} \\
+                                                        & {\citet{Morrison2007}}    & {GeNN simulation} \\
+    \midrule
+        Mean weight [\si{\pico\ampere}]                 & 45.65                     & 46.25 \\
+        Weight standard deviation [\si{\pico\ampere}]   & 3.99                      & 4.07 \\
+        Mean spike rate [\si{\hertz}]                   & 8.8                       & 8.8 \\
+        Covariance of interspike interval               & 0.88                      & 0.86 \\
+        Fano factor                                     & 8.5                       & 8.3 \\
+    \bottomrule
+  \end{tabular}
+
+  \caption{Comparison of statistics reported by \citet{Morrison2007} with those obtained from our GeNN simulations.}
+  \label{tab:mad_stats}
+\end{table}
 
 \section{Results}
 \subsection{Correctness}
@@ -341,8 +374,14 @@ Visually it is clear that the per-population distributions are highly similar an
 Similarly to the KL divergences \citet{VanAlbada2018} reported for their grid-aligned NEST and SpiNNaker simulations, the divergence between the distributions from the GeNN simulations and those produced by NEST running in `precise' mode are comparable in size to the divergences caused by simply changing the seed used for random number generation. \todo{Should we sho the corresponding KL values in the figure???}
 This suggests that using single-precision floating point and summing inputs in a non-deterministic order has a minimal effect on the dynamics of the microcircuit model.
 
-Additionally we will compare the results of simulations of the balanced random network model we describe in section~\ref{sec:method/balanced_random} with those presented by \citet{Morrison2007}.
-\todo{Fiddle more and get these working}
+So as to assess the correctness of our implementation of the balanced random network model described in section~\ref{sec:method/balanced_random}, we simulated the network for \SI{2000}{\second} of biological time and compared the final weight distribution and spike statistics from the last \SI{50}{\second} with those reported by \citet{Morrison2007}.
+These statistics are listed in table~\ref{tab:mad_stats} and the final weight distribution is shown in figure~\ref{fig:mad_weights}.
+The final weight distribution has a small right skew it is otherwise similar to that reported by \citeauthor{Morrison2007}.
+So as to quantify the network dynamics resulting from these synaptic weights, we calculate the mean firing rate and CV ISI of all excitatory neurons in the network.
+The mean firing rate and CV ISI values listed in table~\ref{tab:mad_stats} suggest that our model had settled into a very similar asynchronous-irregular regime to that reported by \citeauthor{Morrison2007}.
+Our model exhibited fast oscillations throughout the simulation and, to quantify the resultant variation in spike rate, we calculated a histogram with \SI{3}{\milli\second} bins from the output spike trains of \num{1000} excitatory neurons.
+By dividing the variance of each bin's spike count by it's mean we calculated a Fano factor which, again, was very simular to that reported by \citeauthor{Morrison2007}.
+These statistical differences could be purely numerical -- due to our use of single-precision floating point and CUDA's approximate exponential and power functions -- or because of subtle differences in the synaptic delay model between GeNN and NEST.
 
 \subsection{Performance}
 \label{sec:results/performance}
@@ -359,7 +398,7 @@ However memory is a harder constraint so, while all of the GPUs listed in table~
                         &                   &                   & {cores}   & {[\si{\giga\byte}]}   & {[\si{\giga\byte\per\second}]}& {[GFLOPS]}\\
     \midrule
         GeForce 1050 Ti & 75                & Pascal            & 768       & 4                     & 112                           & 2100\\
-        Jetson TX2      & 15                & Pascal            & 256       & 4\textsuperscript{1}  & 58.4                          & 750\\
+        Jetson TX2      & 15                & Pascal            & 256       & 8\textsuperscript{1}  & 58.4                          & 750\\
         Tesla K40c      & 235               & Kepler            & 2880      & 12                    & 288                           & 4290\\
         Tesla V100      & 250               & Volta             & 5120      & 16                    & 900                           & 14000\\
     \bottomrule
