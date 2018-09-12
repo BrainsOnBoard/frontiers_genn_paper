@@ -165,8 +165,8 @@ microcircuit_init_data = [("Jetson TX2", "GPU initialisation", 753.284 + 950.965
 
 # Total simulation time, neuron simulation, synapse simulation, postsynaptic learning
 stdp_data = [("Tesla K40c\nBitmask", 529559, 754827, 9149110, 10530000),
-             ("Tesla V100\nBitmask", 100144, 82951.6, 307273, 564826),
-             ("Tesla V100\nRagged", 99346.3, 85975.4, 307433, 567267)]
+             ("Tesla V100\nBitmask", 120379, 206731, 710839, 1118660),
+             ("Tesla V100\nRagged", 120446, 210367, 715422, 1127640)]
 
 plot(microcircuit_init_data, "../figures/microcircuit_init_performance.eps", 2, False,
      None, None, 2, True)
