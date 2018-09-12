@@ -15,10 +15,11 @@ weights *= 1000.0
 min_weight = np.amin(weights)
 max_weight = np.amax(weights)
 mean_weight = np.average(weights)
+median_weight = np.median(weights)
 std_weight = np.std(weights)
 hist, bin_x = np.histogram(weights, bins=np.arange(min_weight, max_weight, 0.75), density=True)
 
-print("Min:%f, max:%f, mean:%f, sd:%f" % (min_weight, max_weight, mean_weight, std_weight))
+print("Min:%f, max:%f, median:%f, mean:%f, sd:%f" % (min_weight, max_weight, median_weight, mean_weight, std_weight))
 
 # Convert bin edges to bin centres
 bin_centre_x = bin_x[:-1] + ((bin_x[1:] - bin_x[:-1]) * 0.5)
@@ -30,9 +31,9 @@ fig, axis = plt.subplots(figsize=(plot_settings.column_width, 90.0 * plot_settin
 pal = sns.color_palette()
 axis.bar(bin_centre_x, hist, width=bin_x[1] - bin_x[0], color=pal[0])
 
-# Plot weight distribution from original paper
-#axis.plot(bin_centre_x, norm.pdf(bin_centre_x, mean, std), color=pal[1])
-axis.plot(bin_centre_x, norm.pdf(bin_centre_x, 45.65, 3.99), color=pal[1])
+# Plot gaussian fit
+axis.plot(bin_centre_x, norm.pdf(bin_centre_x, mean_weight, std_weight), color=pal[1])
+#axis.plot(bin_centre_x, norm.pdf(bin_centre_x, 45.65, 3.99), color=pal[1])
 
 axis.set_xlim((30.0, 60.0))
 axis.set_xlabel("Weight [pA]")
