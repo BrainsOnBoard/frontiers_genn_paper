@@ -164,7 +164,7 @@ microcircuit_init_data = [("Jetson TX2", "GPU initialisation", 753.284 + 950.965
                           ("SpiNNaker", "", 10.0 * 60.0 * 60.0 * 1000.0)]
 
 # Total simulation time, neuron simulation, synapse simulation, postsynaptic learning
-stdp_data = [("Tesla K40m\nBitmask", 435387, 296357, 3925070, 4736610),
+stdp_data = [("Tesla K40c\nBitmask", 529559, 754827, 9149110, 10530000),
              ("Tesla V100\nBitmask", 100144, 82951.6, 307273, 564826),
              ("Tesla V100\nRagged", 99346.3, 85975.4, 307433, 567267)]
 
