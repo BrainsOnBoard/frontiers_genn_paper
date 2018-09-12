@@ -12,11 +12,13 @@ weights = np.fromfile("mad_data/weights.bin", dtype=np.float32)
 weights *= 1000.0
 
 # Calculate weight histogram
-hist, bin_x = np.histogram(weights, bins=200, density=True)
+min_weight = np.amin(weights)
+max_weight = np.amax(weights)
+mean_weight = np.average(weights)
+std_weight = np.std(weights)
+hist, bin_x = np.histogram(weights, bins=np.arange(min_weight, max_weight, 0.75), density=True)
 
-mean = np.average(weights)
-std = np.std(weights)
-print("Min:%f, max:%f, mean:%f, sd:%f" % (np.amin(weights), np.amax(weights), mean, std))
+print("Min:%f, max:%f, mean:%f, sd:%f" % (min_weight, max_weight, mean_weight, std_weight))
 
 # Convert bin edges to bin centres
 bin_centre_x = bin_x[:-1] + ((bin_x[1:] - bin_x[:-1]) * 0.5)
