@@ -513,23 +513,22 @@ Figure~\ref{fig:microcircuit_power} shows the power usage over time for simulati
   \end{tabular}
 
   \caption{Energy cost of simulations.
-  Energy to solution and simulation energy of GPU are calculated using the \lstinline{numpy.trapz} and the simulation energy is divided by the total number of synaptic events processed to obtain the energy per synaptic event.
-  For comparison, simulation energies for SpiNNaker and the NEST simulation with the lowest simulation energy (2 nodes) are read off the figure presented by \citet{VanAlbada2018}.
-  Energies per synaptic event for SpiNNaker and the NEST are those reported by \citet{VanAlbada2018}.\\
+  Energy to solution and simulation energy of GPU are calculated using the \lstinline{numpy.trapz} function and the simulation energy is divided by the total number of synaptic events processed to obtain the energy per synaptic event.
+  For comparison, simulation energies and energies per synaptic event for SpiNNaker and the NEST simulation with the lowest simulation energy (2 nodes) are read off the figure presented by \citet{VanAlbada2018}.
   \textsuperscript{1}~This energy per synaptic event is calculated after the `idle' power of the SpiNNaker system has been taken into account.}
   \label{tab:energy_measures}
 \end{table}
 
-By integrating the power time series using the \lstinline{numpy.trapz} function we then calculated the energy to solution for each device as well as the energy per synaptic event -- a common measure for comparing the energy efficiency of neuromorphic systems.
+By integrating the power time series using the \lstinline{numpy.trapz} function we calculated the energy to solution for each device as well as the energy per synaptic event -- a common measure for comparing the energy efficiency of neuromorphic systems.
 These energy costs are listed in table~\ref{tab:energy_measures} alongside the energy costs presented by \citet{VanAlbada2018} for simulations running on SpiNNaker and a CPU-based cluster.
 Whilst we were unable to measure the energy of the Tesla V100 system directly, Tesla GPUs have built in power monitoring which shows that the Tesla V100 drew a maximum of \SI{88}{\watt} compared to \SI{107}{\watt} for the Tesla K40c.
 As the workstation containing the Tesla K40c drew \SI{218}{\watt} while simulating the model, compared to an idle power draw of \SI{84}{\watt}, we can estimate that the single CPU core being used by the simulation was drawing \SI{27}{\watt} more than when the system was idle.
 Therefore we can estimate that, if a Tesla V100 was attached to the same workstation, the maximum power draw would be reduced to \SI{199}{\watt} suggesting that, based on the reduced simulation time of \SI{22}{\second}, the simulation energy for such a system would be \SI{0.0012}{\kilo\watt\hour} and the energy per synaptic event would be \SI{0.47}{\micro\joule}.
 
-From figure~\ref{fig:microcircuit_power} we can see that even an idling workstation draws on the order of \SI{100}{\watt} and, as \citeauthor{VanAlbada2018} discusses, a single infiniband switch has a TDP of over \SI{200}{\watt}.
+From figure~\ref{fig:microcircuit_power} we can see that even an idling workstation draws on the order of \SI{100}{\watt} and, as \citeauthor{VanAlbada2018} discusses, a single Infiniband switch has a TDP of over \SI{200}{\watt}.
 Therefore it is somewhat unsurprising that any accelerator that allows equivalent simulations to be run on fewer nodes would significantly improve energy usage.
-Furthermore, as \citeauthor{VanAlbada2018} discusses, slowing SpiNNaker simulations down to this degree and simulating so few neurons on each processor results in very poor energy efficiency.
-However, in a previous study using a much smaller cortical microcircuit model suffering from none of these issues, \citet{Sharp2012} measured the power usage of a SpiNNaker system and found energy usage corresponding to \SI{0.11}{\micro\joule} per synaptic event.
+Furthermore, as \citeauthor{VanAlbada2018} discuss, slowing SpiNNaker simulations down to this degree and simulating so few neurons on each processor results in very poor energy efficiency.
+In a previous study using a much smaller cortical microcircuit model suffering from none of these issues, \citet{Sharp2012} measured the power usage of a SpiNNaker system and found that it used approximately \SI{0.11}{\micro\joule} per synaptic event.
 This suggests that although, even fully-programmable neuromorphic systems such as SpiNNaker use less energy than the most energy-efficient GPU, this is only by a margin of around $3-5\times$ when compared to newer GPUs such as the Tesla V100 and the Jetson TX2.
 
 \section{Discussion}
