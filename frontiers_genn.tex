@@ -132,7 +132,7 @@ We then compare to other recent benchmarks of the models \citep{VanAlbada2018} a
 \subsection{GeNN}
 \label{sec:method/genn}
 As described by \citet{Yavuz2016}, GeNN is a code-generation based system that generates model- and platform-optimised CUDA (Compute Unified Device Architecture \cite{CUDA}) code for GPU accelerated SNN simulations.
-In brief, GeNN neuron models are defined by writing a class defining the model parameters and snippets of C-like code that describe how it should be simulated.
+GeNN neuron models are defined by writing a C++ class which defines the model parameters and snippets of C-like code that describe how it should be simulated.
 For example the following \lstinline{LIF} class describes a leaky integrate-and-fire neuron with normalised units, solved algebraically:
 
 \lstinputlisting[firstline=2,lastline=15]{code_snippets.cc}
@@ -143,44 +143,44 @@ The names of model parameters (constant across the entire population) are specif
 Finally, the \lstinline{SET_VARS} macro specifies the names and types of the per-neuron state variables.
 These macros provide some `syntactic sugar' but are entirely optional -- users can instead override the underlying virtual functions themselves.
 In GeNN, synapse models are defined using very similar classes with the option to define code snippets for time-driven and event-driven updates.
-Event-driven updates can be triggered by pre or postsynaptic spikes as well as by custom events for example the pre or postsynaptic neuron's membrane voltages crossing a threshold.
+Event-driven updates can be triggered by pre or postsynaptic spikes as well as by custom events, for example the pre or postsynaptic neuron's membrane voltages crossing a threshold.
 Once the required models have been defined, the values of parameters and initial state variables can be set and \textit{populations} of neurons can be added to a network:
 %
 \lstinputlisting[firstline=17,lastline=20]{code_snippets.cc}
 
 This listing also illustrates how the approach used for defining models now can also be used to define how variables are initialised, a new mechanism added since GeNN 3.xx:
-The membrane voltage \lstinline{V} of our \num{1000} LIF neurons is sampled from the uniform distribution using one of GeNN's built in \textit{variable initialisation snippets}, which are definied in a similar manner to the neuron and synapse code snippets. Using this mechanism allows GeNN to parallelise network initialisation employing the same parallelisation strategies for initialisation on the GPU as for simulating the models.
+The membrane voltage \lstinline{V} of our \num{1000} LIF neurons is sampled from the uniform distribution using one of GeNN's built in \textit{variable initialisation snippets}, which are definied in a similar manner to the neuron and synapse code snippets. Using this mechanism allows GeNN to parallelise network initialisation -- using the same GPU parallelisation strategies it employs for simulating the models.
 This approach is advantageous as it both, removes the need to transfer the model state from the CPU to the GPU and allows the GPU to be used to accelerate potentially costly initialisation operations such as sampling random numbers.
 
 Once network models have been defined using the C++ interface, GeNN will generate the CUDA code to initialise and simulate the network which can then be linked against a simulation loop provided by the user:
 
 \lstinputlisting[firstline=22,lastline=32]{code_snippets.cc}
 
-While this approach allows a lot of flexibility and means that visualisation tools and closed-loop robotics can be tightly coupled to GeNN simulations, when combined with the use of C++ for model definition, this does make using GeNN a somewhat daunting prospect to users more used to Python-based simulators such as Brian~\citep{Stimberg2014} or PyNN~\citep{Davison2008a} or graphical tools such as SpineCreator~\citep{Cope2017}.
-For these users, GeNN can be used as a backend for other other simulators.
-Brian2GeNN~\citep{Stimberg2018} allows models to be defined in Brian 2 and it translates them using code generation into a valid GeNN simulation. 
+While this approach allows a lot of flexibility and means that visualisation tools and closed-loop robotics can be tightly coupled to GeNN simulations, when combined with the use of C++ for model definition, this does make using GeNN a somewhat daunting prospect for users more used to Python-based simulators such as Brian~\citep{Stimberg2014} or PyNN~\citep{Davison2008a} or graphical tools such as SpineCreator~\citep{Cope2017}.
+For these users, GeNN can be used as a backend for other simulators.
+Brian2GeNN~\citep{Stimberg2018} allows models defined in Brian 2 to be translated, using code generation, into a valid GeNN simulation. 
 Using Brian 2's backend device design, using GeNN through Brian2GeNN is as simple as issuing the command \lstinline[language=python]{set_device("brian2genn")} within a standard Brian 2 script. 
-A similar interface exist for SpineCreator and an interface to PyNN~\citep{Davison2008a} is currently being developed.
+A similar interface exist for SpineCreator and an interface to PyNN~\citep{Davison2008a} is currently under development.
 
 \subsection{The cortical microcircuit model}
 \label{sec:method/microcircuit}
 This model of \SI{1}{\milli\metre\cubed} of early-sensory cortex was developed by \citet{Potjans2012} and consists of around \num{80000} neurons, divided into layers 2/3, 4, 5 and 6.
 Each layer is modelled by an excitatory and an inhibitory neuron population.
 Neurons in each population are connected randomly with population-specific densities derived from an extensive review of the anatomical literature resulting in a total of approximately \num{0.3E9} synapses.
+Beside this structured connectivity, all synaptic strengths and transmission delays are normally distributed.
 For a full description of the model please refer to \citeauthor{Potjans2012}.
 In the remainder of the this section we will concentrate on describing the strategies used to parallelise the initialisation and subsequent simulation of this network.
 
 In this model the density of the synaptic connections between a pair of neuronal populations is specified in terms of a total number of random synapses (a \lstinline{FixedNumberTotal} connector in PyNN).
-The first stage in initialising such a connectivity between a presynaptic population with $N_{\text{pre}}$ neurons and a postsynaptic population with $N_{\text{post}}$ neurons is to determine how many of the total synapses $N$ end up in each row by sampling from the multinomial distribution $\text{Mult}[N_{\text{pre}} * N_{\text{post}}, \{P_{row}, P_{row}, \ldots, P_{row}\}]$ where $P_{row} = \frac{N_{\text{post}}}{N}$.
-This operation cannot be efficiently parallelised so must be performed on the host but, once the length of each row is determined, the postsynaptic targets of the synapses can be initialised in parallel by sampling from the discrete uniform distribution $\text{Unif}[0, N_{\text{post}}]$ parallelised across $N_{\text{pre}}$ CUDA threads.
-However, although this works mathematically, so as to improve the locality of memory accesses, synapses should be sorted into ascending order.
+The first stage in initialising such a connectivity between a presynaptic population with $N_{\text{pre}}$ neurons and a postsynaptic population with $N_{\text{post}}$ neurons is to determine how many of the total synapses $N_{\text{syn}}$ end up in each row by sampling from the multinomial distribution $\text{Mult}[N_{\text{pre}} * N_{\text{post}}, \{P_{row}, P_{row}, \ldots, P_{row}\}]$ where $P_{row} = \frac{N_{\text{post}}}{N_{\text{syn}}}$.
+This operation cannot be efficiently parallelised so must be performed on the host but, once the length of each row is determined, the postsynaptic targets of the synapses can be initialised in parallel by sampling from the discrete uniform distribution $\text{Unif}[0, N_{\text{post}}]$ using $N_{\text{pre}}$ CUDA threads.
+While this works mathematically, in order to improve the locality of memory accesses, synapses should be sorted into ascending order.
 This would be trivial to implement in CPU code but, without enough shared memory for each CUDA thread to store a copy of its corresponding row, an in-place sort in global memory would be very slow.
 It would be possible to use a more complex parallel sorting algorithm such as that proposed by \citet{Awan2016} but, as GPU architectures typically have very high floating point maths throughput, we instead take an alternative approach.
 Rather than sampling directly from $\text{Unif}[0, N_{\text{post}}]$ we sample from its 1st order statistic $\text{Beta}[1, N_{\text{post}}]$ -- essentially the next smallest value.
 In the general case the Beta distribution cannot be sampled from in constant time.
-However, if $X \sim \text{Beta}[1, N_{\text{post}}]$, $1 - X \sim \text{Beta}[N_{\text{post}}, 1]$ and $-ln(1 - X) \sim \text{Exponential}[N_{\text{post}}]$ -- a much simpler problem as the exponential distribution can be sampled in constant time using the inversion method~\citep{DevroyeLuc2013}.
+However, if $X \sim \text{Beta}[1, N_{\text{post}}]$, $1 - X \sim \text{Beta}[N_{\text{post}}, 1]$ and therefore $-ln(1 - X) \sim \text{Exponential}[N_{\text{post}}]$ -- a much simpler problem as the exponential distribution can be sampled in constant time using the inversion method~\citep{DevroyeLuc2013}.
 
-Beside this structured connectivity, all synaptic strengths and transmission delays are normally distributed.
 In addition to their synaptic input, each neuron in the network also receives independent Poisson inputs with population-specific rates representing input from adjacent cortical regions.
 Neurons are modelled as leaky integrate-and-fire~(LIF) units with exponentially shaped current inputs:
 %
@@ -189,14 +189,14 @@ Neurons are modelled as leaky integrate-and-fire~(LIF) units with exponentially 
     \tau_{syn} \frac{dI_{s_{j}}}{dt} = & -I_{s_{j}} + \sum_{i=0}^{n} w_{ij} \sum_{t_{i}^{f}}  \delta(t - t_{i}^{f})\label{eq:exp_neuron_input_current}
 \end{align}
 %
-Although $V_{j}$ and $I_{s{j}}$ are coupled, in our GeNN model, the continuous terms of the two equations are solved separately such that the synaptic input current $I_{s_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
+Although $V_{j}$ and $I_{s{j}}$ are coupled, in our GeNN model, the continuous terms of the two equations are solved separately so that the synaptic input current $I_{s_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
 As \citet{Rotter1999} explain, this approach leads to a delay of one simulation timestep compared to the exact solution.
 However, by separating the solving of these equations, different types of input synapse with different dynamics can be trivially supported.
 For example, while a single exponential may be a good approximation of some inhibitory synapses, for other types of synapse the rise time of the post synaptic potential may be vital~\citep{VanVreeswijk1994}.
 Additionally, from a software engineering point-of-view, separating the solving of these equations improves the encapsulation of neurons and synapses.
 
-Simulating a homogeneous \textit{population} of neurons is an ideal task for a SIMD or SIMT device such as a GPU: the neurons do not communicate with each other and, aside from the relatively rare times that they spike, each neuron will be running exactly the same code.
-This means that they can be trivially parallelised by simulating each neuron on a single thread which fetches the neuron's state variables from global memory into registers at the start of each timestep, then advances the simulation state and writes back the state variables.
+Simulating a homogeneous \textit{population} of neurons is an ideal task for a SIMD or SIMT device such as a GPU: the neurons do not communicate with each other and, aside from the relatively rare times that they spike, each neuron will be simulated using exactly the same code path.
+Therefore, neural simulation can be trivially parallelised by simulating each neuron on a single thread that fetches the neuron's state variables from global memory into registers at the start of each timestep, advances the simulation state and writes back the state variables.
 As long as the state variables are laid out correctly in memory, the required memory operations can be \textit{coalesced} so that a \SI{4}{\byte} state variable can be read for \num{32} neurons in a single \SI{128}{\byte} transaction -- the most efficient way to access the global memory.
 %This same parallelism strategy is equally valid for neuron models whose dynamics can only be solved numerically -- the advancing of simulation state simply has to be implemented as for example a Runge-Kutta
 
@@ -210,18 +210,18 @@ As long as the state variables are laid out correctly in memory, the required me
     \label{fig:ragged_matrix}
 \end{figure}
 
-Simulating the sparsely connected synapses between two such populations of neurons is, at first glance, less suitable for GPU parallelism.
+Simulating the sparsely connected synapses between two populations of neurons is, at first glance, less suitable for GPU parallelism.
 However, on modern GPU hardware, this can also be implemented in an efficient manner using the data structures shown in figure~\ref{fig:ragged_matrix}.
-This structure consits of multiple 2D arrays where each row represents the synapses coming from a single presynaptic neuron and has enough columns to contain the largest number of postsynaptic targets any presynaptic neuron connects to.
-One of these 2D arrays is used to contain the indices of the postsynaptic neurons ($i$) and additional arrays are allocated for any individual synaptic state variables such as the synaptic weight~($w_{ij}$) or dendritic delay~($d_{ij}$).
+This structure consists of multiple 2D arrays with rows representing the synapses coming from individual presynaptic neurons and with enough columns to contain the largest number of postsynaptic targets any presynaptic neuron connects to.
+One of these 2D arrays contains the indices of the postsynaptic neurons ($i$) and additional arrays are allocated for any individual synaptic state variables such as the synaptic weight~($w_{ij}$) or dendritic delay~($d_{ij}$).
 Each block of $N_{block}$ CUDA threads (in figure~\ref{fig:ragged_matrix} $N_{block}=4$) is responsible for processing $N_{block}$ columns of the matrix.
-Processing begins by using the $N_{block}$ threads to fetch the indices of $N_{block}$ presynaptic spikes ($i_{0},\ldots,i_{N_{block} - 1}$) and the lengths of the corresponding rows of the matrix ($l_{0},\ldots,l_{N_{block} - 1}$) into shared memory (as these will be accessed by all threads in the block during the next phase).
+Processing begins by using the $N_{block}$ threads to fetch the indices of $N_{block}$ presynaptic spikes ($i_{0},\ldots,i_{N_{block} - 1}$) and the lengths of the corresponding rows of the matrix ($l_{0},\ldots,l_{N_{block} - 1}$) into shared memory (so that these will be accessable to all threads in the block during the next phase).
 Threads are then synchronised and loop through the $N_{block}$ rows with each thread processing the synapse in their column.
-In the case of the simple static synapses described by equation~\ref{eq:exp_neuron_input_current} this processing consists simply of reading the index of the postsynaptic target neuron along with the weight $w_{ij}$ and delay $d_{ij}$ associated with the connection and using an atomic add operation to apply the weight to the correct address in the dendritic delay ring-buffer.\todo{say more}
-This process is then repeated until all incoming spikes are processed.
-While this parallelism strategy may seem counter-intuitive, it typically performs much better than the naïve approach of using one thread per incoming spike as it exposes much more parallelism as well as resulting in perfectly coalesced memory read operations.
-For example, if we consider a population of \num{10000} neurons firing at an average rate of \SI{10}{\hertz}, in a \SI{0.1}{\milli\second} timestep it will only, on average, emit \num{10} spikes in a single timestep.
-However, if this population is connected to another population with the same size with a \SI{10}{\percent} connection probability, the connection matrix will have over \num{1000} columns resulting in 2 orders of magnitude more parallelism being exposed.
+In the case of the simple static synapses described by equation~\ref{eq:exp_neuron_input_current}, this processing simply consists of reading the index of the postsynaptic target neuron along with the weight $w_{ij}$ and delay $d_{ij}$ associated with the connection and using an atomic add operation to apply the weight to the correct address in the dendritic delay ring-buffer.\todo{say more}
+This process is repeated until all incoming spikes are processed.
+While this parallelism strategy may seem counter-intuitive, it typically performs much better than the naïve approach of using one thread per incoming spike as it not only exposes much more parallelism, but also results in perfectly coalesced memory read operations.
+For example, in a simulation with a \SI{0.1}{\milli\second} timestep, a population of \num{10000} neurons firing at an average rate of \SI{10}{\hertz} will only, on average, emit \num{10} spikes in a single timestep.
+However, if this population is connected to another population with of same size with a \SI{10}{\percent} connection probability, the connection matrix will have over \num{1000} columns resulting in 2 orders of magnitude more parallelism being exposed.
 
 \subsection{Balanced random network with spike-timing dependant plasticity}
 \label{sec:method/balanced_random}
