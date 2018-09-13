@@ -32,7 +32,7 @@ pal = sns.color_palette()
 axis.bar(bin_centre_x, hist, width=bin_x[1] - bin_x[0], color=pal[0])
 
 # Plot gaussian fit
-axis.plot(bin_centre_x, norm.pdf(bin_centre_x, mean_weight, std_weight), color=pal[1])
+axis.plot(bin_centre_x, norm.pdf(bin_centre_x, mean_weight, std_weight), color=pal[2])
 #axis.plot(bin_centre_x, norm.pdf(bin_centre_x, 45.65, 3.99), color=pal[1])
 
 axis.set_xlim((30.0, 60.0))
