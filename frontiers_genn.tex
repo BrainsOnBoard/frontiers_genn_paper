@@ -437,7 +437,7 @@ However memory is a harder constraint so, while all of the GPUs listed in table~
     \label{fig:microcircuit_init_performance}
 \end{figure}
 
-We measured the performance of both models by querying the \lstinline{std::chrono::high_resolution_clock} around the simulation loop and by using CUDA's own event timing system~\citep[Section~8.1.2]{NVIDIACorporation2018} to record the time taken by the neuron and synapse simulation kernels as well as the postsynaptic learning kernel in the balanced random network model.
+We measured the performance of both models by querying the \lstinline{std::chrono::high_resolution_clock} around the simulation loop and by using CUDA's own event timing system~\citep[Section~3.2.5.6.2]{NVIDIACorporation2018} to record the time taken by the neuron and synapse simulation kernels as well as the postsynaptic learning kernel in the balanced random network model.
 
 Figure~\ref{fig:microcircuit_performance} shows the simulation times of the microcircuit model running on each GPU for \SI{10}{\second} of biological time, including the times taken by neuron and synapse simulation kernels.
 Compared to the smaller point neuron benchmark presented by \citet{Yavuz2016}, even though each neuron in our model receives up to $10\times$ as many synaptic inputs, the simulation time is more evenly split between the simulation of neurons and synapses.
@@ -540,7 +540,7 @@ However computational constraints have meant that these systems have had to be o
 
 The low power requirements and real-time performance of neuromorphic systems make them obvious candidate for building neuro robotics controllers.
 However, in order to interface with the robot's hardware and convert sensor data into spike trains, these systems typically need to be accompanied by a standard CPU.
-For example, \citet{Kreiser2018} developed a path integration model on the Dynapse~\citep{Qiao2015} neuromorphic system which used a Parallela~\citep{Olofsson2015} board to interface with the robot and \citet{Hwu2017} developed a self-driving robot using a spiking convolutional neural network running on a TrueNorth NS1e development board which includes a Zynq SoC~\todo{cite}.
+For example, \citet{Kreiser2018} developed a path integration model on the Dynapse~\citep{Qiao2015} neuromorphic system which used a Parallela~\citep{Olofsson2015} board to interface with the robot and \citet{Hwu2017} developed a self-driving robot using a spiking convolutional neural network running on a TrueNorth NS1e development board which includes a Zynq SoC~\citep{XilinxInc2018}.
 While both the Dynapse and TrueNorth systems have a negligible power consumption, the NS1e development board draws between \SIrange{2}{3}{\watt}~\citep{Sawada2016} and the Parallela \SI{5}{\watt}, somewhat out-weighing their theoretical advantages over embedded GPUs such as the Jetson TX2 which only draws a maximum of \SI{15}{\watt}.
 
 Because SpiNNaker is based on programmable ARM cores which can be used to interface with robot hardware it can be directly interfaced with a variety of robots developed at the Technical University of Munich~\citep{Denk2013}.
@@ -562,10 +562,10 @@ In this paper we have only considered single GPU simulations of circuit-scale SN
 However, using supercomputer systems, models with up to a billion neurons can now be simulated~\citep{Jordan2018} and computational neuroscientists are beginning to use this capability to investigate the interactions between multiple circuit-scale models.
 For example, \citet{Schmidt2015} developed a model of the Macaque visual cortex consisting of 32 cortical areas, each modelled as a customised version of the model described in section~\ref{sec:method/microcircuit}.
 Even if such a model were implemented using half-precision floating point weights, a single GPU would not have enough memory to simulate such a model.
-However, systems such as the NVIDIA DGX-2~\todo{cite} are now available which contain several Tesla V100 GPUs, connected through a crossbar with a \SI{900}{\giga\byte\per\second} bisection bandwidth.
+However, systems such as the NVIDIA DGX-2~\citep{NVIDIACorporation2018b} are now available which contain several Tesla V100 GPUs, connected through a crossbar with a \SI{900}{\giga\byte\per\second} bisection bandwidth.
 While GeNN does not currently target such multi-GPU systems, because all of their GPUs are connected to a single host system, many of the advantages of GPU simulations \todo{finish}
 Beyond this scale, further parallelism could be achieved by using MPI to distribute GPU-accelerated simulations across multiple HPC nodes.
-While, the communication latencies would, NVIDIA's GPUDirect~\todo{cite} technology allows data to be transferred directly between GPUs via compatible network cards rather than having to go via the host computers main memory.
+While, the communication latencies would, NVIDIA's GPUDirect~~\citep[Section~3.2.5.6.2]{NVIDIACorporation2018} technology allows data to be transferred directly between GPUs via compatible network cards rather than having to go via the host computers main memory.
 
 \subsection{Interactive simulation}
 As discussed in the introduction, one of the major uses of SNN simulations in computational neuroscience is for characterising and exploring the subset of model's parameter space left under-constrained by experimental data.
