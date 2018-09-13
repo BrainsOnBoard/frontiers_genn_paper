@@ -228,24 +228,25 @@ However, if this population is connected to another population with of same size
 The type of one-shot, online learning observed in nature is one of the features of biological neural networks that neuromorphic engineers aspire to emulate.
 Synaptic plasticity -- the family of mechanisms responsible for changing the strength of synaptic connections in response to neural activity -- has been shown to be fundamental to learning~\citep{Nabavi2014} and is therefore a key area of computational neuroscience research.
 Spike Timing Dependant Plasticity~(STDP)~\citep{Bi1998} is a popular theory which postulates that these changes are driven by the difference in timing between presynaptic spikes arriving at a synapse and the times at which the postsynaptic neuron itself spikes.
-In excitatory cortical neurons~\citep{Markram1997} as well as in the Hippocampus~\citep{Bi1998}, synapses at which a presynaptic spike is closely followed by a postsynaptic spike are strengthened, whereas those at which a postsynaptic spike precedes a presynaptic spike are weakened.
+In excitatory cortical~\citep{Markram1997} and Hippocampal~\citep{Bi1998} neurons, synapses at which a presynaptic spike is closely followed by a postsynaptic spike are strengthened, whereas those at which a postsynaptic spike precedes a presynaptic spike are weakened.
 The intuition behind this relationship is that synapses that are implicated in the firing of the postsynaptic neuron are strengthened and those that are irrelevant are weakened.
 
 However, adding STDP to spiking neural network simulations typically increases the computational cost of simulating them significantly. 
 \citet{Morrison2007} reported that adding plasticity to their simulations slowed them down by ``a factor of less than 10'' and \citet{Knight2016b} found that, in the \textbf{best} case, simple STDP plasticity reduced the performance of the SpiNNaker neuromorphic system by approximately $6\times$.
-Furthermore, the dynamics of neural systems with plasticity operating on biologically-plausible time scales take several orders of magnitude more time to stabilise.
+Furthermore, the dynamics of neural systems with plasticity operating on biologically-plausible time scales take several orders of magnitude more time to stabilise meaning that longer simulations are required.
 %Perhaps because of these issues, there are relatively few large-scale network models with synaptic plasticity.
 However, \citeauthor{Morrison2007} argue that it is vital to perform experiments on STDP in models with full-scale connectivity, as simplifying connectivity typically results in fewer, stronger incoming synapses per neuron.
-These stronger synaptic inputs are then likely to increase the correlation between neurons and, because STDP is inherently sensitive to correlated neural activity, this is likely to cause artefacts in the learned synaptic weights.
-On this basis, \citeauthor{Morrison2007} developed a large balanced random network model~\citep{Brunel2000} with \num{90000} excitatory and \num{22500} inhibitory neurons, the scale necessary to achieve realistic connection probabilities of $\approx 0.1$ and number of incoming connections per neuron of $\approx 10000$ ~\citep{braitenberg2013cortex}.
+These stronger synaptic inputs will increase the correlation between neurons and, because STDP is inherently sensitive to correlated neural activity, this is likely to cause artefacts in the learned synaptic weights.
+On this basis, \citeauthor{Morrison2007} developed a large balanced random network model~\citep{Brunel2000} with \num{90000} excitatory and \num{22500} inhibitory neurons: the scale necessary to achieve a realistic number of incoming connections per neuron of $\approx 10000$~\citep{braitenberg2013cortex} with a biologically plausible connection probability of $\approx 0.1$.
 
-When the density of the synaptic connections is described using a probability of connection $P$, whether a synapse exists between a pair of pre and postsynaptic neurons can be modelled using the Bernoulli distribution $\text{Bern}[P]$.
+When the density of the synaptic connections is described using a probability of connection $P$, whether a synapse exists between a pair of pre and postsynaptic neurons can be modelled using the Bernoulli distribution $\text{Bern}[P_{\text{conn}}]$.
 While the Bernoulli distribution can be sampled by repeatedly drawing from the uniform distribution $\text{Unif}[0, 1]$ and comparing each sample to $P$, this is innefficient for sparse connectivity.
-Instead we sample from the geometric distribution $\text{Geom}[P]$ which describes how the number of Bernoulli trials required to get a success (i.e. a synapse) is distributed.
-The geometric distribution can be sampled in constant time by inverting the CDF of the equivalent continuous distribution (the exponential distribution) to obtain $\frac{log(\text{Unif}[0, 1])}{log(1 - P)}$~\citep{DevroyeLuc2013}.
-Using this approach, generating fixed probability connectivity can be performed entirely in parallel by initialising each row of connectivity with an independent CUDA thread.
+Instead we sample from the geometric distribution $\text{Geom}[P_{\text{conn}}]$ which describes how the number of Bernoulli trials required to get a success (i.e. a synapse) is distributed.
+The geometric distribution can be sampled in constant time by inverting the CDF of the equivalent continuous distribution (the exponential distribution) to obtain $\frac{log(\text{Unif}[0, 1])}{log(1 - P_{\text{conn}})}$~\citep{DevroyeLuc2013}.
+Using this approach, generating fixed probability connectivity can be performed entirely in parallel by initialising each row of connectivity using an independent CUDA thread.
 
-Balanced random networks have been shown to reproduce some of the dynamics seen in the neocortex~\citep{Brunel1999,Brunel2000} and \citeauthor{Morrison2007} showed that adding STDP to such a network does not disrupt these dynamics and weights remain stable.
+Balanced random networks have been shown to reproduce some of the dynamics seen in the neocortex~\citep{Brunel1999,Brunel2000}.
+\citeauthor{Morrison2007} showed that adding STDP to such networks does not disrupt these dynamics and, as long as a suitable STDP rule is used, the synaptic weights will settle into a stable unimodal distribution.
 For the full description of this model, please refer to \citeauthor{Morrison2007}.
 In the remainder of this section we will concentrate on describing how models with synaptic plasticity are parallelised using GeNN.
 
@@ -284,33 +285,33 @@ These traces are then used to calculate the magnitude of $\Delta w_{ij}$ when a 
   \Delta w_{ij}^{+}(t_{j}^{f}) & = \lambda w_{0}^{1-\mu} w_{ij}^{\mu} s_{i}(t_{j}^{f})\label{eq:stdp_update_post_pair}
 \end{align}
 %
-In GeNN, if a neuron has fired in the current timestep, its trace variables are updated in the neuron kernel.
-Synaptic depression (equation~\ref{eq:stdp_update_pre_pair}) is applied in the synapse kernel described in the previous section.
+In GeNN, if a neuron has fired in the current timestep, its trace variables are updated in the neuron kernel and synaptic depression (equation~\ref{eq:stdp_update_pre_pair}) is applied in the synapse kernel described in the previous section.
 However applying synaptic potentiation (equation~\ref{eq:stdp_update_post_pair}) is a little more tricky as it needs to be applied to each synapse in the \textbf{column} of the data structure shown in figure~\ref{fig:ragged_matrix} associated with a spiking postsynaptic neuron.
 Sparse matrix data structures seldomly support efficient accesses to both rows and columns, making this a problem for many large-scale SNN simulators.
 
-Some small-scale neuromorphic systems have solved this problem in hardware using custom SRAM memories which allow both column-wise and row-wise accesses~\citep{Seo2011}.
-However, custom SRAMs are expensive in terms of silicon area, so many neuromorphic systems avoid the problem entirely by implementing synaptic plasticity rules based on the postsynaptic membrane voltage rather than the postsynaptic spike times meaning that  no updates triggered by postsynaptic spikes are required~\citep{Frenkel2018,Qiao2015}.
-Intel's Loihi system~\citep{Davies2018} defers all STDP updates triggered by postsynaptic spikes until the end of a ``learning epoch'' after which time they are processed sequentially row by row.
-NEST~\citep{Morrison2007} and SpiNNaker~\citep{Knight2016} both buffer postsynaptic spikes until the next presynaptic spike occurs -- allowing weight updates resulting from spikes to be applied in order without having to make any column-wise accesses to the synaptic matrix. 
+Some small-scale neuromorphic systems have solved this problem in hardware using custom SRAM memories which allow both column and row-wise accesses~\citep{Seo2011}.
+However, custom SRAMs are expensive in terms of silicon area, so many neuromorphic systems avoid the problem entirely by implementing synaptic plasticity rules which use the membrane voltage of the postsynaptic neuron rather its spike times -- meaning that  no updates triggered by postsynaptic spikes are required~\citep{Frenkel2018,Qiao2015}.
+Intel's Loihi system~\citep{Davies2018} takes an alternative approach and defers all STDP updates until the end of a ``learning epoch'' after which time they are processed sequentially row by row.
+NEST~\citep{Morrison2007} and SpiNNaker~\citep{Knight2016} both buffer postsynaptic spikes until the next presynaptic spike occurs -- allowing weight updates triggered by pre and postsynaptic spikes to be applied in order without having to make any column-wise accesses to the synaptic matrix. 
 However this approach makes access to postsynaptic variables difficult as they would need to be buffered for an unbounded length of time until the next presynaptic spike occurs.
 
-Deferring STDP updates ideally requires a dynamic memory structure to store postsynaptic events and, when combined with the subsequent searching within this data structure for events to apply, this approach does not appear to be well suited for GPU implementation.
+Deferring STDP updates ideally requires a dynamic memory structure to store postsynaptic events which, when combined with the need to search through this data structure for events to apply, mean that this approach does not appear to be well-suited for GPU implementation.
 Furthermore, GeNN aims to support a wide range of synaptic plasticity rules with full access to pre and postsynaptic neuron variables.
 Therefore, GeNN builds an additional \textbf{column-wise} sparse matrix using the same data structure shown in figure~\ref{fig:ragged_matrix}, containing indices into the original row-wise arrays containing synaptic weights.
 This has the downside of doubling the memory requirements of connections when STDP is required and additionally, as \citet{Yavuz2016} demonstrated, the resultant non-coalesced accesses to the synaptic matrix reduce performance on lower-end GPUs. \todo{say why it's nevertheless the best solution}
+\todo{Bitmask talk}
 
 \begin{figure}
     \begin{center}
         \includegraphics[width=180mm]{figures/microcircuit_accuracy}
     \end{center}
-    \caption{Spiking output of cortical microcircuit model with Poisson input.\\
+    \caption{Spiking output of cortical microcircuit model with Poisson input.
+    All measures are calculated over the last \SI{9}{\second} of the simulation and histogram bin widths are determined using the Freedman-Diaconis rule.\\
     \textbf{(A)} Raster plot showing spike times (dots) of neurons from each population.
     The spikes of 5\% of neurons (vertical) are shown.\\
     \textbf{(B)} Single-neuron firing rates of all neurons.\\
     \textbf{(C)} CV ISI, a measure of irregularity of all neurons.\\
-    \textbf{(D)} Correlation coefficients between binned spike trains for \num{200} neurons in each population.
-    All measures are calculated over the last \SI{9}{\second} of the simulation and histogram bin widths are determined using the Freedman-Diaconis rule.}
+    \textbf{(D)} Correlation coefficients between binned spike trains for \num{200} neurons in each population.}
     \label{fig:microcircuit_accuracy}
 \end{figure}
 
@@ -318,7 +319,7 @@ This has the downside of doubling the memory requirements of connections when ST
     \begin{center}
         \includegraphics[width=85mm]{figures/mad_weights}
     \end{center}
-    \caption{Histogram of the equilibrium synaptic weight distribution calculated after \SI{2000}{\second} of simulation.
+    \caption{Histogram of the synaptic weight distribution obtained after \SI{2000}{\second} of simulation.
     The solid green line shows the gaussian distribution with $\mu_{w} = 46.25$ and $\sigma_{w} = 4.07$.}
     \label{fig:mad_weights}
 \end{figure}
