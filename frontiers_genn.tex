@@ -363,31 +363,33 @@ This has the downside of doubling the memory requirements of connections when ST
 \citet{VanAlbada2018} performed an in-depth analysis of the correctness of simulations of the microcircuit model described in section~\ref{sec:method/microcircuit} \citep{Potjans2012}  both on the SpiNNaker neuromorphic system and on NEST running in `grid-based' mode.
 The GPU simulations presented in this paper do not face the issues with quantisation which can affect SpiNNaker due to its use of relatively low-precision fixed-point arithmetic.
 However, unlike NEST, our GPU simulations use single rather than double-precision floating point and therefore have the potential for more numerical instability.
-Additionally, the non-associative nature of floating point operations means that, if the results from a large number of parallel threads are summed together in a non-deterministic order, this can lead to large differences between runs due to rounding errors.
+Additionally, the non-associative nature of floating point operations means that, if the results from a large number of parallel threads are summed together in a non-deterministic order, results can differ between runs due to rounding errors.
 \citet{Villa2009} demonstrated this by calculating the sum of \num{28000} double-precision floating point numbers across \num{16000} threads of a CRAY XMT system (which, in this context, has similar properties to a GPU) and found that results varied by up to \SI{24.64}{\percent}.
-However, in this experiment, more numbers were summed than might occur in any of the parallelisation schemes described in section~\ref{sec:method} and it is unclear what absolute errors these reported relative errors correspond to. A more detailed treatment of the expected rounding errors in parallel simulations of SNNs on GPUs will be published elsewhere \citep{Turner2019}. In this section we will focus on confirming the correctness of our simulations using the methodology described by \citet{VanAlbada2018} to compare the results of our microcircuit simulation to those obtained using NEST running in `precise' mode.
+However, in this experiment, more numbers were summed than would occur when using any of the parallelisation schemes described in section~\ref{sec:method} and it is unclear what absolute errors the reported relative errors correspond to. 
+A more detailed treatment of the expected rounding errors in parallel simulations of SNNs on GPUs will be published elsewhere~\citep{Turner2019}. 
+In this section we will focus on confirming the correctness of our simulations of the microcircuit model using the methodology described by \citet{VanAlbada2018} to compare the results to those obtained using NEST running in `precise' mode.
+Additionally we will compare the results of simulations of the balanced random network model to those reported by \citet{Morrison2007}.
 
 While the randomisation of each neuron's initial membrane voltage should reduce any such effects, the first \SI{1}{\second} of spike data from each \SI{10}{\second} simulation is discarded in order to remove any transients.
-We then calculated the average firing rates and the covariance of interspike intervals~(CV ISI) for each neuron in the model throughout the remaining \SI{9}{\second} of spiking data using the Elephant~\citep{Yegenoglu2018} package.
+We then calculated the average firing rates and the covariance of interspike intervals~(CV ISI) for each neuron in the model over the remaining \SI{9}{\second} of the simulation using the Elephant~\citep{Yegenoglu2018} package.
 We also picked \num{200} (this was a trade-off between accuracy and analysis time chosen by \citeauthor{VanAlbada2018}) active neurons from each population, binned their spike trains into \SI{2}{\milli\second} bins (corresponding to the refractory time of the neurons) and calculated the Pearson correlation coefficients matrix between each disjoint pair of neurons.
 
-The same statistics were calculated from a NEST simulation running in `precise' mode.
-Histograms of all three measures were produced using bins calculated with the Freedman-Diaconis rule~\citep{Freedman1981} from the NEST data.
+The same measures were calculated from a NEST simulation running in `precise' mode and histograms of all three measures were produced for both simulations using bins calculated from the NEST data using the Freedman-Diaconis rule~\citep{Freedman1981}.
 The histograms were smoothed with Gaussian kernel density estimation performed using the \lstinline{scipy.stats.gaussian_kde} function with bandwidths of \SI{0.3}{\per\second}, \num{0.04} and \num{0.002} for the average firing rates, CV ISI and correlation respectively.
 
 Figure~\ref{fig:microcircuit_accuracy} shows the results of this analysis.
-Visually it is clear that the per-population distributions are highly similar and, to quantify this, we calculated the Kullback-Leibler~(KL) divergences using the NEST data as the reference.
+Visually it is clear that the per-population distributions are highly similar and, to quantify this, we calculated the Kullback-Leibler~(KL) divergences using the `precise' NEST data as the reference.
 Similarly to the KL divergences \citet{VanAlbada2018} reported for their grid-aligned NEST and SpiNNaker simulations, the divergence between the distributions from the GeNN simulations and those produced by NEST running in `precise' mode are comparable in size to the divergences caused by simply changing the seed used for random number generation. \todo{Should we sho the corresponding KL values in the figure???}
 This suggests that using single-precision floating point and summing inputs in a non-deterministic order has a minimal effect on the dynamics of the microcircuit model.
 
-So as to assess the correctness of our implementation of the balanced random network model described in section~\ref{sec:method/balanced_random}, we simulated the network for \SI{2000}{\second} of biological time and compared the final weight distribution and spike statistics from the last \SI{50}{\second} with those reported by \citet{Morrison2007}.
-These statistics are listed in table~\ref{tab:mad_stats} and the final weight distribution is shown in figure~\ref{fig:mad_weights}.
-The final weight distribution has a small right skew it is otherwise similar to that reported by \citeauthor{Morrison2007}.
-So as to quantify the network dynamics resulting from these synaptic weights, we calculate the mean firing rate and CV ISI of all excitatory neurons in the network.
+To assess the correctness of our implementation of the balanced random network model described in section~\ref{sec:method/balanced_random}, we simulated the network for \SI{2000}{\second} of biological time and compared the final weight distribution and the statistics of the last \SI{50}{\second} of spiking activity with those reported by \citet{Morrison2007}.
+The calculated statistics are listed in table~\ref{tab:mad_stats} and the final weight distribution is shown in figure~\ref{fig:mad_weights}.
+The final weight distribution has a small right skew, but is otherwise similar to that reported by \citeauthor{Morrison2007}.
+To quantify the network dynamics resulting from these synaptic weights, we calculate the mean firing rate and CV ISI of all the excitatory neurons in the network using the Elephant~\citep{Yegenoglu2018} package.
 The mean firing rate and CV ISI values listed in table~\ref{tab:mad_stats} suggest that our model had settled into a very similar asynchronous-irregular regime to that reported by \citeauthor{Morrison2007}.
 Our model exhibited fast oscillations throughout the simulation and, to quantify the resultant variation in spike rate, we calculated a histogram with \SI{3}{\milli\second} bins from the output spike trains of \num{1000} excitatory neurons.
 By dividing the variance of each bin's spike count by it's mean we calculated a Fano factor which, again, was very simular to that reported by \citeauthor{Morrison2007}.
-These statistical differences could be purely numerical -- due to our use of single-precision floating point and CUDA's approximate exponential and power functions -- or because of subtle differences in the synaptic delay model between GeNN and NEST.
+The small differences between these statistical measure could be due to purely numerical reasons -- our use of single-precision floating point and CUDA's approximate exponential and power functions -- or because of subtle differences in the synaptic delay model between GeNN and NEST.
 
 \subsection{Performance}
 \label{sec:results/performance}
@@ -399,9 +401,9 @@ However memory is a harder constraint so, while all of the GPUs listed in table~
   \centering
   \begin{tabular}{r S r S S S S}
     \toprule
-        {Model}         & {TDP}             & {Architecture}    & {Num.}    & {Memory}              & {Memory}                      & {Max single-precision}\\
-                        & {[\si{\watt}]}    &                   & {CUDA}    & {capacity}            & {bandwidth}                   & {performance}\\
-                        &                   &                   & {cores}   & {[\si{\giga\byte}]}   & {[\si{\giga\byte\per\second}]}& {[GFLOPS]}\\
+        {Model}         & {Thermal Design}  & {Architecture}    & {Num.}    & {Memory}              & {Memory}                      & {Max single-precision}\\
+                        & {Power (TDP)}     &                   & {CUDA}    & {capacity}            & {bandwidth}                   & {performance}\\
+                        & {[\si{\watt}]}    &                   & {cores}   & {[\si{\giga\byte}]}   & {[\si{\giga\byte\per\second}]}& {[GFLOPS]}\\
     \midrule
         GeForce 1050 Ti & 75                & Pascal            & 768       & 4                     & 112                           & 2100\\
         Jetson TX2      & 15                & Pascal            & 256       & 8\textsuperscript{1}  & 58.4                          & 750\\
