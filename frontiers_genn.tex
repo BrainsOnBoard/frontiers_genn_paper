@@ -84,8 +84,8 @@ In this paper we therefore also introduce the novel parallel initialisation meth
 
 \section{Introduction}
 Currently, the most common way to accelerate large-scale spiking neural network (SNN) simulations is to use CPU-based HPC clusters running software simulators such as NEST~\citep{Gewaltig2007} or parallel Neuron~\citep{carnevale2006neuron}.
-However, spiking neural networks simulations have a large amount of \textit{fine-grained} parallelism \todo{I realise that I actually have no understanding what ``fine-grained'' referes to here?} which parallel CPU programming paradigms such as multithreading are not well-suited to exploiting.
-Furthermore, although the timestep based updates of neuron and synapse dynamics are trivially parallelisable, simulating an SNN also involves the low-latency propagation of spike events between neurons along synaptic connections which is not a good match for standard interconnect protocols such as MPI.
+However, CPU-based systems are not well-suited to exploiting the large amounts of fine-grained parallelism present in spiking neural network simulations.
+Furthermore, in order to reduce simulation times, models must be spread across large numbers of compute nodes meaning that performance is ultimately constrained by the latency of the MPI interconnect.
 
 Neuromorphic systems use dedicated hardware, inspired by aspects of the brain, to address the problems of parallelism and efficient spike communication.
 The SpiNNaker system~\citep{Furber2014}, developed as part of the Human Brain project (HBP) in Manchester, is a neuromorphic computer consisting of up to a million ARM cores, connected with an interconnect topology optimised for spike-like communication.
