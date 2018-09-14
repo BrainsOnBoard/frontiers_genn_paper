@@ -568,28 +568,29 @@ For example, \citet{Kreiser2018} developed a path integration model on the Dynap
 While both the Dynapse and TrueNorth systems have a negligible power consumption, the NS1e development board draws between \SIrange{2}{3}{\watt}~\citep{Sawada2016} and the Parallela \SI{5}{\watt}, somewhat out-weighing their theoretical advantages over embedded GPUs such as the Jetson TX2 which only draws a maximum of \SI{15}{\watt}.
 
 Because SpiNNaker is built from programmable ARM cores, these can be repurposed for interfacing with robot hardware directly, for example using the interface board developed by \citet{Denk2013} which supports a variety of robots developed at the Technical University of Munich.
-However, the 48 chip SpiNNaker board used on the robot developed by \citeauthor{Conradt2015} is around $10\times$ larger than a Jetson TX2, restricting its use to large ground-based robots whereas the Jetson TX2 is small and light enough to be used on both ground and aerial robots.
+However, the 48 chip SpiNNaker board used on the robot developed by \citet{Conradt2015} is around $10\times$ larger than a Jetson TX2, restricting its use to large ground-based robots whereas the Jetson TX2 is small and light enough to be used on both ground and aerial robots.
 
 \subsection{Further optimisation and GPU architectures}
-Because GPUs architectures do not require the complex centralized structures such as coherent caches which makes simply adding more CPU cores to symmetric multiprocessors difficult~\todo{citation}, it is expected that GPU hardware will continue to scale~\todo{citation}.
-However, when simulating SNNs, a GPU's performance is likely to be constrained by its memory bandwidth.
+The increase in the peak performance of the Tesla K40c (released in 2013) and the Tesla V100 (released in 2017) listed in table~\ref{tab:gpu_devices} illustrate just how much GPUs have taken advantage of Moore's law scaling.
+However, the modelling study performed by \citet{Esmaeilzadeh2012} indicates that this scaling of GPU performance will begin to slow as the `power wall' is reached.
+Furthermore, when simulating SNNs, a GPU's performance is likely to be constrained by its memory bandwidth.
 Although upcoming technologies such as third generation High Bandwidth Memory~(HBM3) are likely to offer increases in memory bandwidth in the future, alternative strategies are still going to be required to better utilise current GPUs for SNN simulation as well as to increase the size of models that can be simulated using embedded GPUs such as the Jetson TX2 in the type of neurorobotic applications discussed in the previous section.
 
 As we discussed in the introduction, the computational requirements of training Artificial Neural Networks~(ANNs) of ever-increasing size and complexity has been a major driver in the development of GPU hardware.\todo{cite}
-These applications and the growing need to deploy ready-trained ANNs to perform inference in real time on low-power `edge computing' devices mean that, here to, available memory bandwidth is beginning to limit performance.
+These applications and the growing need to deploy ready-trained ANNs to perform inference in real time on low-power `edge computing' devices mean that, here too, available memory bandwidth is beginning to limit performance.
 One solution has been to use lower precision \SI{16}{\bit} floating point and even fixed point integer representations for weights~\citep{Micikevicius2017}.
 Using smaller data types not only saves memory and memory bandwidth but, on some newer GPU hardware including the Jetson TX2, each CUDA thread can perform four \SI{8}{\bit} or two \SI{16}{\bit} operations simultaneously -- significantly increasing peak performance.
 While lower precision types are unlikely to provide enough numerical stability for storing neuron state variables, as discussed by \citet{VanAlbada2018}, the \SI{16}{\bit} fixed-point synaptic weights used by SpiNNaker provide sufficient accuracy for the microcircuit model described in section~\ref{sec:method/microcircuit}.
 While GeNN does not currently support these lower-precision types, we plan on extending the algorithms described in section~\ref{sec:method} to support \SI{16}{\bit} floating point synaptic weights which should offer a significant performance improvement while not sacrificing the convenience of floating point programming.
 
-In this paper we have only considered single GPU simulations of circuit-scale SNN models.
+In this paper we have only considered single-GPU simulations of circuit-scale SNN models.
 However, using supercomputer systems, models with up to a billion neurons can now be simulated~\citep{Jordan2018} and computational neuroscientists are beginning to use this capability to investigate the interactions between multiple circuit-scale models.
 For example, \citet{Schmidt2015} developed a model of the Macaque visual cortex consisting of 32 cortical areas, each modelled as a customised version of the model described in section~\ref{sec:method/microcircuit}.
 Even if such a model were implemented using half-precision floating point weights, a single GPU would not have enough memory to simulate such a model.
 However, systems such as the NVIDIA DGX-2~\citep{NVIDIACorporation2018b} are now available which contain several Tesla V100 GPUs, connected through a crossbar with a \SI{900}{\giga\byte\per\second} bisection bandwidth.
-While GeNN does not currently target such multi-GPU systems, because all of their GPUs are connected to a single host system, many of the advantages of GPU simulations \todo{finish}
+While GeNN does not currently target such multi-GPU systems, because all of their GPUs are connected to a single host system and are all mapped into its memory space, they maintain many of the advantages of the single-GPU simulations discussed in this paper.
 Beyond this scale, further parallelism could be achieved by using MPI to distribute GPU-accelerated simulations across multiple HPC nodes.
-While, the communication latencies would, NVIDIA's GPUDirect~\citep{NVIDIACorporation2018c} technology allows data to be transferred directly between GPUs via compatible network cards rather than having to go via the host computers main memory.
+While using MPI would eventually result in simulations become communication bound , NVIDIA's GPUDirect~\citep{NVIDIACorporation2018c} technology allows data to be transferred directly between GPUs via compatible network cards rather than having to go via the host computers main memory.
 
 \subsection{Interactive simulation}
 As discussed in the introduction, one of the major uses of SNN simulations in computational neuroscience is for characterising and exploring the subset of model's parameter space left under-constrained by experimental data.
