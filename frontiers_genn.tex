@@ -110,8 +110,8 @@ This confirms earlier observations~\citep{Diamond2018} that prototype neuromorph
 
 These factors suggest that when \textit{developing} SNNs, more flexible accelerators which can accelerate the construction, initialisation and simulation of large-scale SNNs are required.
 Field-Programmable Gate Arrays (FPGAs) are devices consisting of a large number of lookup-table based logic blocks, connected using a programmable fabric.
-While FPGAs have been used to develop various SNN accelerators~\citep{Moore2012,Wang2018}, \citet{Naylor2013} showed that comparable performance can be obtained by building a more flexible programmable FPGA accelerator. \todo{I don't understand the logic of this sentence}
-However, although FPGA-based systems of this sort may have potential as more flexible SNN accelerators, FPGAs are not yet commonplace in workstations and their lack of hardware support for floating point arithmetic makes them ill-suited for simulating some classes of neuron and synapse models. 
+FPGAs have been used to build various `hard-wired' SNN accelerators~\citep{Moore2012,Wang2018}, but \citet{Naylor2013} showed that they can also be used to develop more flexible, programmable accelerators with comparable performance.
+However, although systems of this sort could theoretically be used to accelerate the construction and initialisation of SNNs as well as their simulation, FPGAs are not yet commonplace in workstations and their lack of hardware support for floating point arithmetic makes them ill-suited for simulating some classes of neuron and synapse models. 
 
 Alternatively, GPU architectures are designed for high throughput applications with large amounts of fine-grained parallelism.
 They swap the large coherent caches, relied upon by modern CPU architectures to improve performance, for large numbers of vector floating point arithmetic units connected to high-bandwidth external memory. 
