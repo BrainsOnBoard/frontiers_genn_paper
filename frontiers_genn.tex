@@ -117,7 +117,7 @@ Alternatively, GPU architectures are designed for high throughput applications w
 They swap the large coherent caches, relied upon by modern CPU architectures to improve performance, for large numbers of vector floating point arithmetic units connected to high-bandwidth external memory. 
 While originally designed for embarassingly parallel graphics processing, GPU acceleration has also provied to be a good fit for accelerating the training of deep learning systems and is used extensively in modern AI systems. 
 The application of GPU acceleration to SNN simulations is also promising and there are a number of active SNN simulator projects which target GPUs. 
-Carlsim~\citep{Chou2018} is a C++ based simulator running on NVIDIA CUDA with similar goals as GeNN but is not based on code generation and hence less flexible in the types of models it can support.
+CARLsim~\citep{Chou2018} is a C++ based simulator using NVIDIA CUDA but, as CARLsim is not based on code generation, it is difficult for users without CUDA expertise to add new neuron and synapse models.
 EDLUT~\citep{Garrido2011} was initially an event-driven CPU based simulator for SNNs, but has evolved into a hybrid CPU/GPU system with support for both time and event-driven models.
 ANNarchy~\citep{Vitay2015} is a code generation based simulator which translates Python model descriptions into multi-core CPU or GPU code with a focus on hybrid rate- and spiking models.
 Other simulators that have seen less development in the last 2-4 years include NCS6~\citep{Hoang2013}, Myriad~\citep{Rittner2016}, and NeMo~\citep{Fidjeland2009} (see \citet{Brette2012} for a review).
