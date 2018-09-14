@@ -590,7 +590,8 @@ Even if such a model were implemented using half-precision floating point weight
 However, systems such as the NVIDIA DGX-2~\citep{NVIDIACorporation2018b} are now available which contain several Tesla V100 GPUs, connected through a crossbar with a \SI{900}{\giga\byte\per\second} bisection bandwidth.
 While GeNN does not currently target such multi-GPU systems, because all of their GPUs are connected to a single host system and are all mapped into its memory space, they maintain many of the advantages of the single-GPU simulations discussed in this paper.
 Beyond this scale, further parallelism could be achieved by using MPI to distribute GPU-accelerated simulations across multiple HPC nodes.
-While using MPI would eventually result in simulations become communication bound , NVIDIA's GPUDirect~\citep{NVIDIACorporation2018c} technology allows data to be transferred directly between GPUs via compatible network cards rather than having to go via the host computers main memory.
+While using MPI would lead to simulation becoming communication bound, as is currently the case with CPU simulations, fewer more powerful GPU-equipped nodes should act to reduce this as well as reducing power usage. 
+Additionally, communication overheads could be reduced by using NVIDIA's GPUDirect~\citep{NVIDIACorporation2018c} technology, allowing data to be transferred directly between remote GPUs via compatible network cards.
 
 \subsection{Interactive simulation}
 As discussed in the introduction, one of the major uses of SNN simulations in computational neuroscience is for characterising and exploring the subset of model's parameter space left under-constrained by experimental data.
