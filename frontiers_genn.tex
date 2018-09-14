@@ -75,7 +75,7 @@ In this paper we use our GeNN code generator to re-implement two circuit-scale p
 We verify the correctness of our GPU simulations against prior results obtained with NEST running on traditional HPC hardware and compare the performance with respect to speed and energy consumption against published data from CPU-based HPC and neuromorphic hardware.
 A full-scale model of a cortical column can be simulated at speeds approaching $0.5\times$ real-time using a single NVIDIA Tesla V100 accelerator -- faster than is currently possible using a CPU based cluster or the SpiNNaker neuromorphic system.
 In addition, we find that, across a range of GPU systems, the energy to solution as well as the energy per synaptic event of the microcircuit simulation is as much as $14\times$ lower than either on SpiNNaker or in CPU-based simulations.
-Besides performance in terms of the speed and energy consumption of the actual simulation, it has recently been identified that efficient initialisation of simulations can be crucial for the utility of different hardware substrates, in particular in a research context where repeated runs and parameter-space exploration are required. 
+Besides performance in terms of the speed and energy consumption of the simulation, it has recently been identified that efficient initialisation of the model is a crucial concern, particularly in a research context where repeated runs and parameter-space exploration are required. 
 Therefore, in this paper, we also introduce some of the novel parallel initialisation methods implemented in the latest version of GeNN and demonstrate how they can enable further speed and energy advantages.
 
 \tiny
