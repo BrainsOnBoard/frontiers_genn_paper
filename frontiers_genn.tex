@@ -202,9 +202,12 @@ As long as the state variables are laid out correctly in memory, the required me
 
 \begin{figure}
     \begin{center}
-        \includegraphics[width=118mm]{figures/ragged_matrix}
+        \includegraphics{figures/ragged_matrix}
     \end{center}
     \caption{GPU parallelism of sparse synaptic matrix processing across two thread blocks each with \num{4} threads.
+    $i_{0},\ldots,i_{3}$ contain the indices of presynaptic spikes.
+    $l_{i_{0}},\ldots,l_{i_{3}}$ contain the lengths of the corresponding matrix rows.
+    $j$ contains the indices of the postsynaptic target neurons.
     Snaking lines indicate CUDA threads.
     Hatching indicates padding entries.}
     \label{fig:ragged_matrix}
@@ -213,9 +216,9 @@ As long as the state variables are laid out correctly in memory, the required me
 Simulating the sparsely connected synapses between two populations of neurons is, at first glance, less suitable for GPU parallelism.
 However, on modern GPU hardware, this can also be implemented in an efficient manner using the data structures shown in figure~\ref{fig:ragged_matrix}.
 This structure consists of multiple 2D arrays with rows representing the synapses coming from individual presynaptic neurons and with enough columns to contain the largest number of postsynaptic targets any presynaptic neuron connects to.
-One of these 2D arrays contains the indices of the postsynaptic neurons ($i$) and additional arrays are allocated for any individual synaptic state variables such as the synaptic weight~($w_{ij}$) or dendritic delay~($d_{ij}$).
+One of these 2D arrays contains the indices of the postsynaptic neurons ($j$) and additional arrays are allocated for any individual synaptic state variables such as the synaptic weight~($w_{ij}$) or dendritic delay~($d_{ij}$).
 Each block of $N_{block}$ CUDA threads (in figure~\ref{fig:ragged_matrix} $N_{block}=4$) is responsible for processing $N_{block}$ columns of the matrix.
-Processing begins by using the $N_{block}$ threads to fetch the indices of $N_{block}$ presynaptic spikes ($i_{0},\ldots,i_{N_{block} - 1}$) and the lengths of the corresponding rows of the matrix ($l_{0},\ldots,l_{N_{block} - 1}$) into shared memory (so that these will be accessable to all threads in the block during the next phase).
+Processing begins by using the $N_{block}$ threads to fetch the indices of $N_{block}$ presynaptic spikes ($i_{0},\ldots,i_{N_{block} - 1}$) and the lengths of the corresponding rows of the matrix ($l_{i_{0}},\ldots,l_{i_{N_{block} - 1}}$) into shared memory (so that these will be accessable to all threads in the block during the next phase).
 Threads are then synchronised and loop through the $N_{block}$ rows with each thread processing the synapse in their column.
 In the case of the simple static synapses described by equation~\ref{eq:exp_neuron_input_current}, this processing simply consists of reading the index of the postsynaptic target neuron along with the weight $w_{ij}$ and delay $d_{ij}$ associated with the connection and using an atomic add operation to apply the weight to the correct address in the dendritic delay ring-buffer.\todo{say more}
 This process is repeated until all incoming spikes are processed.

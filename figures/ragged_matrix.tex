@@ -8,7 +8,8 @@
 % #3 - max cols
 % #4 - num rows
 % #5 - row lengths
-\newcommand{\drawBlock}[5]{%
+% #6 - start col
+\newcommand{\drawBlock}[6]{%
     \pgfmathtruncatemacro{\matrixWidth}{#1 * #3}
     \pgfmathtruncatemacro{\matrixHeight}{#1 * #4}
     \pgfmathtruncatemacro{\lastCol}{#3 - 1}
@@ -16,13 +17,15 @@
     
     % Draw ragged matrix grid
     \draw[step=#1 mm] (0, 0) grid (\matrixWidth mm, \matrixHeight mm);
+    \node at ({\matrixWidth mm / 2}, -3mm) {Global memory};
     
     % Draw row length grid
     \draw[step=#1 mm, shift={({-#2 mm - (2 * #1 mm)}, 0)}] 
         (0, 0) 
         grid 
         (#1 * 2mm, \matrixHeight mm);
-        
+    \node[rotate=90] at ({-#2 mm - (2 * #1 mm) - 3mm}, {\matrixHeight mm / 2}) {Shared memory};
+    
     % Draw row padding
     \foreach[count=\i] \r in {#5} {
         \draw[pattern=north west lines] 
@@ -39,10 +42,17 @@
             +(0, 10mm);
     }
     
-    % Label each presynaptic index and row length
-    \foreach \i in {0,...,\lastRow} {
-        \node at ({-#2 mm - (1.5 * #1 mm)}, {((\lastRow - \i) + 0.5) * #1 mm}){$i_{\i}$};
-        \node at ({-#2 mm - (0.5 * #1 mm)}, {((\lastRow - \i) + 0.5) * #1 mm}){$l_{\i}$};
+    % Loop through row lengths
+    \foreach[count=\i] \r in {#5} {
+        \pgfmathtruncatemacro{\topDownI}{#4 - \i}
+        \node at ({-#2 mm - (1.5 * #1 mm)}, {(\i - 0.5) * #1 mm}){$i_{\topDownI}$};
+        \node at ({-#2 mm - (0.5 * #1 mm)}, {(\i - 0.5) * #1 mm}){$l_{i_{\topDownI}}$};
+        
+        \pgfmathtruncatemacro{\lastActiveCol}{\r - 1}
+        \foreach \j in {0,...,\lastActiveCol} {
+            \pgfmathtruncatemacro{\offsetCol}{\j + #6}
+            \node at ({(\j + 0.5) * #1 mm}, {(\i - 0.5) * #1 mm}) {$j_{i_{\topDownI} \offsetCol}$};
+        }
     }
 }
 \begin{document}
@@ -51,25 +61,13 @@
     \def\pad{5}
     \def\maxCols{4}
     \def\numRows{4}
-%     \def\numPost{10}
-%     \pgfmathtruncatemacro{\postOffset}{\grid * -2.25}
-%     \pgfmathtruncatemacro{\lastPost}{\numPost - 1}
-%     % Draw postsynaptic neuron grid
-%     \draw[step=\grid mm, shift={(\postOffset mm, {-\pad mm - \grid mm})}]
-%         (0, 0)
-%         grid
-%         (\grid * \numPost mm, \grid mm);
-    % Label postsynaptic inputs
-%     \foreach \j in {0,...,\lastPost} {
-%         \node at ({\postOffset mm + ((\j + 0.5) * \grid mm)}, {-\pad mm - (\grid mm / 2)}){$I_{s_{\j}}$};
-%     }
-%     
+
     %--------------------------------------------------------
     % Block 1
     %--------------------------------------------------------
     \node (block_1) at (0, 0){
         \begin{tikzpicture}
-            \drawBlock{\grid}{\pad}{\maxCols}{\numRows}{4, 4, 4, 4}{}
+            \drawBlock{\grid}{\pad}{\maxCols}{\numRows}{4, 4, 4, 4}{0}{}
         \end{tikzpicture}
     };
 
@@ -78,7 +76,7 @@
     %--------------------------------------------------------
     \node (block_2) at ({(\grid mm * (\maxCols + 2) ) + (3mm *\pad)}, 0){
         \begin{tikzpicture}
-            \drawBlock{\grid}{\pad}{\maxCols}{\numRows}{3, 4, 1, 2}{}
+            \drawBlock{\grid}{\pad}{\maxCols}{\numRows}{3, 4, 1, 2}{4}{}
         \end{tikzpicture}
     };
 \end{tikzpicture}
