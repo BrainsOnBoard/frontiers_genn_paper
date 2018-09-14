@@ -289,15 +289,16 @@ These traces are then used to calculate the magnitude of $\Delta w_{ij}$ when a 
   \Delta w_{ij}^{+}(t_{j}^{f}) & = \lambda w_{0}^{1-\mu} w_{ij}^{\mu} s_{i}(t_{j}^{f})\label{eq:stdp_update_post_pair}
 \end{align}
 %
-In GeNN, if a neuron has fired in the current timestep, its trace variables are updated in the neuron kernel and synaptic depression (equation~\ref{eq:stdp_update_pre_pair}) is applied in the synapse kernel described in the previous section.
-However applying synaptic potentiation (equation~\ref{eq:stdp_update_post_pair}) is a little more tricky as it needs to be applied to each synapse in the \textbf{column} of the data structure shown in figure~\ref{fig:ragged_matrix} associated with a spiking postsynaptic neuron.
-Sparse matrix data structures seldomly support efficient accesses to both rows and columns, making this a problem for many large-scale SNN simulators.
-
+In GeNN, if a neuron has fired in the current timestep, its trace variables are updated in the neuron kernel by evaluating equation~\ref{eq:stdp_trace}.
+Synaptic depression is calculated by applying equation~\ref{eq:stdp_update_pre_pair} to each synaptic weight processed in the synapse kernel described in the previous section.
+Similarly, applying synaptic potentiation involves applying equation~\ref{eq:stdp_update_post_pair} to each synapse targetting by a spiking postsynaptic neuron.
+However this is tricky as, while the data structure shown in figure~\ref{fig:ragged_matrix} supports efficient \textit{row-wise} accesses, like many sparse matrix data structures it does not support efficient \textit{column-wise} accesses.
+This is a problem faced by all SNN simulators that support STDP.
 Some small-scale neuromorphic systems have solved this problem in hardware using custom SRAM memories which allow both column and row-wise accesses~\citep{Seo2011}.
 However, custom SRAMs are expensive in terms of silicon area, so many neuromorphic systems avoid the problem entirely by implementing synaptic plasticity rules which use the membrane voltage of the postsynaptic neuron rather its spike times -- meaning that  no updates triggered by postsynaptic spikes are required~\citep{Frenkel2018,Qiao2015}.
-Intel's Loihi system~\citep{Davies2018} takes an alternative approach and defers all STDP updates until the end of a ``learning epoch'' after which time they are processed sequentially row by row.
-NEST~\citep{Morrison2007} and SpiNNaker~\citep{Knight2016} both buffer postsynaptic spikes until the next presynaptic spike occurs -- allowing weight updates triggered by pre and postsynaptic spikes to be applied in order without having to make any column-wise accesses to the synaptic matrix. 
-However this approach makes access to postsynaptic variables difficult as they would need to be buffered for an unbounded length of time until the next presynaptic spike occurs.
+Intel's Loihi system~\citep{Davies2018} and the SpiNNaker software developed by \citet{Galluppi2014a} take an alternative approach and defers all STDP updates until the end of a ``learning epoch'' after which time they are processed sequentially row by row.
+NEST~\citep{Morrison2007} and the more recent SpiNNaker software~\citep{Knight2016} both buffer postsynaptic spikes until the next presynaptic spike occurs -- allowing weight updates triggered by pre and postsynaptic spikes to be applied in order without having to make any column-wise accesses to the synaptic matrix. 
+However, buffering postsynaptic spikes makes access to other postsynaptic variables difficult as they would need to be buffered for an unbounded length of time until the next presynaptic spike occurs.
 
 Deferring STDP updates ideally requires a dynamic memory structure to store postsynaptic events which, when combined with the need to search through this data structure for events to apply, mean that this approach does not appear to be well-suited for GPU implementation.
 Furthermore, GeNN aims to support a wide range of synaptic plasticity rules with full access to pre and postsynaptic neuron variables.
