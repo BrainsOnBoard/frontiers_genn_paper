@@ -148,9 +148,10 @@ Once the required models have been defined, the values of parameters and initial
 %
 \lstinputlisting[firstline=17,lastline=20]{code_snippets.cc}
 
-This listing also illustrates how the approach used for defining models now can also be used to define how variables are initialised, a new mechanism added since GeNN 3.xx:
-The membrane voltage \lstinline{V} of our \num{1000} LIF neurons is sampled from the uniform distribution using one of GeNN's built in \textit{variable initialisation snippets}, which are definied in a similar manner to the neuron and synapse code snippets. Using this mechanism allows GeNN to parallelise network initialisation -- using the same GPU parallelisation strategies it employs for simulating the models.
-This approach is advantageous as it both, removes the need to transfer the model state from the CPU to the GPU and allows the GPU to be used to accelerate potentially costly initialisation operations such as sampling random numbers.
+This listing also illustrates how, in the latest version of GeNN, the approach used for defining models can also be used to configure how variables are initialised.
+In the listing the membrane voltage \lstinline{V} of our \num{1000} LIF neurons is sampled from the uniform distribution using one of GeNN's built in \textit{variable initialisation snippets}.
+These are definied in a similar manner to the neuron model presented earlier in this section and, by using this mechanism, GeNN can offload network initialisation to the GPU using the same parallelisation strategies it employs for simulating models.
+This approach is advantageous as it removes the need to transfer the model state from the CPU to the GPU and allows the GPU to be used to accelerate potentially costly initialisation operations such as sampling random numbers.
 
 Once network models have been defined using the C++ interface, GeNN will generate the CUDA code to initialise and simulate the network which can then be linked against a simulation loop provided by the user:
 
