@@ -546,7 +546,7 @@ However, in order to interface with the robot's hardware and convert sensor data
 For example, \citet{Kreiser2018} developed a path integration model on the Dynapse~\citep{Qiao2015} neuromorphic system which used a Parallela~\citep{Olofsson2015} board to interface with the robot and \citet{Hwu2017} developed a self-driving robot using a spiking convolutional neural network running on a TrueNorth NS1e development board which includes a Zynq SoC~\citep{XilinxInc2018}.
 While both the Dynapse and TrueNorth systems have a negligible power consumption, the NS1e development board draws between \SIrange{2}{3}{\watt}~\citep{Sawada2016} and the Parallela \SI{5}{\watt}, somewhat out-weighing their theoretical advantages over embedded GPUs such as the Jetson TX2 which only draws a maximum of \SI{15}{\watt}.
 
-Because SpiNNaker is based on programmable ARM cores which can be used to interface with robot hardware it can be directly interfaced with a variety of robots developed at the Technical University of Munich~\citep{Denk2013}.
+Because SpiNNaker is built from programmable ARM cores, these can be repurposed for interfacing with robot hardware directly, for example using the interface board developed by \citet{Denk2013} which supports a variety of robots developed at the Technical University of Munich.
 However, the 48 chip SpiNNaker board used on the robot developed by \citeauthor{Conradt2015} is around $10\times$ larger than a Jetson TX2, restricting its use to large ground-based robots whereas the Jetson TX2 is small and light enough to be used on both ground and aerial robots.
 
 \subsection{Further optimisation and GPU architectures}
