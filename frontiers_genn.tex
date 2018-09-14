@@ -559,9 +559,10 @@ This suggests that although, even fully-programmable neuromorphic systems such a
 \label{sec:discussion/neurobotics}
 Neurorobotics involves the development of robots with controllers inspired by the brain, allowing neural function to be studied in an embodied context.
 Neuro robots have been developed with controllers inspired by the mammalian Hippocampus~\citep{Krichmar2005} as well as the honey bee~\citep{Cope2016} and other insects~\citep{Blanchard2000}.
-However computational constraints have meant that these systems have had to be operated either in simulation or that their brain-inspired controllers have had to be simulated externally to the robot. \todo{latency}
+However, computational constraints have meant that these systems have had to be operated either in simulation or their brain-inspired controllers have had to be simulated externally to the robot.
+While using an external controller removes any constraints on its power and weight, it also introduces latency, meaning robots must operate slower as well as `tethering' the robot to a WiFi base station restricting where it can be operated.
 
-The low power requirements and real-time performance of neuromorphic systems make them obvious candidate for building neuro robotics controllers.
+The low power requirements and real-time performance of neuromorphic systems make them obvious candidate for building on-board neuro robotics controllers.
 However, in order to interface with the robot's hardware and convert sensor data into spike trains, these systems typically need to be accompanied by a standard CPU.
 For example, \citet{Kreiser2018} developed a path integration model on the Dynapse~\citep{Qiao2015} neuromorphic system which used a Parallela~\citep{Olofsson2015} board to interface with the robot and \citet{Hwu2017} developed a self-driving robot using a spiking convolutional neural network running on a TrueNorth NS1e development board which includes a Zynq SoC~\citep{XilinxInc2018}.
 While both the Dynapse and TrueNorth systems have a negligible power consumption, the NS1e development board draws between \SIrange{2}{3}{\watt}~\citep{Sawada2016} and the Parallela \SI{5}{\watt}, somewhat out-weighing their theoretical advantages over embedded GPUs such as the Jetson TX2 which only draws a maximum of \SI{15}{\watt}.
