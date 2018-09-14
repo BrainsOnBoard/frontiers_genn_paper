@@ -264,6 +264,17 @@ However, rather than exponentially filtering the incoming synaptic input, this m
 %
 Aside from requiring an additional state variable to hold $x_{s_{j}}$, equations~\ref{eq:alpha_neuron_input_current_1}~and~\ref{eq:alpha_neuron_input_current_2} have trivial algebraic solutions meaning they can be simulated using the same scheme described in the previous section.
 
+\begin{figure}
+    \begin{center}
+        \includegraphics{figures/bitmask}
+    \end{center}
+    \caption{GPU parallelism of bitmask synaptic matrix processing across two thread blocks each with \num{4} threads.
+    $i_{0},\ldots,i_{3}$ contain the indices of presynaptic spikes.
+    Snaking lines indicate CUDA threads.
+    Hatching indicates bits which are set.}
+    \label{fig:bitmask}
+\end{figure}
+
 Even leaving aside synaptic plasticity rules which use postsynaptic membrane voltage~\citep{Brader2007,Clopath2010c} rather than postsynaptic spike times or include `third factors' such as dopamine~\citep{Izhikevich2007}, there are a plethora of different STDP formalisations (see \citet{Morrison2008} for a review).
 However, in the model described in this section, \citet{Morrison2007} chose to use a rule with the following relationship between pre~($t_{\text{pre}}$) and postsynaptic~($t_{\text{post}}$) spike timing ($\Delta t = t_{\text{post}} - t_{\text{pre}}$):
 %
@@ -304,7 +315,14 @@ Deferring STDP updates ideally requires a dynamic memory structure to store post
 Furthermore, GeNN aims to support a wide range of synaptic plasticity rules with full access to pre and postsynaptic neuron variables.
 Therefore, GeNN builds an additional column-major sparse matrix using the same data structure shown in figure~\ref{fig:ragged_matrix}, containing indices into the original row-wise arrays containing synaptic weights.
 This has the downside of doubling the memory requirements of connections when STDP is required and additionally, as \citet{Yavuz2016} demonstrated, the resultant non-coalesced accesses to the synaptic matrix reduce performance on lower-end GPUs. \todo{say why it's nevertheless the best solution}
-\todo{Bitmask talk}
+
+In the balanced random network model, the synaptic weights of the non-plastic connections are initialised to a constant value so the GeNN code generator can compile these constants directly into the synapse kernels. 
+While this results in significant memory savings, due to the extra memory required by the column-major matrix used for STDP, this is still not enough to fit the model onto a GPUs with \SI{12}{\giga\byte} of memory.
+Therefore we use the alternative \textit{bitmask} data structure shown in figure~\ref{fig:bitmask} to store the non-plastic connections on these GPUs.
+Using this data structure, the connections between a presynaptic population with $N_{\text{pre}}$ neurons and a postsynaptic population with $N_{\text{post}}$ neurons are stored using a $N_{\text{pre}} \times N_{\text{post}}$ bit bitfield (rounded up to the nearest \SI{32}{\bit} word).
+For example, the connections between the excitatory (\num{90000} neurons) and inhibitory populations (\num{22500} neurons) in the balanced random network model can be stored in \SI{241}{\mebi\byte} using a bitmask rather than \SI{867}{\mebi\byte} when using the data structure described in the previous section.
+The bitmask data structure is processed using a CUDA thread to accumulate each postsynaptic neuron's input into a register every simulation timestep.
+Each of these threads loops through the incoming spikes stored in the shared memory data structure described in the previous section and, if the corresponding bit in the bitmask is set, adds the synaptic weight to the register.
 
 \begin{figure}
     \begin{center}
@@ -480,7 +498,7 @@ This is approximately $50\times$ slower than the Jetson TX2 when only one of its
 Figure~\ref{fig:stdp_performance} shows the runtime of simulations of the balanced random network model described in section~\ref{sec:method/balanced_random}.
 While the simulations of the cortical microcircuit model ran approximately twice as fast on the newer Tesla V100 GPU, potentially just reflecting its higher memory bandwidth, the simulations of the plastic model ran more than $10\times$ faster on the V100 GPU.
 As figure~\ref{fig:stdp_performance} shows, this is almost entirely due to the time spend in the postsynaptic learning kernel.
-This kernel is where synaptic potentiation is applied using the approach outlined in section~\ref{sec:method/balanced_random} in which an additional column-wise sparse matrix structure is used to select weights to update in response to postsynaptic spikes.
+This kernel is where synaptic potentiation is applied using the approach outlined in section~\ref{sec:method/balanced_random} in which an additional column-major sparse matrix structure is used to select weights to update in response to postsynaptic spikes.
 We believe that two new features of the Volta architecture~\citep{Nvidia2017} used by the V100 GPU are playing a crucial role in accelerating this kernel.
 Firstly, Volta GPUs have \SI{6144}{\kibi\byte} of L2 cache compared to only \SI{1536}{\kibi\byte} in the older Kepler architecture used by the Tesla K40c, which helps overcome the cost of the non-coalesced accesses to synaptic weights.
 Additionally, Volta GPUs can now simultaneously execute integer and floating point operations, meaning that the pointer arithmetic required to calculate the indices into the synaptic weight matrix can be performed simultaneously with the actual learning rule update.
