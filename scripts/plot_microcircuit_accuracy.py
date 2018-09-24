@@ -149,14 +149,14 @@ def calc_corellation(spike_times, spike_ids, num, duration, bin_x=None):
     # Calculate histogram
     return calc_histogram(correlation_non_disjoint, 0.002, bin_x)
 
-pop_spikes = [load_spikes("6I.csv"),
-              load_spikes("6E.csv"),
-              load_spikes("5I.csv"),
+pop_spikes = [load_spikes("6E.csv"),
+              load_spikes("6I.csv"),
               load_spikes("5E.csv"),
-              load_spikes("4I.csv"),
+              load_spikes("5I.csv"),
               load_spikes("4E.csv"),
-              load_spikes("23I.csv"),
-              load_spikes("23E.csv")]
+              load_spikes("4I.csv"),
+              load_spikes("23E.csv"),
+              load_spikes("23I.csv")]
 
 # Create plot
 fig = plt.figure(figsize=(plot_settings.double_column_width, 90.0 * plot_settings.mm_to_inches),
@@ -313,15 +313,10 @@ raster_axis.set_title("A", loc="left")
 fig.legend([genn_actor, nest_actor], ["GeNN", "NEST 'precise'"],
            ncol=2, loc="lower center")
 
-fig.tight_layout(pad=0.0, rect=(0, 0.075, 1, 1))
+fig.tight_layout(pad=0.0, rect=(0.001, 0.075, 1, 1))
 
 # Save figure
 utils.save_raster_figure(fig, "../figures/microcircuit_accuracy")
-#output = open('kl.pkl', 'wb')
-#pickle.dump(rate_kl, output)
-#pickle.dump(isi_kl, output)
-#pickle.dump(corr_kl, output)
-#output.close()
 
 # Create second figure to show KL divergence
 kl_fig, kl_axes = plt.subplots(3, figsize=(plot_settings.column_width, 90.0 * plot_settings.mm_to_inches),
@@ -329,57 +324,72 @@ kl_fig, kl_axes = plt.subplots(3, figsize=(plot_settings.column_width, 90.0 * pl
 
 # Position bars
 kl_bar_width = 0.8
-kl_bar_pad = 0.75
+kl_bar_pad = 0.4
 kl_bar_x = np.arange(0.0, len(rate_kl) * (kl_bar_width + kl_bar_pad), kl_bar_width + kl_bar_pad)
 
-# Values for grid-based NEST and SpiNNaker eye-balled from paper
-rate_kl_nest =      np.asarray([32,     7,      132,    12,     9,  6,      28,     50], dtype=float)
-rate_kl_spinnaker = np.asarray([63,     13,     68,     33,     19, 11,     29,     21], dtype=float)
+# Values for grid-based NEST and SpiNNaker eye-balled from paper in pixels with page loaded at 2000px wide
+rate_kl_seeds =     np.asarray([21,     31,     82,     10,     24, 8,      27,     5], dtype=float)
+rate_kl_nest =      np.asarray([32,     7,      132,    12,     11, 6,      28,     50], dtype=float)
+rate_kl_spinnaker = np.asarray([63,     13,     68,     33,     21, 11,     29,     21], dtype=float)
+
+isi_kl_seeds =      np.asarray([62,     6,      47,     18,     34, 8,      26,     4], dtype=float)
 isi_kl_nest =       np.asarray([121,    10,     56,     16,     31, 10,     33,     6], dtype=float)
 isi_kl_spinnaker =  np.asarray([83,     5,      135,    22,     28, 8,      17,     3], dtype=float)
 
+corr_kl_seeds =     np.asarray([66,     92,     45,     44,     66, 82,     93,     60], dtype=float)
 corr_kl_nest =      np.asarray([47,     75,     50,     102,    87, 65,     91,     55], dtype=float)
 corr_kl_spinnaker = np.asarray([70,     77,     38,     43,     44, 103,    107,    91], dtype=float)
 
 # Scale eye-balled values from pixels to actual units
+# **YUCK** ISI is blotted with 2 different scales
 rate_kl_nest *= (0.005 / 75.0)
 rate_kl_spinnaker *= (0.005 / 75.0)
+rate_kl_seeds *= (0.005 / 75.0)
 
 isi_kl_nest[:2] *= (0.05 / 75.0)
 isi_kl_spinnaker[:2] *= (0.05 / 75.0)
+isi_kl_seeds[:2] *= (0.05 / 75.0)
+
 isi_kl_nest[2:4] *= (0.1 / 75.0)
 isi_kl_spinnaker[2:4] *= (0.1 / 75.0)
+isi_kl_seeds[2:4] *= (0.1 / 75.0)
+
 isi_kl_nest[4:] *= (0.05 / 75.0)
 isi_kl_spinnaker[4:] *= (0.05 / 75.0)
+isi_kl_seeds[4:] *= (0.05 / 75.0)
 
 corr_kl_nest *= (0.1 / 75.0)
 corr_kl_spinnaker *= (0.1 / 75.0)
+corr_kl_seeds *= (0.1 / 75.0)
 
 # Plot bars
-genn_actor = kl_axes[0].bar(kl_bar_x * 3, rate_kl, kl_bar_width)[0]
-nest_actor = kl_axes[0].bar(kl_bar_x * 3 + kl_bar_width, rate_kl_nest, kl_bar_width)[0]
-spinnaker_actor = kl_axes[0].bar(kl_bar_x * 3 + kl_bar_width * 2, rate_kl_spinnaker, kl_bar_width)[0]
-kl_axes[0].legend()
+seeds_actor = kl_axes[0].bar(kl_bar_x * 4, rate_kl_seeds, kl_bar_width)[0]
+nest_actor = kl_axes[0].bar(kl_bar_x * 4 + kl_bar_width, rate_kl_nest, kl_bar_width)[0]
+spinnaker_actor = kl_axes[0].bar(kl_bar_x * 4 + kl_bar_width * 2, rate_kl_spinnaker, kl_bar_width)[0]
+genn_actor = kl_axes[0].bar(kl_bar_x * 4 + kl_bar_width * 3, rate_kl, kl_bar_width)[0]
 
-kl_axes[1].bar(kl_bar_x * 3, isi_kl, kl_bar_width)
-kl_axes[1].bar(kl_bar_x * 3 + kl_bar_width, isi_kl_nest, kl_bar_width)
-kl_axes[1].bar(kl_bar_x * 3 + kl_bar_width * 2, isi_kl_spinnaker, kl_bar_width)
+kl_axes[1].bar(kl_bar_x * 4, isi_kl_seeds, kl_bar_width)
+kl_axes[1].bar(kl_bar_x * 4 + kl_bar_width, isi_kl_nest, kl_bar_width)
+kl_axes[1].bar(kl_bar_x * 4 + kl_bar_width * 2, isi_kl_spinnaker, kl_bar_width)
+kl_axes[1].bar(kl_bar_x * 4 + kl_bar_width * 3, isi_kl, kl_bar_width)
 
-kl_axes[2].bar(kl_bar_x * 3, corr_kl, kl_bar_width)
-kl_axes[2].bar(kl_bar_x * 3 + kl_bar_width, corr_kl_nest, kl_bar_width)
-kl_axes[2].bar(kl_bar_x * 3 + kl_bar_width * 2, corr_kl_spinnaker, kl_bar_width)
+kl_axes[2].bar(kl_bar_x * 4, corr_kl_seeds, kl_bar_width)
+kl_axes[2].bar(kl_bar_x * 4 + kl_bar_width, corr_kl_nest, kl_bar_width)
+kl_axes[2].bar(kl_bar_x * 4 + kl_bar_width * 2, corr_kl_spinnaker, kl_bar_width)
+kl_axes[2].bar(kl_bar_x * 4 + kl_bar_width * 3, corr_kl, kl_bar_width)
 
 # Set axis labels and titles
 for axis, title in zip(kl_axes, ["A", "B", "C"]):
     axis.set_ylabel("$D_{KL}$")
     axis.set_title(title, loc="left")
-    axis.set_xticks(kl_bar_x * 3)
+    axis.set_xticks(kl_bar_x * 4)
     axis.set_xticklabels(pop_names, ha="center")
 
-kl_fig.legend([genn_actor, nest_actor, spinnaker_actor],
-              ["GeNN", "NEST grid-aligned", "SpiNNaker"],
-              ncol=3, loc="lower center")
-kl_fig.tight_layout(pad=0, rect=(0, 0.075, 1, 1))
+kl_fig.legend([seeds_actor, nest_actor, spinnaker_actor, genn_actor],
+              ["NEST 'precise' different seed", "NEST 'grid-aligned'", "SpiNNaker", "GeNN"],
+              ncol=2, loc="lower center")
+
+kl_fig.tight_layout(pad=0, rect=(0, 0.15, 1, 1))
 kl_fig.savefig("../figures/microcircuit_accuracy_kl.eps")
 
 # Show plot
