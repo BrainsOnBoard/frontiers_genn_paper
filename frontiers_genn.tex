@@ -248,7 +248,7 @@ On this basis, \citeauthor{Morrison2007} developed a large balanced random netwo
 When the density of the synaptic connections is described using a probability of connection $P$, whether a synapse exists between a pair of pre and postsynaptic neurons can be modelled using the Bernoulli distribution $\text{Bern}[P_{\text{conn}}]$.
 While the Bernoulli distribution can be sampled by repeatedly drawing from the uniform distribution $\text{Unif}[0, 1]$ and comparing each sample to $P$, this is innefficient for sparse connectivity.
 Instead we sample from the geometric distribution $\text{Geom}[P_{\text{conn}}]$ which describes how the number of Bernoulli trials required to get a success (i.e. a synapse) is distributed.
-The geometric distribution can be sampled in constant time by inverting the cumulative density function (CDF) of the equivalent continuous distribution (the exponential distribution) to obtain $\frac{log(\text{Unif}[0, 1])}{log(1 - P_{\text{conn}})}$~\citep{DevroyeLuc2013}.
+The geometric distribution can be sampled in constant time by inverting the cumulative density function~(CDF) of the equivalent continuous distribution (the exponential distribution) to obtain $\frac{log(\text{Unif}[0, 1])}{log(1 - P_{\text{conn}})}$~\citep{DevroyeLuc2013}.
 Using this approach, generating fixed probability connectivity can be performed entirely in parallel by initialising each row of connectivity using an independent CUDA thread.
 
 Balanced random networks have been shown to reproduce some of the dynamics seen in the neocortex~\citep{Brunel1999,Brunel2000}.
@@ -304,7 +304,7 @@ These traces are then used to calculate the magnitude of $\Delta w_{ij}$ when a 
 %
 In GeNN, if a neuron has fired in the current timestep, its trace variables are updated in the neuron kernel \todo{do we need to say before what neuron kernel, synapse kernel etc are?} by evaluating equation~\ref{eq:stdp_trace}.
 Synaptic depression is calculated by applying equation~\ref{eq:stdp_update_pre_pair} to each synaptic weight processed in the synapse kernel described in the previous section.
-Similarly, applying synaptic potentiation involves applying equation~\ref{eq:stdp_update_post_pair} to each synapse targetting by a spiking postsynaptic neuron\todo{something wrong here - delete ``by''?}.
+Similarly, calculating synaptic potentiation involves applying equation~\ref{eq:stdp_update_post_pair} to each synapse targetting a spiking postsynaptic neuron.
 However this is tricky as, while the data structure shown in figure~\ref{fig:ragged_matrix} supports efficient \textit{row-wise} accesses, like many sparse matrix data structures it does not support efficient \textit{column-wise} accesses.
 This is a problem faced by all SNN simulators that support STDP.
 Some small-scale neuromorphic systems have solved this problem in hardware using custom SRAM memories which allow both column and row-wise accesses~\citep{Seo2011}.
@@ -578,7 +578,7 @@ However, the modelling study performed by \citet{Esmaeilzadeh2012} indicates tha
 Furthermore, when simulating SNNs, a GPU's performance is likely to be constrained by its memory bandwidth.
 Although upcoming technologies such as third generation High Bandwidth Memory~(HBM3) are likely to offer increases in memory bandwidth in the future, alternative strategies are still going to be required to better utilise current GPUs for SNN simulation as well as to increase the size of models that can be simulated using embedded GPUs such as the Jetson TX2 in the type of neurorobotic applications discussed in the previous section.
 
-As we discussed in the introduction, the computational requirements of training Artificial Neural Networks~(ANNs) of ever-increasing size and complexity has been a major driver in the development of GPU hardware.\todo{cite}
+As we discussed in the introduction, the computational requirements of training Artificial Neural Networks~(ANNs) of ever-increasing size and complexity has been a major driver in the development of GPU hardware~\citep{Schmidhuber2015}.
 These applications and the growing need to deploy ready-trained ANNs to perform inference in real time on low-power `edge computing' devices mean that, here too, available memory bandwidth is beginning to limit performance.
 One solution has been to use lower precision \SI{16}{\bit} floating point and even fixed point integer representations for weights~\citep{Micikevicius2017}.
 Using smaller data types not only saves memory and memory bandwidth but, on some newer GPU hardware including the Jetson TX2, each CUDA thread can perform four \SI{8}{\bit} or two \SI{16}{\bit} operations simultaneously -- significantly increasing peak performance.
@@ -599,7 +599,7 @@ Additionally, communication overheads could be reduced by using NVIDIA's GPUDire
 As discussed in the introduction, one of the major uses of SNN simulations in computational neuroscience is for characterising and exploring the subset of models' parameter spaces left under-constrained by experimental data.
 
 In common with many other application areas, computational neuroscience simulations are typically performed in a non-interactive `batch' mode in which a simulation is started (either on a remote HPC system or locally) and some time later results are returned.
-The results of such simulations are then analysed offline to determine whether a particular combination of parameters has resulted in a successful\todo{correct word - TN: changed; any better?} emulation of a brain circuit.
+The results of such simulations are then analysed offline to determine whether a particular combination of parameters has resulted in a successful emulation of a brain circuit.
 However, it is difficult to determine what data will be required for this analysis ahead of time.
 Recording too much data requires large amounts of disk space and potentially slows down both, simulation and analysis.
 \textit{Computational steering}~\citep{Parker1997} could be one solution to this problem -- a technology that allows researchers to change the parameters of a running simulation as well as which state variables are being visualised.
