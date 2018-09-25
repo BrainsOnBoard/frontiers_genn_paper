@@ -7,7 +7,7 @@
 % #2 - pad size [mm]
 % #3 - max cols
 % #4 - num rows
-% #5 - padding synapses
+% #5 - bits
 \newcommand{\drawBlock}[5]{%
     \pgfmathtruncatemacro{\matrixWidth}{#1 * #3}
     \pgfmathtruncatemacro{\matrixHeight}{#1 * #4}
@@ -25,12 +25,11 @@
         (#1 mm, \matrixHeight mm);
     \node[rotate=90] at ({-#2 mm - #1 mm - 3mm}, {\matrixHeight mm / 2}) {Shared memory};
     
-    % Draw padding
-    \foreach \i/\j in {#5} {
-        \draw[pattern=north west lines] 
-            ({#1 * \j mm}, {(\lastRow - \i) * #1 mm}) 
-            rectangle 
-            ({(\j + 1) * #1 mm}, {(\lastRow - \i + 1) * #1 mm});
+    % Draw bits
+    \foreach[count=\i] \b in {#5} {
+        \pgfmathtruncatemacro{\x}{mod(\i - 1,#3)}
+        \pgfmathtruncatemacro{\y}{div(\i - 1,#3)}
+        \node at ({(\x + 0.5) * #1 mm}, {(\y + 0.5) * #1 mm}) {\b};
     }
     
     % Draw threads
@@ -58,7 +57,7 @@
     %--------------------------------------------------------
     \node (block_1) at (0, 0){
         \begin{tikzpicture}
-            \drawBlock{\grid}{\pad}{\maxCols}{\numRows}{0/2, 1/0, 2/3, 3/2}{}
+            \drawBlock{\grid}{\pad}{\maxCols}{\numRows}{0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0}{}
         \end{tikzpicture}
     };
 
@@ -67,7 +66,7 @@
     %--------------------------------------------------------
     \node (block_2) at ({(\grid mm * (\maxCols + 2) ) + (3mm *\pad)}, 0){
         \begin{tikzpicture}
-            \drawBlock{\grid}{\pad}{\maxCols}{\numRows}{0/2, 1/0, 1/3, 2/1, 2/2, 3/3}{}
+            \drawBlock{\grid}{\pad}{\maxCols}{\numRows}{0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1}{}
         \end{tikzpicture}
     };
 \end{tikzpicture}
