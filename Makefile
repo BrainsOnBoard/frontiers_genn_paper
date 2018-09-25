@@ -9,14 +9,14 @@ BIBFLAGS=
 texdoc=frontiers_genn
 
 TIKZ_PICTURES :=$(wildcard figures/*.tex)
-TIKZ_PDF :=$(foreach fig,$(basename $(TIKZ_PICTURES)),$(fig).pdf)
+TIKZ_EPS :=$(foreach fig,$(basename $(TIKZ_PICTURES)),$(fig).eps)
 
 .PHONY: clean
 .PHONY: bib
 .PHONY: count
 
 # Make all items
-all : $(texdoc).pdf $(TIKZ_PDF)
+all : $(texdoc).pdf $(TIKZ_EPS)
 	$(TEX) $(TEXFLAGS) $(texdoc)
 
 $(texdoc).pdf : $(texdoc.tex)
@@ -32,10 +32,13 @@ bib : $(texdoc).aux
 	$(TEX) $(TEXFLAGS) $(texdoc)
 	$(TEX) $(TEXFLAGS) $(texdoc)
 
-# Build pdfs from Tikz diagrams
+# Build PDFs from Tikz diagrams
 figures/%.pdf: figures/%.tex
 	pdflatex -output-directory=figures/ $< 
-	
+
+# Build EPSs from PDFs
+figures/%.eps: figures/%.pdf
+	gs -q -dNOCACHE -dNOPAUSE -dBATCH -dSAFER -sDEVICE=eps2write -sOutputFile=$@ $<
 # Clean
 clean :
 	find . -type f -regex ".*$(texdoc).*\.\(aux\|bbl\|bcf\|blg\|log\|png\|out\|toc\|lof\|lot\|count\)" -delete
