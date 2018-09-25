@@ -232,7 +232,7 @@ for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in 
     fig.add_subplot(pop_rate_axis)
     pop_rate_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_rate_axis.transAxes)
     nest_actor =pop_rate_axis.plot(rate_bin_x, nest_rate_hist, color=pal[0])[0]
-    genn_actor = pop_rate_axis.plot(rate_bin_x, rate_hist, linestyle=":", color=pal[2])[0]
+    genn_actor = pop_rate_axis.plot(rate_bin_x, rate_hist, linestyle=":", dash_capstyle="round", color=pal[2])[0]
     
     # Plot rate histogram
     pop_cv_isi_axis = plt.Subplot(fig, gs_cv_isi_axes[3 - row, col],
@@ -241,7 +241,7 @@ for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in 
     fig.add_subplot(pop_cv_isi_axis)
     pop_cv_isi_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_cv_isi_axis.transAxes)
     pop_cv_isi_axis.plot(isi_bin_x, nest_isi_hist, color=pal[0])
-    pop_cv_isi_axis.plot(isi_bin_x, isi_hist, linestyle=":", color=pal[2])
+    pop_cv_isi_axis.plot(isi_bin_x, isi_hist, linestyle=":", dash_capstyle="round", color=pal[2])
 
     # Plot correlation histogram
     pop_corr_axis = plt.Subplot(fig, gs_corr_axes[3 - row, col],
@@ -250,7 +250,7 @@ for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in 
     fig.add_subplot(pop_corr_axis)
     pop_corr_axis.text(1.0, 0.95, name, ha="right", va="top", transform=pop_corr_axis.transAxes)
     pop_corr_axis.plot(corr_bin_x, nest_corr_hist, color=pal[0])
-    pop_corr_axis.plot(corr_bin_x, corr_hist, linestyle=":", color=pal[2])
+    pop_corr_axis.plot(corr_bin_x, corr_hist, linestyle=":", dash_capstyle="round", color=pal[2])
 
     # Remove axis junk
     utils.remove_axis_junk(pop_rate_axis)
@@ -297,6 +297,26 @@ for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in 
         pop_cv_isi_axis.set_title("C", loc="left")
         pop_corr_axis.set_title("D", loc="left")
 
+# Set axis y limits on axes in first column of each block of axes
+# **NOTE** this needs to be done after sharing etc is setup
+for a in pop_rate_axis_row_sharey:
+    a.set_ylim((-0.1, 0.9))
+for a in pop_cv_isi_axis_row_sharey:
+    a.set_ylim((-0.5, 4.5))
+for a in pop_corr_axis_row_sharey:
+    a.set_ylim((-50.0, 650.0))
+
+# Set axis x limits and ticks on axes in first row of each block of axes
+# **NOTE** this needs to be done after sharing etc is setup
+for a in pop_rate_axis_col_sharex:
+    a.set_xlim((0.0, 15.0))
+    a.set_xticks([0.0, 10.0])
+for a in pop_cv_isi_axis_col_sharex:
+    a.set_xlim((0.0, 1.6))
+    a.set_xticks([0.0, 1.0])
+for a in pop_corr_axis_col_sharex:
+    a.set_xlim((-0.03, 0.05))
+    a.set_xticks((0.0, 0.04))
 
 raster_axis.set_xlabel("Time [ms]")
 
@@ -313,7 +333,7 @@ raster_axis.set_title("A", loc="left")
 fig.legend([genn_actor, nest_actor], ["GeNN", "NEST 'precise'"],
            ncol=2, loc="lower center")
 
-fig.tight_layout(pad=0.0, rect=(0.001, 0.075, 1, 1))
+fig.tight_layout(pad=0.0, rect=(0.0, 0.075, 1, 0.99))
 
 # Save figure
 utils.save_raster_figure(fig, "../figures/microcircuit_accuracy")
