@@ -6,3 +6,10 @@
 /frontiers_genn.pdf
 *-eps-converted-to.pdf
 *.pyc
+/models/*/generate*
+/models/*/simulator
+/models/*/simulator_wrapper
+/models/*/sm_version.mk
+/models/*/*.o
+/models/*/*.d
+/models/*/*_CODE/
