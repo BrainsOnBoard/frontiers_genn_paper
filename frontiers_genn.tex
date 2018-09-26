@@ -155,7 +155,9 @@ In the listing the membrane voltage \lstinline{V} of our \num{1000} LIF neurons 
 These are definied in a similar manner to the neuron model presented earlier in this section and, by using this mechanism, GeNN can offload network initialisation to the GPU using the same parallelisation strategies it employs for simulating models.
 This approach is advantageous as it removes the need to transfer the model state from the CPU to the GPU and allows the GPU to be used to accelerate potentially costly initialisation operations such as sampling random numbers.
 
-Once network models have been defined using the C++ interface, GeNN will generate the CUDA code to initialise and simulate the network which can then be linked against a simulation loop provided by the user:
+Once network models have been defined using the C++ interface, GeNN will generate a \textit{neuron} CUDA kernel for updating the neuronal state, a \textit{synapse} kernel for simulating the propagation of spike through synaptic connections and, for models with synaptic plasticity, a \textit{postsynaptic learning} kernel. 
+GeNN also generates functions for allocating memory (\lstinline{allocateMem}), launching the initialisation kernel (\lstinline{initialize}) and launching each simulation kernel required to advance the simulation state~(\lstinline{stepTimeGPU}).
+The generated code can then be linked against a simulation loop provided by the user:
 
 \lstinputlisting[firstline=22,lastline=32]{code_snippets.cc}
 
@@ -223,7 +225,7 @@ One of these 2D arrays contains the indices of the postsynaptic neurons ($j$) an
 Each block of $N_{block}$ CUDA threads (in figure~\ref{fig:ragged_matrix} $N_{block}=4$) is responsible for processing $N_{block}$ columns of the matrix.
 Processing begins by using the $N_{block}$ threads to fetch the indices of $N_{block}$ presynaptic spikes ($i_{0},\ldots,i_{N_{block} - 1}$) and the lengths of the corresponding rows of the matrix ($l_{i_{0}},\ldots,l_{i_{N_{block} - 1}}$) into shared memory (so that these will be accessable to all threads in the block during the next phase).
 Threads are then synchronised and loop through the $N_{block}$ rows with each thread processing the synapse in their column.
-In the case of the simple static synapses described by equation~\ref{eq:exp_neuron_input_current}, this processing simply consists of reading the index of the postsynaptic target neuron along with the weight $w_{ij}$ and delay $d_{ij}$ associated with the connection and using an atomic add operation to apply the weight to the correct address in the dendritic delay ring-buffer.\todo{say more}
+In the case of the simple static synapses described by equation~\ref{eq:exp_neuron_input_current}, this processing simply consists of reading the index of the postsynaptic target neuron along with the weight $w_{ij}$ and delay $d_{ij}$ associated with the connection and using an atomic add operation to apply the weight to the correct address in the dendritic delay ring-buffer.
 This process is repeated until all incoming spikes are processed.
 While this parallelism strategy may seem counter-intuitive, it typically performs much better than the naïve approach of using one thread per incoming spike as it not only exposes much more parallelism, but also results in perfectly coalesced memory read operations.
 For example, in a simulation with a \SI{0.1}{\milli\second} timestep, a population of \num{10000} neurons firing at an average rate of \SI{10}{\hertz} will only, on average, emit \num{10} spikes in a single timestep.
@@ -273,7 +275,7 @@ Aside from requiring an additional state variable to hold $x_{s_{j}}$, equations
     \caption{GPU parallelism of bitmask synaptic matrix processing across two thread blocks each with \num{4} threads.
     $i_{0},\ldots,i_{3}$ contain the indices of presynaptic spikes.
     Snaking lines indicate CUDA threads.
-    Hatching indicates bits which are set.}
+    0s and 1s indicate individual bitmask bits.}
     \label{fig:bitmask}
 \end{figure}
 
@@ -302,7 +304,7 @@ These traces are then used to calculate the magnitude of $\Delta w_{ij}$ when a 
   \Delta w_{ij}^{+}(t_{j}^{f}) & = \lambda w_{0}^{1-\mu} w_{ij}^{\mu} s_{i}(t_{j}^{f})\label{eq:stdp_update_post_pair}
 \end{align}
 %
-In GeNN, if a neuron has fired in the current timestep, its trace variables are updated in the neuron kernel \todo{do we need to say before what neuron kernel, synapse kernel etc are?} by evaluating equation~\ref{eq:stdp_trace}.
+In GeNN, if a neuron has fired in the current timestep, its trace variables are updated in the neuron kernel by evaluating equation~\ref{eq:stdp_trace}.
 Synaptic depression is calculated by applying equation~\ref{eq:stdp_update_pre_pair} to each synaptic weight processed in the synapse kernel described in the previous section.
 Similarly, calculating synaptic potentiation involves applying equation~\ref{eq:stdp_update_post_pair} to each synapse targetting a spiking postsynaptic neuron.
 However this is tricky as, while the data structure shown in figure~\ref{fig:ragged_matrix} supports efficient \textit{row-wise} accesses, like many sparse matrix data structures it does not support efficient \textit{column-wise} accesses.
@@ -315,8 +317,12 @@ However, buffering postsynaptic spikes makes access to other postsynaptic variab
 
 Deferring STDP updates ideally requires a dynamic memory structure to store postsynaptic events which, when combined with the need to search through this data structure for events to apply, means that this approach does not appear to be well-suited for GPU implementation.
 Furthermore, GeNN aims to support a wide range of synaptic plasticity rules with full access to pre and postsynaptic neuron variables.
+%The approach developed by \citet{Galluppi2014a} de
+%By setting the duration of each epoch to match the minimum refractory period of neurons in the network, Loihi guarantees that each synapse only needs to process a maximum of one pre and postsynaptic spike during a learning epoch, significantly simplifying the update process.
+%While this approach is potentially well-suited to GPU implementation, to ensure correctness when more complex neuron models without a fixed refractory period are used, the learning epoch would have to occur every simulation timestep.
 Therefore, GeNN builds an additional column-major sparse matrix using the same data structure shown in figure~\ref{fig:ragged_matrix}, containing indices into the original row-wise arrays containing synaptic weights.
-This has the downside of doubling the memory requirements of connections when STDP is required and additionally, as \citet{Yavuz2016} demonstrated, the resultant non-coalesced accesses to the synaptic matrix reduce performance on lower-end GPUs. \todo{say why it's nevertheless the best solution}
+%Synaptic potentiation is then applied using an additional \textit{postsynaptic learning} CUDA kernel which applies equation~\ref{eq:stdp_update_post_pair} to columns of synaptic weights using a similar strategy to the synapse kernel where each CUDA thread is responsible for applying each postsynaptic spike to all synapses in a row of the new data structure.
+This has the downside of doubling the memory requirements of connections when STDP is required and additionally, as \citet{Yavuz2016} demonstrated, the resultant non-coalesced accesses to the synaptic matrix reduce performance on lower-end GPUs.
 
 In the balanced random network model, the synaptic weights of the non-plastic connections are initialised to a constant value so the GeNN code generator can compile these constants directly into the synapse kernels. 
 While this results in significant memory savings, due to the extra memory required by the column-major matrix used for STDP, this is still not enough to fit the model onto GPUs with \SI{12}{\giga\byte} of memory.
@@ -342,6 +348,20 @@ Each of these threads loops through the incoming spikes stored in the shared mem
 
 \begin{figure}
     \begin{center}
+        \includegraphics[width=85mm]{figures/microcircuit_accuracy_kl}
+    \end{center}
+    \caption{Comparison of per-population distributions of dynamical properties shown in figure~\ref{fig:microcircuit_accuracy}.
+    Comparisons calculated using the Kullback-Leibler~(KL) divergence with NEST running in `precise' mode as a reference.
+    For comparison, KL divergences for NEST running in `grid-aligned' mode and SpiNNaker are read off figure presented by \citeauthor{VanAlbada2018}.\\
+    \textbf{(A)} Single-neuron firing rates.\\
+    \textbf{(B)} CV ISI.\\
+    \textbf{(C)} Correlation coefficients.}
+    \label{fig:microcircuit_accuracy_kl}
+\end{figure}
+
+
+\begin{figure}
+    \begin{center}
         \includegraphics[width=85mm]{figures/mad_weights}
     \end{center}
     \caption{Histogram of the synaptic weight distribution obtained after \SI{2000}{\second} of simulation.
@@ -349,20 +369,6 @@ Each of these threads loops through the incoming spikes stored in the shared mem
     \label{fig:mad_weights}
 \end{figure}
 
-% \begin{table}
-%   \centering
-%   \begin{tabular}{r S S S S S}
-%     \toprule
-%         {Simulation}         & {Mean weight}             & {Weight standard deviation} & {Mean spike rate} & {Covariance of interspike interval} & {Fano factor}\\
-%     \midrule
-%         \citet{Morrison2007}    & 45.65 & 4.07 & 8.8 & 0.88 & 8.5\\
-%         GeNN                    & 46.25 & 3.99 & 8.8 & 0.86 & 8.3\\
-%     \bottomrule
-%   \end{tabular}
-% 
-%   \caption{GPU devices.}
-%   \label{tab:mad_stats}
-% \end{table}
 \begin{table}
   \centering
   \begin{tabular}{r S S}
@@ -404,8 +410,8 @@ The histograms were smoothed with Gaussian kernel density estimation performed u
 
 Figure~\ref{fig:microcircuit_accuracy} shows the results of this analysis.
 Visually it is clear that the per-population distributions are highly similar and, to quantify this, we calculated the Kullback-Leibler~(KL) divergences using the `precise' NEST data as the reference.
-Similarly to the KL divergences \citet{VanAlbada2018} reported for their grid-aligned NEST and SpiNNaker simulations, the divergence between the distributions from the GeNN simulations and those produced by NEST running in `precise' mode are comparable in size to the divergences caused by simply changing the seed used for random number generation. \todo{Should we sho the corresponding KL values in the figure???}
-This suggests that using single-precision floating point and summing inputs in a non-deterministic order has a minimal effect on the dynamics of the microcircuit model.
+Figure~\ref{fig:microcircuit_accuracy_kl} shows the KL divergences calculated from our GeNN simulation as well as those reported by \citet{VanAlbada2018} for their grid-aligned NEST and SpiNNaker simulations and between two `precise' NEST simulations with different random number generator seeds. 
+Similarly to those calculated from the SpiNNaker and grid-aligned NEST simulations, the KL divergences from our GeNN simulation are comparable in size to those caused by changing the random number generator seed, suggesting that using single-precision floating point and summing inputs in a non-deterministic order has a minimal effect on the dynamics of the microcircuit model.
 
 To assess the correctness of our implementation of the balanced random network model described in section~\ref{sec:method/balanced_random}, we simulated the network for \SI{2000}{\second} of biological time and compared the final weight distribution and the statistics of the last \SI{50}{\second} of spiking activity with those reported by \citet{Morrison2007}.
 The calculated statistics are listed in table~\ref{tab:mad_stats} and the final weight distribution is shown in figure~\ref{fig:mad_weights}.
@@ -562,7 +568,8 @@ This suggests that although, even fully-programmable neuromorphic systems such a
 Neurorobotics involves the development of robots with controllers inspired by the brain, allowing neural function to be studied in an embodied context.
 Neuro robots have been developed with controllers inspired by the mammalian Hippocampus~\citep{Krichmar2005} as well as the honey bee~\citep{Cope2016} and other insects~\citep{Blanchard2000}.
 However, computational constraints have meant that these systems had to be operated either in simulation or their brain-inspired controllers had to be simulated externally to the robot.
-While using an external controller removes any constraints on its power and weight, it also introduces latency, meaning robots must operate slower, and `tethering' to a WiFi base station, meaning that they are restricted in where they operate.
+While using an external controller removes any constraints on the power and weight of the controller, it also introduces latency, meaning robots must operate slower.
+Additionally, communicating with an external controller typically means that a robot has to be `tethered' to a WiFi base station, restricting where it can operate.
 
 The low power requirements and real-time performance of neuromorphic systems make them obvious candidates for building on-board neurorobotics controllers.
 However, in order to interface with the robots' hardware and convert sensor data into spike trains, these systems typically need to be accompanied by a standard CPU.
@@ -628,7 +635,7 @@ We would like to thank Andrew Webb for his thoughts on efficient parallel connec
 We would also like to thank Sacha van Albada for providing the data from her NEST simulations and clarifying some parts of the accuracy analysis -- without these contributions section~\ref{sec:results/correctness} would not have been possible.
 
 \section*{Data Availability Statement}
-The datasets [GENERATED/ANALYZED] for this study can be found in the [NAME OF REPOSITORY] [LINK].
+All models, data and analysis scripts used for this study can be found in \url{https://github.com/neworderofjamie/frontiers_genn_paper}.
 % Please see the availability of data guidelines for more information, at https://www.frontiersin.org/about/author-guidelines#AvailabilityofData
 %
 \bibliographystyle{frontiersinSCNS_ENG_HUMS}
