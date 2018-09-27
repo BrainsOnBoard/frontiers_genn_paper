@@ -136,9 +136,24 @@ We then compare to other recent benchmarks of the models \citep{VanAlbada2018} a
 As described by \citet{Yavuz2016}, GeNN is a code-generation based system that generates model- and platform-optimised CUDA (Compute Unified Device Architecture ) code for GPU accelerated SNN simulations.
 GeNN neuron models are defined by writing a C++ class which defines the model parameters and snippets of C-like code that describe how it should be simulated.
 For example the following \lstinline{LIF} class describes a leaky integrate-and-fire neuron with normalised units, solved algebraically:
-
-\lstinputlisting[firstline=2,lastline=15]{code_snippets.cc}
-
+%
+\begin{lstlisting}
+class LIF:public NeuronModels::Base
+{
+public:
+  DECLARE_MODEL(LIF,1,1);
+  SET_SIM_CODE("$(V)=($(Isyn)*$(TauM)*(1.0-$(ExpTC)))+($(ExpTC)*$(V));\n");
+  SET_THRESHOLD_CONDITION_CODE("$(V)>=1.0");
+  SET_RESET_CODE("$(V)=0.0;");
+  SET_PARAM_NAMES({"TauM"});
+  SET_DERIVED_PARAMS({
+      {"ExpTC",[](const vector<double> &pars,double dt)
+               {return exp(-dt/pars[0]);}}});
+  SET_VARS({{"V","scalar"}});
+};
+IMPLEMENT_MODEL(LIF);
+\end{lstlisting}
+%
 The \lstinline{DECLARE_MODEL} and \lstinline{IMPLEMENT_MODEL} macros insert boilerplate code used subsequently for defining parameters and initial model states in a type-safe manner.
 The \lstinline{SET_SIM_CODE}, \lstinline{SET_THRESHOLD_CONDITION_CODE} and \lstinline{SET_RESET_CODE} macros specify the snippets of code used, respectively, to update the simulation state, check whether a spike should be emitted and to reset the neuron after a spike.
 The names of model parameters (constant across the entire population) are specified using the \lstinline{SET_PARAM_NAMES} macro and any `pre-processing' logic to be applied to these is specified with \lstinline{SET_DERIVED_PARAMS} -- in this case converting an exponential decay time constant to a multiplier to be applied every simulation timestep.
@@ -148,8 +163,13 @@ In GeNN, synapse models are defined using very similar classes with the option t
 Event-driven updates can be triggered by pre or postsynaptic spikes as well as by custom events, for example the pre or postsynaptic neuron's membrane voltages crossing a threshold.
 Once the required models have been defined, the values of parameters and initial state variables can be set and \textit{populations} of neurons can be added to a network:
 %
-\lstinputlisting[firstline=17,lastline=20]{code_snippets.cc}
-
+\begin{lstlisting}
+InitVarSnippet::Uniform::ParamValues vDist(0.0,1.0);
+LIF::ParamValues params(20.0);
+LIF::VarValues initState(initVar<InitVarSnippet::Uniform>(vDist));
+network.addNeuronPopulation<LIF>("pop",1000,params,initState);
+\end{lstlisting}
+%
 This listing also illustrates how, in the latest version of GeNN, the approach used for defining models can also be used to configure how variables are initialised.
 In the listing the membrane voltage \lstinline{V} of our \num{1000} LIF neurons is sampled from the uniform distribution using one of GeNN's built in \textit{variable initialisation snippets}.
 These are definied in a similar manner to the neuron model presented earlier in this section and, by using this mechanism, GeNN can offload network initialisation to the GPU using the same parallelisation strategies it employs for simulating models.
@@ -158,9 +178,21 @@ This approach is advantageous as it removes the need to transfer the model state
 Once network models have been defined using the C++ interface, GeNN will generate a \textit{neuron} CUDA kernel for updating the neuronal state, a \textit{synapse} kernel for simulating the propagation of spike through synaptic connections and, for models with synaptic plasticity, a \textit{postsynaptic learning} kernel. 
 GeNN also generates functions for allocating memory (\lstinline{allocateMem}), launching the initialisation kernel (\lstinline{initialize}) and launching each simulation kernel required to advance the simulation state~(\lstinline{stepTimeGPU}).
 The generated code can then be linked against a simulation loop provided by the user:
+%
+\begin{lstlisting}
+#include "model_CODE/definitions.h"
 
-\lstinputlisting[firstline=22,lastline=32]{code_snippets.cc}
-
+int main()
+{
+  allocateMem();
+  initialize();
+  while(t < 100.0f) {
+     stepTimeGPU();
+  }
+  return 0;
+}
+\end{lstlisting}
+%
 While this approach allows a lot of flexibility and means that visualisation tools and closed-loop robotics can be tightly coupled to GeNN simulations, when combined with the use of C++ for model definition, this does make using GeNN a somewhat daunting prospect for users more used to Python-based simulators such as Brian~\citep{Stimberg2014} or PyNN~\citep{Davison2008a} or graphical tools such as SpineCreator~\citep{Cope2017}.
 For these users, GeNN can be used as a backend for other simulators.
 Brian2GeNN~\citep{Stimberg2018} allows models defined in Brian 2 to be translated, using code generation, into a valid GeNN simulation. 
