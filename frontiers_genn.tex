@@ -201,7 +201,7 @@ Brian2GeNN~\citep{Stimberg2018} allows models defined in Brian 2 to be translate
 Using Brian 2's backend device design, using GeNN through Brian2GeNN is as simple as issuing the command \lstinline[language=python]{set_device("brian2genn")} within a standard Brian 2 script. 
 A similar interface exist for SpineCreator and an interface to PyNN~\citep{Davison2008a} is currently under development.
  
-\subsection{The cortical microcircuit model}
+\subsection{Cortical microcircuit model}
 \label{sec:method/microcircuit}
 This model of \SI{1}{\milli\metre\cubed} of early-sensory cortex was developed by \citet{Potjans2012} and consists of around \num{80000} neurons, divided into layers 2/3, 4, 5 and 6.
 Each layer is modelled by an excitatory and an inhibitory neuron population.
@@ -506,6 +506,7 @@ However, memory is a harder constraint so, while all of the GPUs listed in table
 
 We measured the performance of both models by querying the \lstinline{std::chrono::high_resolution_clock} around the simulation loop and by using CUDA's own event timing system~\citep[Section~3.2.5.6.2]{NVIDIACorporation2018} to record the time taken by the neuron and synapse simulation kernels as well as the postsynaptic learning kernel in the balanced random network model.
 
+\subsubsection{Cortical microcircuit model}
 Figure~\ref{fig:microcircuit_performance} shows the simulation times of the microcircuit model running on each GPU for \SI{10}{\second} of biological time, including the times taken by neuron and synapse simulation kernels.
 Compared to the smaller point neuron benchmark presented by \citet{Yavuz2016}, even though each neuron in our model receives up to $10\times$ as many synaptic inputs, the simulation time is more evenly split between the simulation of neurons and synapses.
 This is partly because our simulations are running with a smaller \SI{0.1}{\milli\second} timestep meaning that less presynaptic spikes are processed each timestep.
@@ -539,6 +540,7 @@ This is approximately $50\times$ slower than the Jetson TX2 when only one of its
     \label{fig:stdp_performance}
 \end{figure}
 
+\subsubsection{Balanced random network}
 Figure~\ref{fig:stdp_performance} shows the runtime of simulations of the balanced random network model described in section~\ref{sec:method/balanced_random}.
 While the simulations of the cortical microcircuit model ran approximately twice as fast on the newer Tesla V100 GPU, potentially just reflecting its higher memory bandwidth, the simulations of the plastic model ran more than $10\times$ faster on the V100 GPU.
 As figure~\ref{fig:stdp_performance} shows, this is almost entirely due to the time spend in the postsynaptic learning kernel.
