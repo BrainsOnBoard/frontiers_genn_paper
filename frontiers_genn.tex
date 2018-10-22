@@ -599,27 +599,11 @@ In a previous study using a much smaller cortical microcircuit model suffering f
 This suggests that although, even fully-programmable neuromorphic systems such as SpiNNaker use less energy than the most energy-efficient GPU, this is only by a margin of around $3-5\times$ when compared to newer GPUs such as the Tesla V100 and the Jetson TX2.
 
 \section{Discussion}
-\subsection{Neurorobotics}
-\label{sec:discussion/neurobotics}
-Neurorobotics involves the development of robots with controllers inspired by the brain, allowing neural function to be studied in an embodied context.
-Neuro robots have been developed with controllers inspired by the mammalian Hippocampus~\citep{Krichmar2005} as well as the honey bee~\citep{Cope2016} and other insects~\citep{Blanchard2000}.
-However, computational constraints have meant that these systems had to be operated either in simulation or their brain-inspired controllers had to be simulated externally to the robot.
-While using an external controller removes any constraints on the power and weight of the controller, it also introduces latency, meaning robots must operate slower.
-Additionally, communicating with an external controller typically means that a robot has to be `tethered' to a WiFi base station, restricting where it can operate.
-
-The low power requirements and real-time performance of neuromorphic systems make them obvious candidates for building on-board neurorobotics controllers.
-However, in order to interface with the robots' hardware and convert sensor data into spike trains, these systems typically need to be accompanied by a standard CPU.
-For example, \citet{Kreiser2018} developed a path integration model on the Dynapse~\citep{Qiao2015} neuromorphic system which used a Parallela~\citep{Olofsson2015} board to interface with the robot and \citet{Hwu2017} developed a self-driving robot using a spiking convolutional neural network running on a TrueNorth NS1e development board which includes a Zynq SoC~\citep{XilinxInc2018}.
-While both the Dynapse and TrueNorth systems have a negligible power consumption, the NS1e development board draws between \SIrange{2}{3}{\watt}~\citep{Sawada2016} and the Parallela \SI{5}{\watt}, somewhat out-weighing their theoretical advantages over embedded GPUs such as the Jetson TX2 which only draws a maximum of \SI{15}{\watt}.
-
-Because SpiNNaker is built from programmable ARM cores, these can be repurposed for interfacing with robot hardware directly, for example using the interface board developed by \citet{Denk2013} which supports a variety of robots developed at the Technical University of Munich.
-However, the 48 chip SpiNNaker board used on the robot developed by \citet{Conradt2015} is around $10\times$ larger than a Jetson TX2, restricting its use to large ground-based robots whereas the Jetson TX2 is small and light enough to be used on both ground and aerial robots.
-
 \subsection{Further optimisation and GPU architectures}
 The increase in the peak performance of the Tesla K40c (released in 2013) and the Tesla V100 (released in 2017) listed in table~\ref{tab:gpu_devices} illustrate just how much GPUs have taken advantage of Moore's law scaling.
 However, the modelling study performed by \citet{Esmaeilzadeh2012} indicates that this scaling of GPU performance will begin to slow as the `power wall' is reached.
 Furthermore, when simulating SNNs, a GPU's performance is likely to be constrained by its memory bandwidth.
-Although upcoming technologies such as third generation High Bandwidth Memory~(HBM3) are likely to offer increases in memory bandwidth in the future, alternative strategies are still going to be required to better utilise current GPUs for SNN simulation as well as to increase the size of models that can be simulated using embedded GPUs such as the Jetson TX2 in the type of neurorobotic applications discussed in the previous section.
+Although upcoming technologies such as third generation High Bandwidth Memory~(HBM3) are likely to offer increases in memory bandwidth in the future, alternative strategies are still going to be required to better utilise current GPUs for SNN simulation as well as to increase the size of models that can be simulated using embedded GPUs such as the Jetson TX2 in the type of neurorobotic applications discussed in the next section.
 
 As we discussed in the introduction, the computational requirements of training Artificial Neural Networks~(ANNs) of ever-increasing size and complexity has been a major driver in the development of GPU hardware~\citep{Schmidhuber2015}.
 These applications and the growing need to deploy ready-trained ANNs to perform inference in real time on low-power `edge computing' devices mean that, here too, available memory bandwidth is beginning to limit performance.
@@ -637,6 +621,22 @@ While GeNN does not currently target such multi-GPU systems, because all of thei
 Beyond this scale, further parallelism could be achieved by using MPI to distribute GPU-accelerated simulations across multiple HPC nodes.
 While using MPI would lead to simulation becoming communication bound, as is currently the case with CPU simulations, fewer more powerful GPU-equipped nodes should act to reduce this as well as reducing power usage. 
 Additionally, communication overheads could be reduced by using NVIDIA's GPUDirect~\citep{NVIDIACorporation2018c} technology, allowing data to be transferred directly between remote GPUs via compatible network cards.
+
+\subsection{Neurorobotics}
+\label{sec:discussion/neurobotics}
+Neurorobotics involves the development of robots with controllers inspired by the brain, allowing neural function to be studied in an embodied context.
+Neuro robots have been developed with controllers inspired by the mammalian Hippocampus~\citep{Krichmar2005} as well as the honey bee~\citep{Cope2016} and other insects~\citep{Blanchard2000}.
+However, computational constraints have meant that these systems had to be operated either in simulation or their brain-inspired controllers had to be simulated externally to the robot.
+While using an external controller removes any constraints on the power and weight of the controller, it also introduces latency, meaning robots must operate slower.
+Additionally, communicating with an external controller typically means that a robot has to be `tethered' to a WiFi base station, restricting where it can operate.
+
+The low power requirements and real-time performance of neuromorphic systems make them obvious candidates for building on-board neurorobotics controllers.
+However, in order to interface with the robots' hardware and convert sensor data into spike trains, these systems typically need to be accompanied by a standard CPU.
+For example, \citet{Kreiser2018} developed a path integration model on the Dynapse~\citep{Qiao2015} neuromorphic system which used a Parallela~\citep{Olofsson2015} board to interface with the robot and \citet{Hwu2017} developed a self-driving robot using a spiking convolutional neural network running on a TrueNorth NS1e development board which includes a Zynq SoC~\citep{XilinxInc2018}.
+While both the Dynapse and TrueNorth systems have a negligible power consumption, the NS1e development board draws between \SIrange{2}{3}{\watt}~\citep{Sawada2016} and the Parallela \SI{5}{\watt}, somewhat out-weighing their theoretical advantages over embedded GPUs such as the Jetson TX2 which only draws a maximum of \SI{15}{\watt}.
+
+Because SpiNNaker is built from programmable ARM cores, these can be repurposed for interfacing with robot hardware directly, for example using the interface board developed by \citet{Denk2013} which supports a variety of robots developed at the Technical University of Munich.
+However, the 48 chip SpiNNaker board used on the robot developed by \citet{Conradt2015} is around $10\times$ larger than a Jetson TX2, restricting its use to large ground-based robots whereas the Jetson TX2 is small and light enough to be used on both ground and aerial robots.
 
 \subsection{Interactive simulation}
 As discussed in the introduction, one of the major uses of SNN simulations in computational neuroscience is for characterising and exploring the subset of models' parameter spaces left under-constrained by experimental data.
