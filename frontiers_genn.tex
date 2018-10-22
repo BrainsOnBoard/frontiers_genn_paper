@@ -208,7 +208,7 @@ Each layer is modelled by an excitatory and an inhibitory neuron population.
 Neurons in each population are connected randomly with population-specific densities derived from an extensive review of the anatomical literature resulting in a total of approximately \num{0.3E9} synapses.
 Beside this structured connectivity, all synaptic strengths and transmission delays are normally distributed.
 For a full description of the model please refer to \citeauthor{Potjans2012}.
-In the remainder of the this section we will concentrate on describing the strategies used to parallelise the initialisation and subsequent simulation of this network.
+In the remainder of this section we will concentrate on describing the strategies used to parallelise the initialisation and subsequent simulation of this network.
 
 In this model the density of the synaptic connections between a pair of neuronal populations is specified in terms of a total number of random synapses (a \lstinline{FixedNumberTotal} connector in PyNN).
 The first stage in initialising such a connectivity between a presynaptic population with $N_{\text{pre}}$ neurons and a postsynaptic population with $N_{\text{post}}$ neurons is to determine how many of the total synapses $N_{\text{syn}}$ end up in each row by sampling from the multinomial distribution $\text{Mult}[N_{\text{pre}} * N_{\text{post}}, \{P_{row}, P_{row}, \ldots, P_{row}\}]$ where $P_{row} = \frac{N_{\text{post}}}{N_{\text{syn}}}$.
@@ -263,13 +263,13 @@ In the case of the simple static synapses described by equation~\ref{eq:exp_neur
 This process is repeated until all incoming spikes are processed.
 While this parallelism strategy may seem counter-intuitive, it typically performs much better than the naïve approach of using one thread per incoming spike as it not only exposes much more parallelism, but also results in perfectly coalesced memory read operations.
 For example, in a simulation with a \SI{0.1}{\milli\second} timestep, a population of \num{10000} neurons firing at an average rate of \SI{10}{\hertz} will only, on average, emit \num{10} spikes in a single timestep.
-However, if this population is connected to another population with of same size with a \SI{10}{\percent} connection probability, the connection matrix will have over \num{1000} columns resulting in 2 orders of magnitude more parallelism being exposed.
+However, if this population is connected to another population of same size with a \SI{10}{\percent} connection probability, the connection matrix will have over \num{1000} columns resulting in 2 orders of magnitude more parallelism being exposed.
 
-\subsection{Balanced random network with spike-timing dependant plasticity}
+\subsection{Balanced random network with spike-timing dependent plasticity}
 \label{sec:method/balanced_random}
 The type of one-shot, online learning observed in nature is one of the features of biological neural networks that neuromorphic engineers aspire to emulate.
 Synaptic plasticity -- the family of mechanisms responsible for changing the strength of synaptic connections in response to neural activity -- has been shown to be fundamental to learning~\citep{Nabavi2014} and is therefore a key area of computational neuroscience research.
-Spike Timing Dependant Plasticity~(STDP)~\citep{Markram1997,Bi1998} is a popular theory which postulates that these changes are driven by the difference in timing between presynaptic spikes arriving at a synapse and the times at which the postsynaptic neuron itself spikes.
+Spike Timing Dependent Plasticity~(STDP)~\citep{Markram1997,Bi1998} is a popular theory which postulates that these changes are driven by the difference in timing between presynaptic spikes arriving at a synapse and the times at which the postsynaptic neuron itself spikes.
 In excitatory cortical~\citep{Markram1997} and Hippocampal~\citep{Bi1998} neurons, synapses at which a presynaptic spike is closely followed by a postsynaptic spike are strengthened, whereas those at which a postsynaptic spike precedes a presynaptic spike are weakened.
 The intuition behind this relationship is that synapses that are implicated in the firing of the postsynaptic neuron are strengthened and those that are irrelevant are weakened.
 
@@ -328,7 +328,7 @@ However, in the model described in this section, \citet{Morrison2007} chose to u
 Rather than repeatedly evaluating equation~\ref{eq:mad_stdp}, we calculate these updates based on pre and postsynaptic \textit{spike traces}~\citep{Song2000, Morrison2007} with the following dynamics:
 %
 \begin{align}
-    \frac{ds_{i}}{dt} & = -\frac{s_{i}}{\tau} + \sum_{t_{i}^{f}}\delta(t - t_{i}^{f}) \label{eq:stdp_trace}\\
+    \frac{ds_{i}}{dt} & = -\frac{s_{i}}{\tau} + \sum_{t_{i}^{f}}\delta(t - t_{i}^{f}) \label{eq:stdp_trace}
 \end{align}
 %
 These traces are then used to calculate the magnitude of $\Delta w_{ij}$ when a pre or postsynaptic spike arrives at the synapse:
