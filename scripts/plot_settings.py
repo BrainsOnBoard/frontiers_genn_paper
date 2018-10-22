@@ -1,8 +1,15 @@
 import seaborn as sns
+import sys
+
+presentation = "presentation" in sys.argv[1:]
 
 # Set the plotting style
-sns.set(context="paper")
-sns.set_style("whitegrid", {"font.family":"serif", "font.serif":"Times New Roman"})
+if presentation:
+    sns.set(context="talk")
+    sns.set_style("whitegrid", {"font.family":"sans-serif", "font.sans-serif":"Verdana"})
+else:
+    sns.set(context="paper")
+    sns.set_style("whitegrid", {"font.family":"serif", "font.serif":"Times New Roman"})
 
 # **HACK** fix bug with markers
 sns.set_context(rc={"lines.markeredgewidth": 0.1})

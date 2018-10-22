@@ -20,6 +20,7 @@ def plot(data, filename, num_ref, calc_overhead, legend_text, real_time_s=None, 
     times = np.empty((num_time_columns, len(device)), dtype=float)
     for i, col in enumerate(columns[time_col_start:]):
         times[i,:] = col
+
     # Convert ms to s
     times /= 1000.0
 
@@ -37,12 +38,12 @@ def plot(data, filename, num_ref, calc_overhead, legend_text, real_time_s=None, 
     # Correctly place bars
     bar_width = 0.8
 
-
     # If there are no groups space bars evenly
     group_x = []
     if group_size is None:
         bar_pad = 0.4
-        bar_x = np.arange(0.0, len(device) * (bar_width + bar_pad), bar_width + bar_pad)
+        bar_x = np.asarray([float(d) * (bar_width + bar_pad)
+                            for d in range(len(device))])
     # Otherwise
     else:
         bar_pad = 0.1
@@ -68,6 +69,7 @@ def plot(data, filename, num_ref, calc_overhead, legend_text, real_time_s=None, 
             # Update start for next group
             start += (bar_width + group_pad)
 
+    assert len(bar_x) == len(device)
     offset = np.zeros(len(bar_x) - num_ref)
 
     # Plot stacked, GPU bars
@@ -128,27 +130,35 @@ def plot(data, filename, num_ref, calc_overhead, legend_text, real_time_s=None, 
     # If legend text is specified
     if legend_text is not None:
         # Add legend
-        fig.legend(legend_actors, legend_text, ncol=2, loc="lower center")
+        fig.legend(legend_actors, legend_text,
+                   ncol=2,
+                   loc="lower center")
 
         # Tweak bottom of tight layout rect to fit in legend
-        tight_layout_rect[1] += 0.15
+        if not plot_settings.presentation:
+            tight_layout_rect[1] += 0.15
 
     if group is not None:
         # Add legend
-        fig.legend(legend_actors[:group_size], group[:group_size], ncol=2, loc="lower center")
+        fig.legend(legend_actors[:group_size], group[:group_size],
+                   ncol=group_size if plot_settings.presentation else 2,
+                   loc="lower center")
 
         # Tweak bottom of tight layout rect to fit in legend
-        tight_layout_rect[1] += 0.1
+        if not plot_settings.presentation:
+            tight_layout_rect[1] += 0.1
 
     # Set tight layout and save
     fig.tight_layout(pad=0, rect=tight_layout_rect)
-    fig.savefig(filename)
+    if not plot_settings.presentation:
+        fig.savefig(filename)
 
-# Total simulation time, neuron simulation, synapse simulation
+# neuron simulation, synapse simulation, Total simulation time,
 microcircuit_data = [("Jetson TX2", 99570.4, 155284, 258350),
                      ("GeForce 1050ti", 20192.6, 21310.1, 137592),
                      ("Tesla K40c", 13636.2, 12431.8, 41911.5),
                      ("Tesla V100", 3215.88, 3927.9, 21645.4),
+                     ("Xeon E3-1240", 235891, 82275.2, 318456.0),
                      ("HPC\n(fastest)", 0.0, 0.0, 24296.0),
                      ("SpiNNaker", 0.0, 0.0, 200000)]
 
@@ -172,7 +182,7 @@ plot(microcircuit_init_data, "../figures/microcircuit_init_performance.eps", 2, 
      None, None, 2, True)
 
 plot(microcircuit_data, "../figures/microcircuit_performance.eps", 2, True,
-     ["Neuron simulation", "Synapse\nsimulation", "Overhead"], 10.0)
+     ["Neuron simulation", "Synapse simulation", "Overhead"], 10.0)
 
 plot(stdp_data, "../figures/stdp_performance.eps", 0, True,
      ["Neuron simulation", "Synapse simulation", "Postsynaptic learning", "Overhead"], 200.0)
