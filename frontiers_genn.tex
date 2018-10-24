@@ -221,13 +221,22 @@ In the general case the Beta distribution cannot be sampled from in constant tim
 However, if $X \sim \text{Beta}[1, N_{\text{post}}]$, $1 - X \sim \text{Beta}[N_{\text{post}}, 1]$ and therefore $-ln(1 - X) \sim \text{Exponential}[N_{\text{post}}]$ -- a much simpler problem as the exponential distribution can be sampled in constant time using the inversion method~\citep{DevroyeLuc2013}.
 
 In addition to their synaptic input, each neuron in the network also receives independent Poisson inputs with population-specific rates representing input from adjacent cortical regions.
-Neurons are modelled as leaky integrate-and-fire~(LIF) units with exponentially shaped current inputs:
+The membrane voltage ($V_{j}$) of each neuron is modelled as a leaky integrate-and-fire~(LIF) unit:
 %
 \begin{align}
-    \tau_{m} \frac{dV_{j}}{dt} = & (V_{j} - V_{rest}) + R_{m}(I_{bias} + I_{s_{j}}) \label{eq:lif_neuron}\\
+    \tau_{m} \frac{dV_{j}}{dt} = & (V_{j} - V_{rest}) + R_{m} I_{s_{j}} \label{eq:lif_neuron}\\
+\end{align}
+%
+where $\tau_{m}$ and $R_{m}$ represent the time constant and resistance of the neuron's cell membrane, $V_{rest}$ defines the membrane voltage to which the neuron returns if it receives no synaptic input and $I_{s_{j}}$ represents the input current from the synapses.
+When the membrane voltage crosses a threshold~($V_{thresh}$) a spike is emitted, the membrane voltage is reset back to $V_{rest}$ and a countdown timer is started which, while running, disables the integration of further input thus providing a simulated refractory period.
+Incoming spikes induce an exponentially-shaped input current in $I_{s_{j}}$:
+%
+\begin{align}
     \tau_{syn} \frac{dI_{s_{j}}}{dt} = & -I_{s_{j}} + \sum_{i=0}^{n} w_{ij} \sum_{t_{i}^{f}}  \delta(t - t_{i}^{f})\label{eq:exp_neuron_input_current}
 \end{align}
 %
+where $\tau_{syn}$ represents the time constant with which any spikes (modelled as Dirac delta functions $\delta$) from $n$ presynaptic input neurons occuring at time $t$ are integrated.
+Finally, $w_{ij}$ represents the peak synaptic input current of the synapse between the presynaptic neuron $i$ and the postsynaptic neuron $j$.
 Although $V_{j}$ and $I_{s{j}}$ are coupled, in our GeNN model, the continuous terms of the two equations are solved separately so that the synaptic input current $I_{s_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
 As \citet{Rotter1999} explain, this approach leads to a delay of one simulation timestep compared to the exact solution.
 However, by separating the solving of these equations, different types of input synapse with different dynamics can trivially be supported.
@@ -293,14 +302,15 @@ For the full description of this model, please refer to \citeauthor{Morrison2007
 In the remainder of this section we will concentrate on describing how models with synaptic plasticity are parallelised using GeNN.
 
 Similarly to the microcircuit model described in the previous section this model uses LIF neurons with current inputs.
-However, rather than exponentially filtering the incoming synaptic input, this model uses slightly more complex \textit{alpha} synapses~\citep{Rall1967} which provide a closer match to the dynamics of biological ion channels:
+However, rather than filtering the incoming synaptic input current ($I_{s_{j}}$) using a single exponential, this model uses slightly more complex \textit{alpha} synapses~\citep{Rall1967} which provide a closer match to the dynamics of biological ion channels:
 %
 \begin{align}
     \tau_{syn} \frac{dI_{s_{j}}}{dt} = & x_{s_{j}} - I_{s_{j}} \label{eq:alpha_neuron_input_current_1}\\ 
     \tau_{syn} \frac{dx_{s_{j}}}{dt} = & -x_{s_{j}} + \sum_{i=0}^{n} w_{ij} \sum_{t_{i}^{f}}  \delta(t - t_{i}^{f}) \label{eq:alpha_neuron_input_current_2}
 \end{align}
 %
-Aside from requiring an additional state variable to hold $x_{s_{j}}$, equations~\ref{eq:alpha_neuron_input_current_1}~and~\ref{eq:alpha_neuron_input_current_2} have trivial algebraic solutions meaning they can be simulated using the same scheme described in the previous section.
+where $x_{s_{j}}$ represents a second state variable and all other terms maintain the same meanings they had in equation~\ref{eq:exp_neuron_input_current}.
+Nonetheless, equations~\ref{eq:alpha_neuron_input_current_1}~and~\ref{eq:alpha_neuron_input_current_2} have trivial algebraic solutions meaning they can be simulated using the same scheme described in the previous section.
 
 \begin{figure}
     \begin{center}
@@ -314,7 +324,7 @@ Aside from requiring an additional state variable to hold $x_{s_{j}}$, equations
 \end{figure}
 
 Even leaving aside synaptic plasticity rules which use postsynaptic membrane voltage~\citep{Brader2007,Clopath2010c} rather than postsynaptic spike times or include `third factors' such as dopamine~\citep{Izhikevich2007}, there are a plethora of different STDP formalisations (see \citet{Morrison2008} for a review).
-However, in the model described in this section, \citet{Morrison2007} chose to use a rule with the following relationship between pre~($t_{\text{pre}}$) and postsynaptic~($t_{\text{post}}$) spike timing~($\Delta t = t_{\text{post}} - t_{\text{pre}}$):
+However, in the model described in this section, \citet{Morrison2007} chose to use a rule that modifies the synaptic weight~($w_{ij}$) between a pre and postsynaptic neuron based on the relative timing of pre~($t_{\text{pre}}$) and postsynaptic~($t_{\text{post}}$) spikes~($\Delta t = t_{\text{post}} - t_{\text{pre}}$):
 %
 \begin{align}
     \Delta w_{ij} = \
@@ -324,18 +334,26 @@ However, in the model described in this section, \citet{Morrison2007} chose to u
         \end{cases}\label{eq:mad_stdp}
 \end{align}
 %
-\citet{Morrison2007} use this rule with an \textit{all-to-all} spike-pairing scheme meaning that each of the pairs formed by a presynaptic spike and all preceding postsynaptic spikes (and vice-versa) should be considered.
-Rather than repeatedly evaluating equation~\ref{eq:mad_stdp}, we calculate these updates based on pre and postsynaptic \textit{spike traces}~\citep{Song2000, Morrison2007} with the following dynamics:
+where $\lambda$ represents the learning rate, $w_{0}$ defines a reference weight and $\mu$ allows the potentiation term to be set as entirely multiplicative~($\mu=1$), entirely additive~($\mu=0$) or somewhere in between.
+As discussed by \citet{Morrison2007}, in the model presented in this section, $\mu$ is set to \num{0.4} so as to match the data recorded by \citet{Bi1998}.
+Finally $\tau$ defines the time constant of the STDP kernel and $\alpha$ controls the relative strength of potentiation and depression.
+\citeauthor{Morrison2007} use this rule with an \textit{all-to-all} spike-pairing scheme meaning that each of the pairs formed by a presynaptic spike and all preceding postsynaptic spikes (and vice-versa) should be considered.
+Rather than repeatedly evaluating equation~\ref{eq:mad_stdp}, we calculate these updates based on per-neuron \textit{spike traces}~\citep{Song2000, Morrison2007} with the following dynamics:
 %
 \begin{align}
     \frac{ds_{i}}{dt} & = -\frac{s_{i}}{\tau} + \sum_{t_{i}^{f}}\delta(t - t_{i}^{f}) \label{eq:stdp_trace}
 \end{align}
 %
-These traces are then used to calculate the magnitude of $\Delta w_{ij}$ when a pre or postsynaptic spike arrives at the synapse:
+The value of these traces can be thought of as representing the sum of the exponential term from equation~\ref{eq:mad_stdp} if it were calculated for every pair or spikes.
+Therefore the potentiation~($\Delta w_{ij}^{+}$) induced by the spike pairs formed by a postsynaptic spike occuring at $t_{j}^{f}$ and all preceding presynaptic spikes can be calculated using the following single update:
 %
 \begin{align}
-  \Delta w_{ij}^{-}(t_{i}^{f}) & = \lambda \alpha w_{ij} s_{j}(t_{i}^{f})\label{eq:stdp_update_pre_pair}\\
   \Delta w_{ij}^{+}(t_{j}^{f}) & = \lambda w_{0}^{1-\mu} w_{ij}^{\mu} s_{i}(t_{j}^{f})\label{eq:stdp_update_post_pair}
+\end{align}
+%
+Similarily, the depression~($\Delta w_{ij}^{-}$) induced by the spike pairs formed by a presynaptic spike occurring at $t_{i}^{f}$ and all preceding postsynaptic spikes can be calculated using the following single update:
+\begin{align}
+    \Delta w_{ij}^{-}(t_{i}^{f}) & = \lambda \alpha w_{ij} s_{j}(t_{i}^{f})\label{eq:stdp_update_pre_pair}
 \end{align}
 %
 In GeNN, if a neuron has fired in the current timestep, its trace variables are updated in the neuron kernel by evaluating equation~\ref{eq:stdp_trace}.
