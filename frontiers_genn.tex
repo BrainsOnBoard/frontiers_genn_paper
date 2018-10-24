@@ -555,12 +555,15 @@ This is approximately $50\times$ slower than the Jetson TX2 when only one of its
     \end{center}
     \caption{Simulation times of the balanced random network model running on various GPU hardware for \SI{200}{\second} of biological time.
     `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.
+    `Standard' and `Bitmask' refer to the data structure used for representing the model's non-plastic connections -- the standard synaptic matrix data structure described in section~\ref{sec:method/microcircuit} or the bitmask data structure described in section~\ref{sec:method/balanced_random} respectively.
     The dotted horizontal line indicates realtime performance.}
     \label{fig:stdp_performance}
 \end{figure}
 
 \subsubsection{Balanced random network}
 Figure~\ref{fig:stdp_performance} shows the runtime of simulations of the balanced random network model described in section~\ref{sec:method/balanced_random}.
+The Tesla V100 has enough memory~(\SI{16}{\giga\byte}) to represent the model's non-plastic connections using the standard synaptic matrix data structure described in section~\ref{sec:method/microcircuit} as well as the bitmask data structure described in section~\ref{sec:method/balanced_random}.
+Figure~\ref{fig:stdp_performance} shows that this has a negligible impact on the simulation time suggesting that this data structure is equally efficient for large-scale models.
 While the simulations of the cortical microcircuit model ran approximately twice as fast on the newer Tesla V100 GPU, potentially just reflecting its higher memory bandwidth, the simulations of the plastic model ran more than $10\times$ faster on the V100 GPU.
 As figure~\ref{fig:stdp_performance} shows, this is almost entirely due to the time spend in the postsynaptic learning kernel.
 This kernel is where synaptic potentiation is applied using the approach outlined in section~\ref{sec:method/balanced_random} in which an additional column-major sparse matrix structure is used to select weights to update in response to postsynaptic spikes.
