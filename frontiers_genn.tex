@@ -243,7 +243,7 @@ As long as the state variables are laid out correctly in memory, the required me
     \begin{center}
         \includegraphics{figures/ragged_matrix}
     \end{center}
-    \caption{GPU parallelism of sparse synaptic matrix processing across two thread blocks each with \num{4} threads.
+    \caption{GPU parallelisation of sparse synaptic matrix processing across two thread blocks each with \num{4} threads.
     $i_{0},\ldots,i_{3}$ contain the indices of presynaptic spikes.
     $l_{i_{0}},\ldots,l_{i_{3}}$ contain the lengths of the corresponding matrix rows.
     $j$ contains the indices of the postsynaptic target neurons.
@@ -306,7 +306,7 @@ Aside from requiring an additional state variable to hold $x_{s_{j}}$, equations
     \begin{center}
         \includegraphics{figures/bitmask}
     \end{center}
-    \caption{GPU parallelism of bitmask synaptic matrix processing across two thread blocks each with \num{4} threads.
+    \caption{GPU parallelisation of the processing of \num{4} postsynaptic neurons' synaptic input using a bitmask synaptic matrix and one thread blocks with \num{4} threads.
     $i_{0},\ldots,i_{3}$ contain the indices of presynaptic spikes.
     Snaking lines indicate CUDA threads.
     0s and 1s indicate individual bitmask bits.}
