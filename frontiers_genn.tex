@@ -53,7 +53,7 @@
 
 \title[GPUs outperform current SNN simulators]{GPUs
   outperform current HPC and neuromorphic solutions in terms
-of speed and energy for two highly-connected cortical models} 
+of speed and energy when simulating a highly-connected cortical model} 
 
 \author[\firstAuthorLast ]{\Authors} %This field will be automatically populated
 \address{} %This field will be automatically populated
@@ -208,19 +208,6 @@ This model of \SI{1}{\milli\metre\cubed} of early-sensory cortex was developed b
 Each layer is modelled by an excitatory and an inhibitory neuron population.
 Neurons in each population are connected randomly with population-specific densities derived from an extensive review of the anatomical literature resulting in a total of approximately \num{0.3E9} synapses.
 Beside this structured connectivity, all synaptic strengths and transmission delays are normally distributed.
-For a full description of the model please refer to \citeauthor{Potjans2012}.
-In the remainder of this section we will concentrate on describing the strategies used to parallelise the initialisation and subsequent simulation of this network.
-
-In this model the density of the synaptic connections between a pair of neuronal populations is specified in terms of a total number of random synapses (a \lstinline{FixedNumberTotal} connector in PyNN).
-The first stage in initialising such a connectivity between a presynaptic population with $N_{\text{pre}}$ neurons and a postsynaptic population with $N_{\text{post}}$ neurons is to determine how many of the total synapses $N_{\text{syn}}$ end up in each row by sampling from the multinomial distribution $\text{Mult}[N_{\text{pre}} * N_{\text{post}}, \{P_{row}, P_{row}, \ldots, P_{row}\}]$ where $P_{row} = \frac{N_{\text{post}}}{N_{\text{syn}}}$.
-This operation cannot be efficiently parallelised so must be performed on the host but, once the length of each row is determined, the postsynaptic targets of the synapses can be initialised in parallel by sampling from the discrete uniform distribution $\text{Unif}[0, N_{\text{post}}]$ using $N_{\text{pre}}$ CUDA threads.
-While this works mathematically, in order to improve the locality of memory accesses, synapses should be sorted into ascending order.
-This would be trivial to implement in CPU code but, without enough shared memory for each CUDA thread to store a copy of its corresponding row, an in-place sort in global memory would be very slow.
-It would be possible to use a more complex parallel sorting algorithm such as that proposed by \citet{Awan2016} but, as GPU architectures typically have very high floating point maths throughput, we instead take an alternative approach.
-Rather than sampling directly from $\text{Unif}[0, N_{\text{post}}]$ we sample from its 1st order statistic $\text{Beta}[1, N_{\text{post}}]$ -- essentially the next smallest value.
-In the general case the Beta distribution cannot be sampled from in constant time.
-However, if $X \sim \text{Beta}[1, N_{\text{post}}]$, $1 - X \sim \text{Beta}[N_{\text{post}}, 1]$ and therefore $-ln(1 - X) \sim \text{Exponential}[N_{\text{post}}]$ -- a much simpler problem as the exponential distribution can be sampled in constant time using the inversion method~\citep{DevroyeLuc2013}.
-
 In addition to their synaptic input, each neuron in the network also receives independent Poisson inputs with population-specific rates representing input from adjacent cortical regions.
 The membrane voltage ($V_{j}$) of each neuron is modelled as a leaky integrate-and-fire~(LIF) unit:
 %
@@ -238,7 +225,20 @@ Incoming spikes induce an exponentially-shaped input current in $I_{s_{j}}$:
 %
 where $\tau_{syn}$ represents the time constant with which any spikes (modelled as Dirac delta functions $\delta$) from $n$ presynaptic input neurons occuring at time $t$ are integrated.
 Finally, $w_{ij}$ represents the peak synaptic input current of the synapse between the presynaptic neuron $i$ and the postsynaptic neuron $j$.
-Although $V_{j}$ and $I_{s{j}}$ are coupled, in our GeNN model, the continuous terms of the two equations are solved separately so that the synaptic input current $I_{s_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
+For a full description of the model please refer to \citeauthor{Potjans2012}.
+In the remainder of this section we will concentrate on describing the strategies used to parallelise the initialisation and subsequent simulation of this network.
+
+In this model the density of the synaptic connections between a pair of neuronal populations is specified in terms of a total number of random synapses (a \lstinline{FixedNumberTotal} connector in PyNN).
+The first stage in initialising such a connectivity between a presynaptic population with $N_{\text{pre}}$ neurons and a postsynaptic population with $N_{\text{post}}$ neurons is to determine how many of the total synapses $N_{\text{syn}}$ end up in each row by sampling from the multinomial distribution $\text{Mult}[N_{\text{pre}} * N_{\text{post}}, \{P_{row}, P_{row}, \ldots, P_{row}\}]$ where $P_{row} = \frac{N_{\text{post}}}{N_{\text{syn}}}$.
+This operation cannot be efficiently parallelised so must be performed on the host but, once the length of each row is determined, the postsynaptic targets of the synapses can be initialised in parallel by sampling from the discrete uniform distribution $\text{Unif}[0, N_{\text{post}}]$ using $N_{\text{pre}}$ CUDA threads.
+While this works mathematically, in order to improve the locality of memory accesses, synapses should be sorted into ascending order.
+This would be trivial to implement in CPU code but, without enough shared memory for each CUDA thread to store a copy of its corresponding row, an in-place sort in global memory would be very slow.
+It would be possible to use a more complex parallel sorting algorithm such as that proposed by \citet{Awan2016} but, as GPU architectures typically have very high floating point maths throughput, we instead take an alternative approach.
+Rather than sampling directly from $\text{Unif}[0, N_{\text{post}}]$ we sample from its 1st order statistic $\text{Beta}[1, N_{\text{post}}]$ -- essentially the next smallest value.
+In the general case the Beta distribution cannot be sampled from in constant time.
+However, if $X \sim \text{Beta}[1, N_{\text{post}}]$, $1 - X \sim \text{Beta}[N_{\text{post}}, 1]$ and therefore $-ln(1 - X) \sim \text{Exponential}[N_{\text{post}}]$ -- a much simpler problem as the exponential distribution can be sampled in constant time using the inversion method~\citep{DevroyeLuc2013}.
+
+Although the equations describing the neuron dynamics (equations~\ref{eq:lif_neuron}~and~\ref{eq:exp_neuron_input_current}) are coupled, in our GeNN model, the continuous terms of the two equations are solved separately so that the synaptic input current $I_{s_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
 As \citet{Rotter1999} explain, this approach leads to a delay of one simulation timestep compared to the exact solution.
 However, by separating the solving of these equations, different types of input synapse with different dynamics can trivially be supported.
 For example, while a single exponential may be a good approximation of some inhibitory synapses, for other types of synapse the rise time of the post synaptic potential may be vital~\citep{VanVreeswijk1994}.
@@ -446,16 +446,10 @@ Each of these threads loops through the incoming spikes stored in the shared mem
 \section{Results}
 \subsection{Correctness}
 \label{sec:results/correctness}
-\citet{VanAlbada2018} performed an in-depth analysis of the correctness of simulations of the microcircuit model described in section~\ref{sec:method/microcircuit} \citep{Potjans2012}  both on the SpiNNaker neuromorphic system and on NEST running in `grid-based' mode.
-The GPU simulations presented in this paper do not face the issues with quantisation which can affect SpiNNaker due to its use of relatively low-precision fixed-point arithmetic.
-However, unlike NEST, our GPU simulations use single rather than double-precision floating point and therefore have the potential for more numerical instability.
-Additionally, the non-associative nature of floating point operations means that, if the results from a large number of parallel threads are summed together in a non-deterministic order, results can differ between runs due to rounding errors.
-\citet{Villa2009} demonstrated this by calculating the sum of \num{28000} double-precision floating point numbers across \num{16000} threads of a CRAY XMT system (which, in this context, has similar properties to a GPU) and found that results varied by up to \SI{24.64}{\percent}.
-However, in this experiment, more numbers were summed than would occur when using any of the parallelisation schemes described in section~\ref{sec:method} and it is unclear what absolute errors the reported relative errors correspond to. 
-A more detailed treatment of the expected rounding errors in parallel simulations of SNNs on GPUs will be published elsewhere~\citep{Turner2019}. 
 In this section we will focus on confirming the correctness of our simulations of the microcircuit model using the methodology described by \citet{VanAlbada2018} to compare the results to those obtained using NEST running in `precise' mode.
 Additionally we will compare the results of simulations of the balanced random network model to those reported by \citet{Morrison2007}.
 
+\subsubsection{Cortical microcircuit model}
 While the randomisation of each neuron's initial membrane voltage should reduce any such effects, the first \SI{1}{\second} of spike data from each \SI{10}{\second} simulation is discarded in order to remove any transients.
 We then calculated the average firing rates and the covariance of interspike intervals~(CV ISI) for each neuron in the model over the remaining \SI{9}{\second} of the simulation using the Elephant~\citep{Yegenoglu2018} package.
 We also picked \num{200} (this was a trade-off between accuracy and analysis time chosen by \citeauthor{VanAlbada2018}) active neurons from each population, binned their spike trains into \SI{2}{\milli\second} bins (corresponding to the refractory time of the neurons) and calculated the Pearson correlation coefficients matrix between each disjoint pair of neurons.
@@ -468,6 +462,7 @@ Visually it is clear that the per-population distributions are highly similar an
 Figure~\ref{fig:microcircuit_accuracy_kl} shows the KL divergences calculated from our GeNN simulation as well as those reported by \citet{VanAlbada2018} for their grid-aligned NEST and SpiNNaker simulations and between two `precise' NEST simulations with different random number generator seeds. 
 Similarly to those calculated from the SpiNNaker and grid-aligned NEST simulations, the KL divergences from our GeNN simulation are comparable in size to those caused by changing the random number generator seed, suggesting that using single-precision floating point and summing inputs in a non-deterministic order has a minimal effect on the dynamics of the microcircuit model.
 
+\subsubsection{Balanced random network}
 To assess the correctness of our implementation of the balanced random network model described in section~\ref{sec:method/balanced_random}, we simulated the network for \SI{2000}{\second} of biological time and compared the final weight distribution and the statistics of the last \SI{50}{\second} of spiking activity with those reported by \citet{Morrison2007}.
 The calculated statistics are listed in table~\ref{tab:mad_stats} and the final weight distribution is shown in figure~\ref{fig:mad_weights}.
 %The final weight distribution has a small right skew, but is otherwise similar to that reported by \citeauthor{Morrison2007}.
@@ -623,6 +618,14 @@ In a previous study using a much smaller cortical microcircuit model suffering f
 This suggests that although, even fully-programmable neuromorphic systems such as SpiNNaker use less energy than the most energy-efficient GPU, this is only by a margin of around $3-5\times$ when compared to newer GPUs such as the Tesla V100 and the Jetson TX2.
 
 \section{Discussion}
+\citet{VanAlbada2018} performed an in-depth analysis of the correctness of simulations of the microcircuit model described in section~\ref{sec:method/microcircuit} \citep{Potjans2012}  both on the SpiNNaker neuromorphic system and on NEST running in `grid-based' mode.
+The GPU simulations presented in this paper do not face the issues with quantisation which can affect SpiNNaker due to its use of relatively low-precision fixed-point arithmetic.
+However, unlike NEST, our GPU simulations use single rather than double-precision floating point and therefore have the potential for more numerical instability.
+Additionally, the non-associative nature of floating point operations means that, if the results from a large number of parallel threads are summed together in a non-deterministic order, results can differ between runs due to rounding errors.
+\citet{Villa2009} demonstrated this by calculating the sum of \num{28000} double-precision floating point numbers across \num{16000} threads of a CRAY XMT system (which, in this context, has similar properties to a GPU) and found that results varied by up to \SI{24.64}{\percent}.
+However, in this experiment, more numbers were summed than would occur when using any of the parallelisation schemes described in section~\ref{sec:method} and it is unclear what absolute errors the reported relative errors correspond to. 
+%A more detailed treatment of the expected rounding errors in parallel simulations of SNNs on GPUs will be published elsewhere~\citep{Turner2019}. 
+
 \subsection{Further optimisation and GPU architectures}
 The increase in the peak performance of the Tesla K40c (released in 2013) and the Tesla V100 (released in 2017) listed in table~\ref{tab:gpu_devices} illustrate just how much GPUs have taken advantage of Moore's law scaling.
 However, the modelling study performed by \citet{Esmaeilzadeh2012} indicates that this scaling of GPU performance will begin to slow as the `power wall' is reached.
