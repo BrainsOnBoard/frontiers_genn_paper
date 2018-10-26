@@ -208,8 +208,19 @@ A similar interface exist for SpineCreator and an interface to PyNN~\citep{Davis
  
 \subsection{Cortical microcircuit model}
 \label{sec:method/microcircuit}
+
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=18cm]{figures/potjans_circuit_v2}
+    \end{center}
+    \caption{Illustration of the microcircuit model.
+    Blue triangles represent excitatory populations, red circles represent inhibitory populations and the numbers beneath each symbol shows the number of neurons in each population.
+    Connection probabilities are shown in small bold numbers at the appropriate point in the connection matrix.}
+    \label{fig:potjans_circuit}
+\end{figure}
+
 This model of \SI{1}{\milli\metre\cubed} of early-sensory cortex was developed by \citet{Potjans2012} and consists of around \num{80000} neurons, divided into layers 2/3, 4, 5 and 6.
-Each layer is modelled by an excitatory and an inhibitory neuron population.
+Each layer is modelled by an excitatory and an inhibitory neuron population as shown in figure~\ref{fig:potjans_circuit}.
 Neurons in each population are connected randomly with population-specific densities derived from an extensive review of the anatomical literature resulting in a total of approximately \num{0.3E9} synapses.
 Beside this structured connectivity, all synaptic strengths and transmission delays are normally distributed.
 The membrane voltage ($V_{j}$) of each neuron is modelled as a leaky integrate-and-fire~(LIF) unit:
@@ -663,15 +674,23 @@ Additionally, communication overheads could be reduced by using NVIDIA's GPUDire
 \subsection{Comparison to neuromorphic systems}
 In section~\ref{sec:results/power} we showed that our GPU simulations of the microcircuit model required less energy than those run on SpiNNaker.
 As \citeauthor{VanAlbada2018} discuss, this poor energy efficiency comes from slowing SpiNNaker simulations down by a factor of \num{20} and only simulating \num{80} neurons on each core.
-However, because SpiNNaker is a software-programmable system, these limitations are not set in stone and \citet{Knight2016b} present some potential solutions to these issues.
-\citeauthor{Knight2016b} showed both how models can be distributed more efficiently across a SpiNNaker machine and how Poisson background input could be directly injected into neurons in a similar manner to that presented in section~\ref{sec:method/microcircuit} -- reducing the cost of incoming spike processing.
-Therefore it seems possible that, purely through software improvements, SpiNNaker could become much more energy efficient -- perhaps closer to the \SI{0.11}{\micro\joule} per synaptic event measured by \citet{Sharp2012} on a less complex model.
+However, because SpiNNaker is a software-programmable system, these limitations are not set in stone and \citet{Knight2016b} present some potential solutions to the underlying problems.
+\citeauthor{Knight2016b} showed how models can be distributed more efficiently across a SpiNNaker machine and how Poisson background input could be directly injected into neurons to reduce the cost of incoming spike processing.
+Additionally, other software techniques we present in the context of GeNN such as the bitmask connectivity format and the parallel connectivity initialisation would be potentially applicable to software-programmable systems such as SpiNNaker.
+Therefore it seems possible that, purely through software improvements, SpiNNaker could become significantly more energy efficient -- perhaps closer to the \SI{0.11}{\micro\joule} per synaptic event measured by \citet{Sharp2012} on a less complex model.
+Furthermore, by using more advanced power management techniques as well as reducing the manufacturing process size from \SI{130}{\nano\metre} to \SI{22}{\nano\meter}, the next generation SpiNNaker system aims to improve energy efficiency by a factor of \num{10}~\citep{Hoppner2017}.
+Neuromorphic systems based on custom circuits rather than programmable CPUs still require much less energy.
+Digital system such as Intel's Loihi~\citep{Davies2018} or IBM's TrueNorth~\citep{Merolla2014} only require around \SI{20}{\pico\joule} per-synaptic event and analogue systems such as Dynapse~\citep{Qiao2015} only require around \SI{100}{\femto\joule} per synaptic event.
+However, beside from SpiNNaker, only the Intel Loihi supports the degree of connectivity required to implement the microcircuit model.
 
-However, neuromorphic systems which use custom digital circuits to model individual neurons and synapse, require an order of magnitude less power with Intel's Loihi~\citep{Davies2018} system and IBM's TrueNorth~\citep{Merolla2014} both using in the order of \SI{10}{\pico\joule} per synaptic event.
-Furthermore, subthreshold analogue systems such as the Dynapse system~\citep{Qiao2015} only use in the order of \SI{100}{\femto\joule} per synaptic event.
-
-While the next generation SpiNNaker system will support floating point arithmetic and is likely to include bespoke accelerators to provide acceleration for some common transcendental functions~\citep{Mikaitis2018}.
-Similarily the next generation BrainScaleS system will include vector-processors adjacent to each synapse array~\citep{Friedmann2016}
+Simulating the balanced random network model described in section~\ref{sec:method/balanced_random} would be an even greater challenge for a neuromorphic system as, again, only SpiNNaker and Loihi would be able to support its high degree of connectivity.
+Additionally, while Loihi has a relatively flexible microcode-based `learning engine', it does not directly support the operations required to calculate the $w_{ij}^{\mu}$ term in equation~\ref{eq:stdp_update_post_pair}.
+While several relatively complex synaptic plasticity rules have previously been implemented on SpiNNaker~\citep{Knight2016,Mikaitis2018b}, these only required exponential decays and logarithms which could be implement using lookup tables, whereas, evaluating $w_{ij}^{\mu}$ would be likely to require a series expansion.
+\citet{Moise2012} implemented several transcendental functions on SpiNNaker using series expansions and showed that they typically required in the order of \num{100} CPU cycles.
+\citet{Knight2016b} analysed the performance of STDP processing on SpiNNaker and found that performing an additive weight update in response to a postsynaptic spikes took around \num{31} CPU cycles.
+Therefore, adding \num{100} extra CPU cycles to this update would be likely to severely reduce the STDP processing performance of SpiNNaker to the point that it would be unable to efficiently simulate this model.
+%Similarily the next generation BrainScaleS system will include vector-processors adjacent to each synapse array~\citep{Friedmann2016}
+However, the next generation SpiNNaker system is likely to include bespoke accelerators to provide acceleration for $exp(x)$ and $ln(x)$~\citep{Mikaitis2018,Partzsch2017} which could be used to implement $w_{ij}^{\mu}$ as $\exp(\mu * \log(x))$.
 
 \subsection{Neurorobotics}
 \label{sec:discussion/neurobotics}
