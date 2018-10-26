@@ -12,7 +12,7 @@ else:
     sns.set_style("whitegrid", {"font.family":"serif", "font.serif":"Times New Roman"})
 
 # **HACK** fix bug with markers
-sns.set_context(rc={"lines.markeredgewidth": 0.1})
+sns.set_context(rc={"lines.markeredgewidth": 1.0})
 
 mm_to_inches = 0.039370079
 column_width = 85.0 * mm_to_inches
