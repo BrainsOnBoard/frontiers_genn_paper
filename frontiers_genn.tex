@@ -302,6 +302,16 @@ Spike Timing Dependent Plasticity~(STDP)~\citep{Markram1997,Bi1998} is a popular
 In excitatory cortical~\citep{Markram1997} and Hippocampal~\citep{Bi1998} neurons, synapses at which a presynaptic spike is closely followed by a postsynaptic spike are strengthened, whereas those at which a postsynaptic spike precedes a presynaptic spike are weakened.
 The intuition behind this relationship is that synapses that are implicated in the firing of the postsynaptic neuron are strengthened and those that are irrelevant are weakened.
 
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=8cm]{figures/circuit2}
+    \end{center}
+    \caption{Illustration of the balanced random network model.
+    Blue triangles represent excitatory populations, red circles represent inhibitory populations and the numbers beneath each symbol shows the number of neurons in each population.
+    Connection probabilities are shown in small bold numbers at the appropriate point in the connection matrix.}
+    \label{fig:balanced_random_circuit}
+\end{figure}
+
 However, adding STDP to spiking neural network simulations typically increases the computational cost of simulating them significantly. 
 \citet{Morrison2007} reported that adding plasticity to their simulations slowed them down by ``a factor of less than 10'' and \citet{Knight2016b} found that, in the \textbf{best} case, simple STDP plasticity reduced the performance of the SpiNNaker neuromorphic system by approximately $6\times$.
 Furthermore, the dynamics of neural systems with plasticity operating on biologically-plausible time scales take several orders of magnitude more time to stabilise meaning that longer simulations are required.
@@ -310,7 +320,7 @@ However, \citeauthor{Morrison2007} argue that it is vital to perform experiments
 These stronger synaptic inputs will increase the correlation between neurons and, because STDP is inherently sensitive to correlated neural activity, this is likely to cause artefacts in the learned synaptic weights.
 
 Balanced random networks have been shown to reproduce some of the dynamics seen in the neocortex~\citep{Brunel1999,Brunel2000}.
-On this basis, \citet{Morrison2007} developed a large balanced random network model with \num{90000} excitatory and \num{22500} inhibitory neurons: the scale necessary to achieve a realistic number of incoming connections per neuron of $\approx 10000$~\citep{braitenberg2013cortex} with a biologically plausible connection probability of $\approx 0.1$.
+On this basis, \citet{Morrison2007} developed the large balanced random network model shown in figure~\ref{fig:balanced_random_circuit} with \num{90000} excitatory and \num{22500} inhibitory neurons: the scale necessary to achieve a realistic number of incoming connections per neuron of $\approx 10000$~\citep{braitenberg2013cortex} with a biologically plausible connection probability of $\approx 0.1$.
 \citeauthor{Morrison2007} showed that adding STDP to this model did not disrupt its dynamics and, as long as a suitable STDP rule is used, the synaptic weights will settle into a stable unimodal distribution.
 
 Similarly to the microcircuit model described in the previous section, this model uses LIF neurons with current inputs.
