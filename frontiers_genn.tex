@@ -215,7 +215,9 @@ A similar interface exist for SpineCreator and an interface to PyNN~\citep{Davis
     \end{center}
     \caption{Illustration of the microcircuit model.
     Blue triangles represent excitatory populations, red circles represent inhibitory populations and the numbers beneath each symbol shows the number of neurons in each population.
-    Connection probabilities are shown in small bold numbers at the appropriate point in the connection matrix.}
+    Connection probabilities are shown in small bold numbers at the appropriate point in the connection matrix.
+    All excitatory synaptic weights are normally distributed with a mean of \SI{0.0878}{\nano\ampere} (unless otherwise indicated in green) and a standard deviation of \SI{0.00878}{\nano\ampere}.
+    All inhibitory synaptic weights are normally distributed with a mean of \SI{0.3512}{\nano\ampere} and a standard deviation of \SI{0.03512}{\nano\ampere}.}
     \label{fig:potjans_circuit}
 \end{figure}
 
@@ -482,7 +484,7 @@ The histograms were smoothed with Gaussian kernel density estimation performed u
 Figure~\ref{fig:microcircuit_accuracy} shows the results of this analysis.
 Visually it is clear that the per-population distributions are highly similar and, to quantify this, we calculated the Kullback-Leibler~(KL) divergences using the `precise' NEST data as the reference.
 Figure~\ref{fig:microcircuit_accuracy_kl} shows the KL divergences calculated from our GeNN simulation as well as those reported by \citet{VanAlbada2018} for their grid-aligned NEST and SpiNNaker simulations and between two `precise' NEST simulations with different random number generator seeds. 
-Similarly to those calculated from the SpiNNaker and grid-aligned NEST simulations, the KL divergences from our GeNN simulation are comparable in size to those caused by changing the random number generator seed, suggesting that using single-precision floating point and summing inputs in a non-deterministic order has a minimal effect on the dynamics of the microcircuit model.
+Similarly to those calculated from the SpiNNaker and grid-aligned NEST simulations, the KL divergences from our GeNN simulation are comparable in size to those caused by changing the random number generator seed.
 
 \subsubsection{Balanced random network}
 To assess the correctness of our implementation of the balanced random network model described in section~\ref{sec:method/balanced_random}, we simulated the network for \SI{2000}{\second} of biological time and compared the final weight distribution and the statistics of the last \SI{50}{\second} of spiking activity with those reported by \citet{Morrison2007}.
@@ -549,12 +551,7 @@ This is partly because our simulations are running with a smaller \SI{0.1}{\mill
 Additionally, in the newer version of GeNN used in this paper, the generation of Poisson noise takes place in the neuron kernel rather than in the separate kernel used by \citeauthor{Yavuz2016}.
 
 In general, as one would expect, the two Tesla GPUs perform best with the newer Tesla V100 system achieving a faster simulation speed than was possible on the CPU-based HPC cluster \citep{VanAlbada2018}.
-However even the GeForce 1050ti, which is a low-end gaming GPU, can simulate the model faster than the SpiNNaker system although this system has a much higher overhead than any of the other GPUs.
-We believe that this overhead is likely to be due to a combination of the slower PCI express bus in this machine (PCIe Gen 2 rather than Gen 3) and issues using CUDA on display devices under Windows.
-
-Because the Jetson TX2 is a system-on-chip in which the CPU and GPU cores share the same physical memory, data can be directly accessed from both CPU and GPU code.
-Therefore, unlike on the other GPU systems benchmarked, spike recording can be implemented without copying data from the GPU to the CPU over the PCI Express bus every time step.
-We believe that this is the reason that the `overhead' of the simulation running on the Jetson TX2 is significantly smaller than on any of the other systems.
+However even the GeForce 1050ti -- which is a low-end gaming GPU -- can simulate the model faster than the SpiNNaker system.
 
 As discussed in section~\ref{sec:method/genn}, as well as parallelising neuron and synapse simulation code, the latest version of GeNN also parallelises the initialisation of model state variables and connectivity using the GPU.
 Figure~\ref{fig:microcircuit_init_performance} shows the initialisation time of the microcircuit simulation when initialisation is performed on the CPU compared to the GPU.
@@ -638,7 +635,7 @@ Therefore it is somewhat unsurprising that any accelerator that allows equivalen
 The increase in the peak performance of the Tesla K40c (released in 2013) and the Tesla V100 (released in 2017) listed in table~\ref{tab:gpu_devices} illustrate just how much GPUs have taken advantage of Moore's law scaling.
 However, the modelling study performed by \citet{Esmaeilzadeh2012} indicates that this scaling of GPU performance will begin to slow as the `power wall' is reached.
 Furthermore, when simulating SNNs, a GPU's performance is likely to be constrained by its memory bandwidth.
-Although upcoming technologies such as third generation High Bandwidth Memory~(HBM3) are likely to offer increases in memory bandwidth in the future, alternative strategies are still going to be required to better utilise current GPUs for SNN simulation as well as to increase the size of models that can be simulated using embedded GPUs such as the Jetson TX2 in the type of neurorobotic applications discussed in the next section.
+Although upcoming technologies such as third generation High Bandwidth Memory~(HBM3) are likely to offer increases in memory bandwidth in the future, alternative strategies are still going to be required to better utilise current GPUs for SNN simulation as well as to increase the size of models that can be simulated using embedded GPUs such as the Jetson TX2.
 This point is reflected in our simulations where the cortical microcircuit model ran approximately twice as fast on the newer Tesla V100 GPU, potentially just reflecting its higher memory bandwidth, but the simulations of the plastic model ran more than $10\times$ faster on the V100 GPU.
 As figure~\ref{fig:stdp_performance} shows, this is almost entirely due to the time spend in the postsynaptic learning kernel.
 This kernel is where synaptic potentiation is applied using the approach outlined in section~\ref{sec:method/balanced_random} in which an additional column-major sparse matrix structure is used to select weights to update in response to postsynaptic spikes.
@@ -646,20 +643,25 @@ We believe that two new features of the Volta architecture~\citep{Nvidia2017} us
 Firstly, Volta GPUs have \SI{6144}{\kibi\byte} of L2 cache compared to only \SI{1536}{\kibi\byte} in the older Kepler architecture used by the Tesla K40c, which helps overcome the cost of the non-coalesced accesses to synaptic weights.
 Additionally, Volta GPUs can now simultaneously execute integer and floating point operations, meaning that the pointer arithmetic required to calculate the indices into the synaptic weight matrix can be performed simultaneously with the actual learning rule update.
 
+In our simulations of both models, we copy all spikes from the GPU to the host computer at the end of each simulation timestep -- accounting for the majority of the `overhead' shown in figures~\ref{fig:microcircuit_performance}~and~\ref{fig:stdp_performance}.
+Because the microcircuit model has four times as many neuronal populations as the balanced random network model, copying its spiking output requires more interactions with the GPU driver, resulting in the higher overhead seen in simulations of this model.
+The overhead is particularly high on the GeForce 1050ti system which we believer is due to a combination of the slower PCI express bus in this machine (PCIe Gen 2 rather than Gen 3) and issues using CUDA on display devices under Windows.
+However, because the Jetson TX2 is a system-on-chip in which the CPU and GPU cores share the same physical memory, no copying of data over the PCI Express bus is required.
+We believe that this is the reason that the `overhead' of the simulation running on the Jetson TX2 is significantly smaller than on any of the other systems.
+
+Unlike the simulations typically run on CPU-based systems, the GPU simulations presented in this paper use single rather than double-precision floating point and therefore have the potential for more numerical instability.
+Additionally, the non-associative nature of floating point operations means that, if the results from a large number of parallel threads are summed together in a non-deterministic order, results can differ between runs due to rounding errors.
+\citet{Villa2009} demonstrated that the result of summing \num{28000} double-precision floating point numbers across \num{16000} threads of a CRAY XMT system (which, in this context, has similar properties to a GPU) varied by up to \SI{24.64}{\percent}.
+However, in this experiment, more numbers were summed than would occur when using any of the parallelisation schemes used in our simulations and it is unclear what absolute errors the reported relative errors correspond to. 
+Furthermore, based on the analysis we presented in section~\ref{sec:results/correctness}, this potential source of error did not appear toaffect our simulations suggesting that using single-precision floating point and summing inputs in a non-deterministic order has a minimal effect on the dynamics of the microcircuit model.
+
 As we discussed in the introduction, the computational requirements of training Artificial Neural Networks~(ANNs) of ever-increasing size and complexity has been a major driver in the development of GPU hardware~\citep{Schmidhuber2015}.
 These applications and the growing need to deploy ready-trained ANNs to perform inference in real time on low-power `edge computing' devices mean that, here too, available memory bandwidth is beginning to limit performance.
 One solution has been to use lower precision \SI{16}{\bit} floating point and even fixed point integer representations for weights~\citep{Micikevicius2017}.
 Using smaller data types not only saves memory and memory bandwidth but, on some newer GPU hardware including the Jetson TX2, each CUDA thread can perform four \SI{8}{\bit} or two \SI{16}{\bit} operations simultaneously -- significantly increasing peak performance.
-\todo{blend seamlessly}
-The GPU simulations presented in this paper do not face the issues with quantisation which can affect SpiNNaker due to its use of relatively low-precision fixed-point arithmetic.
-However, unlike NEST, our GPU simulations use single rather than double-precision floating point and therefore have the potential for more numerical instability.
-Additionally, the non-associative nature of floating point operations means that, if the results from a large number of parallel threads are summed together in a non-deterministic order, results can differ between runs due to rounding errors.
-\citet{Villa2009} demonstrated this by calculating the sum of \num{28000} double-precision floating point numbers across \num{16000} threads of a CRAY XMT system (which, in this context, has similar properties to a GPU) and found that results varied by up to \SI{24.64}{\percent}.
-However, in this experiment, more numbers were summed than would occur when using any of the parallelisation schemes described in section~\ref{sec:method} and it is unclear what absolute errors the reported relative errors correspond to. 
-%A more detailed treatment of the expected rounding errors in parallel simulations of SNNs on GPUs will be published elsewhere~\citep{Turner2019}. 
-
 While lower precision types are unlikely to provide enough numerical stability for storing neuron state variables, as discussed by \citet{VanAlbada2018}, the \SI{16}{\bit} fixed-point synaptic weights used by SpiNNaker provide sufficient accuracy for the microcircuit model described in section~\ref{sec:method/microcircuit}.
 While GeNN does not currently support these lower-precision types, we plan on extending the algorithms described in section~\ref{sec:method} to support \SI{16}{\bit} floating point synaptic weights which should offer a significant performance improvement while not sacrificing the convenience of floating point programming.
+%A more detailed treatment of the expected rounding errors in parallel simulations of SNNs on GPUs will be published elsewhere~\citep{Turner2019}. 
 
 In this paper we have only considered single-GPU simulations of circuit-scale SNN models.
 However, using supercomputer systems, models with up to a billion neurons can now be simulated~\citep{Jordan2018} and computational neuroscientists are beginning to use this capability to investigate the interactions between multiple circuit-scale models.
