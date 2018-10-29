@@ -1,0 +1,65 @@
+\documentclass[tikz]{standalone}
+\usepackage{tikz}
+\usetikzlibrary{arrows, calc}
+
+% Draw a single SM
+% #1 - ALU size [mm]
+% #2 - global block height [mm]
+% #3 - num ALU columns
+% #4 - num ALU rows
+\newcommand{\drawSM}[4]{%
+    \pgfmathtruncatemacro{\smWidth}{#1 * #3}
+    \pgfmathtruncatemacro{\aluHeight}{#1 * #4}
+    \pgfmathtruncatemacro{\smHeight}{(#1 * #4) + (4 * #2)}
+    
+    % Draw SM outline
+    \draw (0, 0) rectangle (\smWidth mm, \smHeight mm);
+    
+    % Draw ALU grid
+    \draw[step=#1 mm] (0, 0) grid (\smWidth mm, \aluHeight mm);
+    \foreach \x in {1,...,#3} {
+        \foreach \y in {1,...,#4} {
+            %\node at ({\x * #1 mm}, 0) {ALU};
+            \node[anchor=center] at ({(\x - 0.5) * #1 mm}, {(\y - 0.5) * #1 mm}) {ALU};
+        }
+    }
+    
+    % Draw SM global blocks
+    \foreach[count=\i] \l in {Warp scheduler, Register file, Shared memory, Texture/L1 cache} {
+        \draw (0, {\aluHeight mm + ((\i - 1) * #2 mm)}) rectangle ++(\smWidth mm, #2 mm) node[pos=.5, anchor=center] {\l};
+    }
+}
+
+\begin{document}
+\begin{tikzpicture}
+\def\aluSize{9.8}
+\def\pad{2}
+\def\globalBlockHeight{7.5}
+\def\numALUCols{6}
+\def\numALURows{2}
+\def\numSM{3}
+\def\memHeight{10}
+
+% Loop through columns of SMUs
+\pgfmathtruncatemacro{\smWidth}{(\aluSize * \numALUCols) + \pad}
+\pgfmathtruncatemacro{\smHeight}{(\aluSize * \numALURows) + (4 * \globalBlockHeight)}
+\foreach \i in {1,...,\numSM} {
+    \pgfmathtruncatemacro{\smX}{(\i - 1) * \smWidth};
+    
+    % Draw upper SMs
+    \node[above right,inner sep=0] at (\smX mm, 0){
+        \begin{tikzpicture}
+            \drawSM{\aluSize}{\globalBlockHeight}{\numALUCols}{\numALURows}{}
+            \node[minimum width=5 mm, above right, inner sep=1mm] at (0, \smHeight mm) {SM};
+        \end{tikzpicture}
+    };
+}
+
+% Draw L2 cache
+\pgfmathtruncatemacro{\memWidth}{\smWidth * \numSM}
+\foreach[count=\i] \l in {L2 cache, DRAM} {
+    \draw (0, {(-\memHeight mm - \pad mm) * (\i - 1) - \pad mm}) rectangle ++(\memWidth mm - \pad mm, -\memHeight mm) node[pos=.5] {\l};
+}
+
+\end{tikzpicture}
+\end{document}
