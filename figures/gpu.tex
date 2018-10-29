@@ -25,7 +25,7 @@
     }
     
     % Draw SM global blocks
-    \foreach[count=\i] \l in {Warp scheduler, Register file, Shared memory, Texture/L1 cache} {
+    \foreach[count=\i] \l in {Warp scheduler, Register file, Shared memory, L1 cache} {
         \draw (0, {\aluHeight mm + ((\i - 1) * #2 mm)}) rectangle ++(\smWidth mm, #2 mm) node[pos=.5, anchor=center] {\l};
     }
 }
@@ -36,7 +36,7 @@
 \def\pad{2}
 \def\globalBlockHeight{7.5}
 \def\numALUCols{6}
-\def\numALURows{2}
+\def\numALURows{3}
 \def\numSM{3}
 \def\memHeight{10}
 

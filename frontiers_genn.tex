@@ -1,4 +1,4 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % This is just an example/guide for you to refer to when submitting manuscripts to Frontiers, it is not mandatory to use Frontiers .cls files nor frontiers.tex  %
 % This will only generate the Manuscript, the final article will be typeset by Frontiers after acceptance.   
 %                                              %
@@ -87,6 +87,7 @@ Therefore, we also introduce in this paper some of the novel parallel initialisa
 \end{abstract}
 
 \section{Introduction}
+
 Currently, the most common way to accelerate large-scale spiking neural network (SNN) simulations is to use CPU-based HPC clusters running software simulators such as NEST~\citep{Gewaltig2007} or parallel Neuron~\citep{carnevale2006neuron}.
 However, CPU-based systems are not well-suited to exploiting the large amounts of fine-grained parallelism present in spiking neural network simulations.
 Furthermore, in order to reduce simulation times, models must be spread across large numbers of compute nodes meaning that performance is ultimately constrained by the latency of the MPI interconnect.
@@ -117,12 +118,20 @@ Field-Programmable Gate Arrays (FPGAs) are devices consisting of a large number 
 FPGAs have been used to build various `hard-wired' SNN accelerators~\citep{Moore2012,Wang2018}, but \citet{Naylor2013} showed that they can also be used to develop more flexible, programmable accelerators with comparable performance.
 However, although systems of this sort could theoretically be used to accelerate the construction and initialisation of SNNs as well as their simulation, FPGAs are not yet commonplace in workstations and their lack of hardware support for floating point arithmetic makes them ill-suited for simulating some common classes of neuron and synapse models. 
 
+\begin{figure}
+    \begin{center}
+        \includegraphics{figures/gpu}
+    \end{center}
+    \caption{Simplified illustration of an example GPU hardware architecture with 3 streaming multiprocessors.}
+    \label{fig:gpu}
+\end{figure}
+
 Alternatively, GPU architectures are designed for high throughput applications with large amounts of fine-grained parallelism.
-They swap the large coherent caches, relied upon by modern CPU architectures to improve performance, for large numbers of vector floating point arithmetic units connected to high-bandwidth external memory. 
+They swap the large coherent caches, relied upon by modern CPU architectures to improve performance, for large numbers of floating point arithmetic units connected to high-bandwidth external memory. 
 Programmable GPUs were originally developed to accelerate the rendering of 3D graphics where each pixel typically has the same independent computation applied to it -- for example to calculate its illumination.
 However GPU acceleration has subsequently proven to be a good fit for accelerating many applications including the training of deep learning systems and, as such, GPUs are used extensively in modern AI systems. 
 The application of GPU acceleration to SNN simulations is also promising and there are a number of active SNN simulator projects which target GPUs. 
-CARLsim~\citep{Chou2018} is a C++ based simulator using NVIDIA CUDA but, as CARLsim is not based on code generation, it is difficult for users without CUDA expertise to add new neuron and synapse models.
+CARLsim~\citep{Chou2018} is a C++ based simulator using NVIDIA CUDA (Compute Unified Device Architecture) but, as CARLsim is not based on code generation, it is difficult for users without CUDA expertise to add new neuron and synapse models.
 EDLUT~\citep{Garrido2011} was initially an event-driven CPU based simulator for SNNs, but has evolved into a hybrid CPU/GPU system with support for both time and event-driven models.
 ANNarchy~\citep{Vitay2015} is a code generation based simulator which translates Python model descriptions into multi-core CPU or GPU code with a focus on hybrid rate- and spiking models.
 Other simulators that have seen less development in the last 2-4 years include NCS6~\citep{Hoang2013}, Myriad~\citep{Rittner2016}, and NeMo~\citep{Fidjeland2009} (see \citet{Brette2012} for a review).
@@ -136,11 +145,43 @@ We then compare to other recent benchmarks of the models \citep{VanAlbada2018} a
 \label{sec:method}
 \subsection{GPU architectures}
 \label{sec:method/gpu}
-sjsjsjs
+In this section we will briefly discuss GPU hardware architectures and the Single Instruction Multiple Thread~(SIMT) paradigm typically used to program them.
+Because, in this paper we use NVIDIA hardware and because each manufacturer (confusingly) use their own terminology, we will refer to concepts using NVIDIA's terminology.
+However, GPUs built by other manufacturers are relatively similar so, for example, a `Stream Processor' on an AMD GPU is equivalent to a `CUDA core' on an NVIDIA GPU.
+Similarily, we will talk about SIMT programming in the context of CUDA because this is what GeNN is implemented in, but OpenCL is conceptually similar.
+
+Figure~\ref{fig:gpu} shows a simplified diagram of the hardware architecture of a typical GPU.
+As discussed in the introduction, GPUs are designed primarily for high throughput computation and therefore the majority of their die area is given over to ALUs known as \textit{CUDA cores}.
+Depending on the particular GPU, different CUDA cores might be dedicated to integer, single or double-precision floating point operations.
+While each CUDA core is independent, they have no capacity for directly executing instructions.
+Instead they are contained within \textit{Streaming multiprocessors}~(SMs) which schedule sequences of Single Instruction Multiple Data~(SIMD) instructions known as \textit{warps} to run on the CUDA cores using a piece of hardware known as a \textit{warp scheduler}.
+The context associated with each active warp is stored in a large register file (\SI{64}{\kilo\byte} on the Volta architecture) allowing the warp scheduler to very rapidly switch between active warps while they wait for data to be delivered from external memory or for CUDA cores to become available.
+
+In all recent GPU architectures, SMs access the GPU's DRAM through an L2 cache.
+While modern CPUs typically have \SI{64}{\bit} memory interfaces, modern GPUs have much wider memory interfaces (\SI{4096}{\bit} on the Volta architecture).
+In order to use these wide memory interfaces efficiently, GPU memory controllers aim to combine DRAM accesses made to adjacent memory addresses by the SMs into single transactions -- a processed known as \textit{coalescing}.
+Within each SM there is also a small amount (\SI{128}{\kilo\byte} on the Volta architectures) of much faster local memory which can typically be partitioned by the programmer into software-controlled cache known as \textit{shared memory} and read-only hardware controlled L1 cache.
+
+Efficiently programming SIMD architectures often involves manually inserting intrinisics into serial code to process data in parallel.
+However, not only is this difficult but, if the underlying architecture and thus the intrinsics which drive it change, applications need to be re-written.
+NVIDIA CUDA solves this problem by instead presenting the programmer with a SIMT programming model where programmers write serial code to be executed in parallel across many virtual \textit{threads}.
+Threads are grouped into \textit{thread blocks} which are scheduled so that they can share data via the shared memory and the thread blocks are grouped into \textit{grids} which represent all the threads required to solve the entire problem.
+The CUDA compiler and GPU hardware take care of converting this representation into warps and scheduling them appropriately as well as enabling and disabling SIMD lanes within each warp when conditional control flow requires it.
+For example, adding two vectors \lstinline{x} and \lstinline{y} of length \lstinline{n} could be implemented as follows using CUDA:
+\begin{lstlisting}
+__global__ void addVec(int n, const float *x, float *y)
+{
+  const int i = (blockIdx.x * blockDim.x) + threadIdx.x;
+  if (i < n) {
+    y[i] += x[i];
+  }
+}
+\end{lstlisting}
+where, aside from the \lstinline{__global__} function decorator which instructs the compiler to hand this function off to CUDA and the \lstinline{blockIdx}, \lstinline{blockDim} and \lstinline{threadIdx} variables which allow the position of the current thread within the block and grid to be queried, the code is very similar to standard serial C code.
 
 \subsection{GeNN}
 \label{sec:method/genn}
-As described by \citet{Yavuz2016}, GeNN is a code-generation based system that generates model- and platform-optimised CUDA (Compute Unified Device Architecture ) code for GPU accelerated SNN simulations.
+As described by \citet{Yavuz2016}, GeNN is a code-generation based system that generates model- and platform-optimised CUDA code for GPU accelerated SNN simulations.
 GeNN neuron models are defined by writing a C++ class which defines the model parameters and snippets of C-like code that describe how it should be simulated.
 For example the following \lstinline{LIF} class describes a leaky integrate-and-fire neuron with normalised units, solved algebraically:
 %
@@ -258,13 +299,13 @@ However, if $X \sim \text{Beta}[1, N_{\text{post}}]$, $1 - X \sim \text{Beta}[N_
 Although the equations describing the neuron dynamics (equations~\ref{eq:lif_neuron}~and~\ref{eq:exp_neuron_input_current}) are coupled, in our GeNN model, the continuous terms of the two equations are solved separately so that the synaptic input current $I_{{in}_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
 As \citet{Rotter1999} explain, this approach leads to a delay of one simulation timestep compared to the exact solution.
 However, by separating the solving of these equations, different types of input synapse with different dynamics can trivially be supported.
-For example, while a single exponential may be a good approximation of some inhibitory synapses, for other types of synapse the rise time of the post synaptic potential may be vital~\citep{VanVreeswijk1994}.
+For example, while a single exponential may be a good approximation of some inhibitory synapses, for other types of synapse the rise time of the post synaptic potential may be vital~\citep{VanVreeswijk1994}.                                                                                                      
 Additionally, from a software engineering point-of-view, separating solving these equations improves the encapsulation of neurons and synapses.
 
 Simulating a homogeneous \textit{population} of neurons is an ideal task for a SIMD or SIMT device such as a GPU: the neurons do not communicate with each other and, aside from the relatively rare times that they spike, each neuron will be simulated using exactly the same code path.
 Therefore, neural simulation can be trivially parallelised by simulating each neuron on a single thread that fetches the neuron's state variables from global memory into registers at the start of each timestep, advances the simulation state and writes back the state variables.
 The Poisson input current~($I_{p_{j}}$) is calculated by generating a Poisson deviate (using the technique described by \citet[p504]{DevroyeLuc2013}) every simulation timestep and multiplying this by a population-specific weight.
-As long as the state variables are laid out correctly in memory, the required memory operations can be \textit{coalesced} so that a \SI{4}{\byte} state variable can be read for \num{32} neurons in a single \SI{128}{\byte} transaction -- the most efficient way to access the global memory.
+As long as the state variables are laid out correctly in memory, the required memory operations can be coalesced so that a \SI{4}{\byte} state variable can be read for \num{32} neurons in a single \SI{128}{\byte} transaction -- the most efficient way to access the global memory.
 %This same parallelism strategy is equally valid for neuron models whose dynamics can only be solved numerically -- the advancing of simulation state simply has to be implemented as for example a Runge-Kutta
 
 \begin{figure}
