@@ -432,7 +432,7 @@ Similarily, the depression~($\Delta w_{ij}^{-}$) induced by the spike pairs form
 In GeNN, if a neuron has fired in the current timestep, its trace variables are updated in the neuron kernel by evaluating equation~\ref{eq:stdp_trace}.
 Synaptic depression is calculated by applying equation~\ref{eq:stdp_update_pre_pair} to each synaptic weight processed in the synapse kernel described in the previous section.
 Similarly, calculating synaptic potentiation involves applying equation~\ref{eq:stdp_update_post_pair} to each synapse targetting a spiking postsynaptic neuron.
-However this is tricky as, while the data structure shown in figure~\ref{fig:ragged_matrix} supports efficient \textit{row-wise} accesses, like many sparse matrix data structures it does not support efficient \textit{column-wise} accesses.
+However this is tricky as while the data structure shown in figure~\ref{fig:ragged_matrix} supports efficient \textit{row-wise} access to the synapses associated with a presynaptic neuron, like many sparse matrix data structures, it does not support efficient \textit{column-wise} accesses to the synapses associated with a postsynaptic neuron.
 This is a problem faced by all SNN simulators that support STDP.
 Some small-scale neuromorphic systems have solved this problem in hardware using custom SRAM memories which allow both column and row-wise accesses~\citep{Seo2011}.
 However, custom SRAMs are expensive in terms of silicon area, so many neuromorphic systems avoid the problem entirely by implementing synaptic plasticity rules which use the membrane voltage of the postsynaptic neuron rather than its spike times -- meaning that no updates triggered by postsynaptic spikes are required~\citep{Frenkel2018,Qiao2015}.
