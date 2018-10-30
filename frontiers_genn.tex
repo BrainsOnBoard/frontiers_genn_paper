@@ -545,7 +545,8 @@ To quantify the network dynamics resulting from these synaptic weights, we calcu
 The mean firing rate and CV ISI values listed in table~\ref{tab:mad_stats} suggest that our model had settled into a very similar asynchronous-irregular regime to that reported by \citeauthor{Morrison2007}.
 Our model exhibited fast oscillations throughout the simulation and, to quantify the resultant variation in spike rate, we calculated a histogram with \SI{3}{\milli\second} bins from the output spike trains of \num{1000} excitatory neurons.
 By dividing the variance of each bin's spike count by its mean we calculated a Fano factor which, again, was very simular to that reported by \citeauthor{Morrison2007}.
-The remaining small differences between these statistical measures could be due to purely numerical reasons -- our use of single-precision floating point and CUDA's approximate exponential and power functions -- or because of subtle differences in the synaptic delay model between GeNN and NEST.
+As \citet{Pauli2018} thoroughly demonstrate, reproducing results from spiking neural network models on different simulators can be difficult, especially with models of this age where the original code is not publically available.
+Therefore we believe that the remaining small differences in results are likely to be due either to numerical differences caused by single-precision floating point and our use of CUDA's approximate exponential and power functions; or to subtle differences in the order of operations between GeNN and NEST.
 
 \subsection{Performance}
 \label{sec:results/performance}
@@ -645,7 +646,7 @@ Figure~\ref{fig:microcircuit_performance_scaling} shows the results of these sim
 Figure~\ref{fig:stdp_performance} shows the runtime of simulations of the balanced random network model described in section~\ref{sec:method/balanced_random}.
 The Tesla V100 has enough memory~(\SI{16}{\giga\byte}) to represent the model's non-plastic connections using the standard synaptic matrix data structure described in section~\ref{sec:method/microcircuit} as well as the bitmask data structure described in section~\ref{sec:method/balanced_random}.
 However, figure~\ref{fig:stdp_performance} shows that this has a negligible impact on the simulation time, suggesting that both data structures are equally efficient for large-scale models.
-While \citet{Morrison2007} reports that simulations of this model took \SI{60}{\hour} to run for \SI{1000}{\second} of biological time on their HPC cluster -- which is around $4\times$ slower than our simulations run on the Tesla K40c -- we have not included this in figure~\ref{fig:stdp_performance} as a comparison with decade-old CPU hardware would not be a fair one.
+While \citet{Morrison2007} report that their simulations of this model took \SI{60}{\hour} to run for \SI{1000}{\second} of biological time on their HPC cluster -- which is around $4\times$ slower than our simulations run on the Tesla K40c -- we have not included this in figure~\ref{fig:stdp_performance} as a comparison with decade-old CPU hardware would not be a fair one.
 
 
 \subsection{Power and energy}
