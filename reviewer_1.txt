@@ -1,0 +1,88 @@
+Q2
+==
+Strengths
+This paper takes two SNN models from the literature, containing biologically realistic connectivity and firing rates, and simulates them on a range of GPUs. This provides an insight into what is possible with a range of GPU hardware, before comparing results with an HPC simulator and a digital neuromorphic system.
+
+Weaknesses
+1) It is not made clear which aspects of the improved performance are a direct result of the underlying hardware, and which are a feature of the software implementation.
+
+For example, several software design choices are taken which, if implemented on the NEST or SpiNNaker systems, would likely also increase performance. These include the use of Poisson input injected directly within the neuron kernel, bitmasked synapse definitions for static synapses of common weight, and the use of a post-indexed synaptic matrix.
+
+These implementation choices are all valid in their own right, and it’s good to see there are ways to improve performance, but the paper does not clearly communicate the impact of these design choices.
+
+2) The Discussion section could be much stronger. One of the strengths of the paper is that a range of GPU architectures are tested, showing large variability between the various task of initialisation, simulation, and power efficiency. Therefore, it would be useful to develop the discussion in the direction of what are the design features that make each GPU successful, and what would be the ideal configuration/architecture for a future SNN-specific GPU?
+
+Also, it would be useful to have some discussion on the two simulated networks, and how they have fit to the GPU resources. For example, what are the new SNN-specific limits for this implementation in terms of spikes rates, levels of connectivity, data recording, etc.
+> We have expanded the existing GPU discussion section and, as you suggested, added an additional section discussing the relevance of our work to current and future neuromorphic systems.
+
+Q3
+==
+Title: spelling – should be ‘terms’?
+
+Also, the title appears to be somewhat misleading. In the paper, the microcircuit model is compared directly with NEST and SpiNNaker, however the random balanced network with STDP does not appear to have comparison results in the paper. Instead it is only simulated on the GPU, with correctness results compared to NEST. Therefore it seems incorrect to say GPUs outperform the other platforms for this model.
+
+> That is embarrassing - we clearly filled in the submission form incorrectly! Also you are correct about the title - we have changed it to reflect the fact that direct comparisons are only made for one model. We have also included the simulation times provided by Morrison 2007 for reference but not included them in our conclusions as they are from a very old cluster and we feel it would be a little unfair.
+
+
+2) Material and Methods
+
+L145 – Use of the GPU's parallelism to improve network initialisation is clearly advantageous, but what about the converse problem of extracting data post-simulation? Have you considered parallel data compression/reduction to improve extraction of results back to the CPU?
+> We have included more information on the time taken for downloading weights off the GPU post simulation and added some discussion to our extended GPU discussion section at line XXXXX.
+
+Sect 2.1 would benefit from a description of spike transmission between neurons. How is this achieved/what events are used/what overheads does this introduce to the system?
+
+L181 ‘the this’
+> Thank you - we have fixed this.
+
+L187 The term 'synaptic row' is used without introduction
+> This is an excellent point, looking at it again, the order of these methods sections did not make a lot of sense. We have re-ordered so the data structures (and hence the rows within them) are defined before we refer to the,.
+
+Sect 2.2 This would benefit from a diagram of the network showing numbers of neurons and density of connections. This topology is a contributing factor to overall performance, as you go on to describe at the end of the section (L236-240), and so it would be useful to provide a reader with at least the neuron population sizes and connectivity.
+> We have added diagrams of both networks.
+
+Sect 2.2 & 2.3. It might be clearer to introduce first the SNN model, and then the implementation-specific details. At present it can be confusing as the narrative jumps between the two.
+> See previous point - we have re-ordered these methods sections to remove these confusing jumps.
+
+L238 ‘with of’
+> Thank you - we have fixed this
+
+L239 The term ‘dendritic delay ring buffer’ is used without introduction. From experience, these structures tend to consume a considerable amount of memory, and hence a description of how they’re distributed and interacted with would be useful.
+> We have added sentences at lines XXX and YYY explaining the dendritic delay ring buffer and how the neuron and synapse kernels interact with it in more detail. Regarding its memory usage, the microcircuit model has 80000 neurons and a maximum of 43 delay slots resulting in a the memory usage of around 20mb which is pretty insignificant compared to the synaptic connectivity.
+
+Fig. 2 Would benefit from further explanation - is there anything different between the two thread blocks, if not, could this diagram be simplified?
+> This is a good suggestion - we have simplified this diagram to include only one thread block.
+
+Eq. 5 - An explanation of key terms would be useful.
+Eq. 7 - Missing?
+> Looking at it again, the variables in the equations were poorly described in general so we have added text around them all.
+
+3) Results
+
+L347 - Will a reference for this article be added before publication?
+> Sadly it does not look like it will so we have removed the reference.
+
+L387 – “because of subtle differences in the synaptic delay model…”. What are the differences – how would they contribute to this? Could they be discussed in the methods section?
+> We have looked into this further and think our delay model is not the problem. Instead we have referenced a recent paper on the issues of reproducing large spiking models and included some possible causes from this.
+
+Fig. 8 – it was not clear from the caption or the text what the comparison between the Tesla V100 ‘Bitmask’ and ‘Ragged’ is showing. Please could this be expanded upon.
+> This is an excellent point - we have changed the figure and the caption to explain the two configurations better,
+
+L394 – Can you comment on exactly how much memory is required to run the two models? This is a useful number to characterise a network, and could help you size problems to a particular GPU.
+> We have added the amount of memory required for both models at lines XXX and YYY.
+
+L407 - "Poisson noise takes place in the neuron kernel...". It would be useful to detail this mechanism in the methods section.
+> We have elaborated on how Poisson noise is injected at line XXX
+
+Figs. 6 & 8. Can you comment on the 'overhead' which remains for the Tesla V100 in Fig.6. It appears that this now dominates simulation time - do you feel this is now a limiting factor? Also, The 'overhead' appears smaller in comparison to the neuron and spike processing contributions for the same GPU in Fig. 8. Is this simply due to the way plasticity is implemented?
+> We have moved this into the extended GPU discussion section and expanded it to explain the issues you highlight.
+
+4) Discussion
+
+Please see Q2 above. It would be good to expand the discussion to qualify which aspects of GPU architecture optimise them for SNN simulation. It would also be useful to discuss how other types of SNN with different topology and firing activity might map to the GPU hardware, and whether they would likely exhibit the same performance.
+> We have extended the GPU discussion section to include more thoughts on their suitability for SNN simulation. While we have added a small section on the scaling behaviour of the microcircuit model, this is not really the focus of this paper so we have instead added a sentance to point interested readers at Yavuz 2016 and the Stimberg 2018 which both contain more indepth analysis of the scaling properties of GeNN simulations. **THOMAS** is this ok?
+
+5) References
+
+Auerswald, E. and Fontana, C. (2018). Seven Segment Optical Character Recognition – reference incomplete
+Micikevicius et al 2017 – reference incomplete
+> Thank you for spotting these - we have fixed both references.
