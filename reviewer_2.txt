@@ -47,7 +47,7 @@ Specific Comments
 -----------------
 
 1. Line 80. Why "embarrassingly".
-> An "embarrassingly parallel" problem is one, like updating neuron dynamics, where there is no commications between threads/processes but we have removed this phrase as we suspect it isn't meaningful to our readershi. **THOMAS** is this too patronising?
+> An "embarrassingly parallel" problem is one, like updating neuron dynamics, where there is no commications between threads/processes but we have removed this phrase as we suspect it isn't meaningful to our readership. We have replaced this with a brief description for the pixel processing problem for which GPUs were originally developed. **THOMAS** is this too patronising?
 
 2. Equations 1 and 2. Define and explain these terms. What drives this SNN? Is it the Poisson inputs? Is that the bias term?
 > Looking at it again, the variables in the equations were poorly described in general so we have added text around them all. 
