@@ -7,7 +7,7 @@ I found the Methods confusing. Details were missing. There was too much discussi
 > Thank you for this feedback - looking at it again the methods section - it was lacking a number of details. We will highlight our changes in detail in the response to Q3.
 
 I think there should be additional simulations to push the simulator and hardware to its limits.
-> **THOMAS** again we need some statement on this not being a scaling study.
+> We have added a small section on the scaling behaviour of the microcircuit model, but this is not really the focus of this paper so we have instead added a sentance to point interested readers at Yavuz 2016 and the Stimberg 2018 which both contain more indepth analysis of the scaling properties of GeNN simulations. **THOMAS** is this ok?
 
 The Discussion went in an unexpected direction and did not focus on the implications of the results presented. Why start the Discussion with Neurorobotics, which might be an interesting application, but not the main focus of the study?
 > Again - we totally agree - the order of discussion subsections was odd. We have re-ordered and added additional discussion which we will detail in our responses to Q3.

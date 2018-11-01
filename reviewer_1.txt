@@ -9,12 +9,11 @@ Weaknesses
 For example, several software design choices are taken which, if implemented on the NEST or SpiNNaker systems, would likely also increase performance. These include the use of Poisson input injected directly within the neuron kernel, bitmasked synapse definitions for static synapses of common weight, and the use of a post-indexed synaptic matrix.
 
 These implementation choices are all valid in their own right, and it’s good to see there are ways to improve performance, but the paper does not clearly communicate the impact of these design choices.
->
 
 2) The Discussion section could be much stronger. One of the strengths of the paper is that a range of GPU architectures are tested, showing large variability between the various task of initialisation, simulation, and power efficiency. Therefore, it would be useful to develop the discussion in the direction of what are the design features that make each GPU successful, and what would be the ideal configuration/architecture for a future SNN-specific GPU?
 
 Also, it would be useful to have some discussion on the two simulated networks, and how they have fit to the GPU resources. For example, what are the new SNN-specific limits for this implementation in terms of spikes rates, levels of connectivity, data recording, etc.
-> 
+> We have expanded the existing GPU discussion section and, as you suggested, added an additional section discussing the relevance of our work to current and future neuromorphic systems.
 
 Q3
 ==
@@ -22,7 +21,7 @@ Title: spelling – should be ‘terms’?
 
 Also, the title appears to be somewhat misleading. In the paper, the microcircuit model is compared directly with NEST and SpiNNaker, however the random balanced network with STDP does not appear to have comparison results in the paper. Instead it is only simulated on the GPU, with correctness results compared to NEST. Therefore it seems incorrect to say GPUs outperform the other platforms for this model.
 
-> That is embarrasing - we clearly filled in the submission form incorrectly! Also you are correct about the title - we have changed it to reflect the fact that direct comparisons are only made for one model. We have also included the simulation times provided by Morrison 2007 for reference but not included them in our conclusions as they are from a very old cluster and we feel it would be a little unfair.
+> That is embarrassing - we clearly filled in the submission form incorrectly! Also you are correct about the title - we have changed it to reflect the fact that direct comparisons are only made for one model. We have also included the simulation times provided by Morrison 2007 for reference but not included them in our conclusions as they are from a very old cluster and we feel it would be a little unfair.
 
 
 2) Material and Methods
@@ -80,7 +79,7 @@ Figs. 6 & 8. Can you comment on the 'overhead' which remains for the Tesla V100 
 4) Discussion
 
 Please see Q2 above. It would be good to expand the discussion to qualify which aspects of GPU architecture optimise them for SNN simulation. It would also be useful to discuss how other types of SNN with different topology and firing activity might map to the GPU hardware, and whether they would likely exhibit the same performance.
-> We have extended the GPU discussion section to include more thoughts on their suitability for SNN simulation. While we have added a small section on the scaling behaviour of the microcircuit model **THOMAS** how should we say this is out of scope for this paper? should we maybe refer to Yavuz and the Brian2GeNN paper for a more indepth analysis of scaling?
+> We have extended the GPU discussion section to include more thoughts on their suitability for SNN simulation. While we have added a small section on the scaling behaviour of the microcircuit model, this is not really the focus of this paper so we have instead added a sentance to point interested readers at Yavuz 2016 and the Stimberg 2018 which both contain more indepth analysis of the scaling properties of GeNN simulations. **THOMAS** is this ok?
 
 5) References
 
