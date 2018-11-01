@@ -283,7 +283,7 @@ Incoming spikes induce an exponentially-shaped input current in $I_{{in}_{j}}$:
 where $\tau_{syn}$ represents the time constant with which any spikes (modelled as Dirac delta functions $\delta$) from $n$ presynaptic input neurons occuring at time $t$ are integrated.
 In addition to their synaptic input, each neuron in the network also receives an independent Poisson input current $I_{p_{j}}$ which represents input from adjacent cortical regions.
 Finally, $w_{ij}$ represents the peak synaptic input current of the synapse between the presynaptic neuron $i$ and the postsynaptic neuron $j$.
-For a full description of the model please refer to \citeauthor{Potjans2012}.
+For a full description of the model parameters please refer to \citet[tables 4 and 5]{Potjans2012}.
 In the remainder of this section we will concentrate on describing the strategies used to parallelise the initialisation and subsequent simulation of this network.
 
 Although the equations describing the neuron dynamics (equations~\ref{eq:lif_neuron}~and~\ref{eq:exp_neuron_input_current}) are coupled, in our GeNN model, the continuous terms of the two equations are solved separately so that the synaptic input current $I_{{in}_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
@@ -318,10 +318,14 @@ Simulating the spikes propagating between two populations of neurons through spa
 However, on modern GPU hardware, this can also be implemented in an efficient manner using the data structures shown in figure~\ref{fig:ragged_matrix}.
 This structure consists of multiple 2D arrays with rows representing the synapses coming from individual presynaptic neurons and with enough columns to contain the largest number of postsynaptic targets any presynaptic neuron connects to.
 One of these 2D arrays contains the indices of the postsynaptic neurons ($j$) and additional arrays are allocated for any individual synaptic state variables such as the synaptic weight~($w_{ij}$) or dendritic delay~($d_{ij}$).
+In order to simulate dendritic delays, GeNN also allocates a delay \textit{ring-buffer} between each pair of connected populations consisting of a $D_{max} \times N_{post}$ 2D array where $D_{max}$ is the maximum dendritic delay and $N_{post}$ is the number of postsynaptic neurons.
 Each block of $N_{block}$ CUDA threads (in figure~\ref{fig:ragged_matrix} $N_{block}=4$) is responsible for processing $N_{block}$ columns of the matrix.
 Processing begins by using the $N_{block}$ threads to fetch the indices of $N_{block}$ presynaptic spikes written to global memory by the presynaptic population's neuron kernel ($i_{0},\ldots,i_{N_{block} - 1}$) and the lengths of the corresponding rows of the matrix ($l_{i_{0}},\ldots,l_{i_{N_{block} - 1}}$) into shared memory (so that these will be accessable to all threads in the block during the next phase).
 Threads are then synchronised and loop through the $N_{block}$ rows with each thread processing the synapse in their column.
-In the case of the simple static synapses described by equation~\ref{eq:exp_neuron_input_current}, this processing simply consists of reading the index of the postsynaptic target neuron along with the weight $w_{ij}$ and delay $d_{ij}$ associated with the connection and using an atomic add operation to apply the weight to the correct address in the dendritic delay ring-buffer.
+In the case of the simple static synapses described by equation~\ref{eq:exp_neuron_input_current}, this processing simply consists of reading the index of the postsynaptic target neuron along with the weight $w_{ij}$ and delay $d_{ij}$ associated with the connection and using an atomic add operation to add the weight to row $(i + d_{ij}) \mod D_{max}$ of the dendritic delay ring-buffer.
+Postsynaptic neurons then read their synaptic input (the $\sum_{i=0}^{n} w_{ij} \sum_{t_{i}^{f}} \delta(t - t_{i}^{f})$ term in equation~\ref{eq:exp_neuron_input_current})  from row $i \mod D_{max}$ of the dendritic delay ring buffer.
+%The posneuron kernel writes spikes into row $i \mod D_{max}$ where $i$ is the number of elapsed simulation steps and 
+
 This process is repeated until all incoming spikes are processed.
 While this parallelism strategy may seem counter-intuitive, it typically performs much better than the naïve approach of using one thread per incoming spike as it not only exposes much more parallelism, but also results in perfectly coalesced memory read operations.
 For example, in a simulation with a \SI{0.1}{\milli\second} timestep, a population of \num{10000} neurons firing at an average rate of \SI{10}{\hertz} will only, on average, emit \num{10} spikes in a single timestep.
@@ -407,7 +411,7 @@ where $\lambda$ represents the learning rate, $w_{0}$ defines a reference weight
 As discussed by \citet{Morrison2007}, in the model presented in this section, $\mu$ is set to \num{0.4} so as to match the data recorded by \citet{Bi1998}.
 Finally $\tau$ defines the time constant of the STDP kernel and $\alpha$ controls the relative strength of potentiation and depression.
 \citeauthor{Morrison2007} use this rule with an \textit{all-to-all} spike-pairing scheme meaning that each of the pairs formed by a presynaptic spike and all preceding postsynaptic spikes (and vice-versa) should be considered.
-For the full description of this model, please refer to \citeauthor{Morrison2007}.
+For the full description of the model parameters, please refer to \citet[sections 3 and 4.1]{Morrison2007}.
 In the remainder of this section we will concentrate on describing the additional steps required to parallelise models with synaptic plasticity using GeNN.
 
 In order to implement the all-to-all spike pairing required for the model, rather than repeatedly evaluating equation~\ref{eq:mad_stdp}, we calculate updates based on per-neuron \textit{spike traces}~\citep{Song2000, Morrison2007} with the following dynamics:
