@@ -289,15 +289,15 @@ In the remainder of this section we will concentrate on describing the strategie
 Although the equations describing the neuron dynamics (equations~\ref{eq:lif_neuron}~and~\ref{eq:exp_neuron_input_current}) are coupled, in our GeNN model, the continuous terms of the two equations are solved separately so that the synaptic input current $I_{{in}_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
 As \citet{Rotter1999} explain, this approach leads to a delay of one simulation timestep compared to the exact solution.
 However, by separating the solving of these equations, different types of input synapse with different dynamics can trivially be supported.
-For example, while a single exponential may be a good approximation of some inhibitory synapses, for other types of synapse the rise time of the post synaptic potential may be vital~\citep{VanVreeswijk1994}.                                                                                                      
+For example, while a single exponential may be a good approximation of some inhibitory synapses, for other types of synapse the rise time of the post synaptic potential may be vital~\citep{VanVreeswijk1994}.
 Additionally, from a software engineering point-of-view, separating solving these equations improves the encapsulation of neurons and synapses.
 
 Simulating a homogeneous \textit{population} of neurons is an ideal task for a SIMD or SIMT device such as a GPU: the neurons do not communicate with each other and, aside from the relatively rare times that they spike, each neuron will be simulated using exactly the same code path.
 Therefore, neural simulation can be trivially parallelised by simulating each neuron on a single thread that fetches the neuron's state variables from global memory into registers at the start of each timestep, advances the simulation state and writes back the state variables.
 The Poisson input current~($I_{p_{j}}$) is calculated by generating a Poisson deviate (using the technique described by \citet[p504]{DevroyeLuc2013}) every simulation timestep and multiplying this by a population-specific weight.
 As long as the state variables are laid out correctly in memory, the required memory operations can be coalesced so that a \SI{4}{\byte} state variable can be read for \num{32} neurons in a single \SI{128}{\byte} transaction -- the most efficient way to access the global memory.
-When a neuron's spiking threshold condition is met, the thread simulating the neuron writes its index within the population to a shared memory array.
-After all threads in the thread blocks used to simulate a population have completed, their shared memory arrays are combined together into a global memory array containing the indices of all the neurons in the population which have spiked during the current simulation timestep.
+When a neuron's spiking threshold condition is met, the thread simulating the neuron writes the index of the neuron within the population to a shared memory array.
+After all the neurons in a population have been updated, the shared memory arrays containing the indices of the neurons in each thread block which spiked are combined into a global memory array -- forming a record of all the neurons in the population which have spiked in the current simulation timestep.
 
 %This same parallelism strategy is equally valid for neuron models whose dynamics can only be solved numerically -- the advancing of simulation state simply has to be implemented as for example a Runge-Kutta
 
