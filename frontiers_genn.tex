@@ -642,16 +642,18 @@ Therefore it is somewhat unsurprising that any accelerator that allows equivalen
 
 \section{Discussion}
 \subsection{Suitability of GPU architectures for SNN simulations}
-The increase in the peak performance of the Tesla K40c (released in 2013) and the Tesla V100 (released in 2017) listed in table~\ref{tab:gpu_devices} illustrate just how much GPUs have taken advantage of Moore's law scaling.
-However, the modelling study performed by \citet{Esmaeilzadeh2012} indicates that this scaling of GPU performance will begin to slow as the `power wall' is reached.
-Furthermore, when simulating SNNs, a GPU's performance is likely to be constrained by its memory bandwidth.
-Although upcoming technologies such as third generation High Bandwidth Memory~(HBM3) are likely to offer increases in memory bandwidth in the future, alternative strategies are still going to be required to better utilise current GPUs for SNN simulation as well as to increase the size of models that can be simulated using embedded GPUs such as the Jetson TX2.
-This point is reflected in our simulations where the cortical microcircuit model ran approximately twice as fast on the newer Tesla V100 GPU, potentially just reflecting its higher memory bandwidth, but the simulations of the plastic model ran more than $10\times$ faster on the V100 GPU.
-As figure~\ref{fig:stdp_performance} shows, this is almost entirely due to the time spend in the postsynaptic learning kernel.
-This kernel is where synaptic potentiation is applied using the approach outlined in section~\ref{sec:method/balanced_random} in which an additional column-major sparse matrix structure is used to select weights to update in response to postsynaptic spikes.
+The increase in the peak performance of the Tesla K40c (released in 2013) and the Tesla V100 (released in 2017) listed in table~\ref{tab:gpu_devices} illustrate how much GPUs have benefited from Moore's law scaling.
+However, the modelling study performed by \citet{Esmaeilzadeh2012} indicates that the scaling of GPU performance will begin to slow as the `power wall' is reached.
+Furthermore, GPU acceleration of SNN simulations is likely to be constrained by GPU memory bandwidth.
+Although emerging technologies such as third generation High Bandwidth Memory~(HBM3) are likely to offer increases in memory bandwidth in the future, alternative strategies are still going to be required to better utilise current GPUs for SNN simulation as well as to increase the size of models that can be simulated using embedded GPUs such as the Jetson TX2.
+This point is reflected in our simulations where, compared to the older Tesla K40c GPU, the cortical microcircuit model ran approximately twice as fast on the newer Tesla V100 GPU, potentially just reflecting its higher memory bandwidth, but the simulations of the plastic model ran more than $10\times$ faster on the V100.
+As shown in figure~\ref{fig:stdp_performance}, the higher speedup is almost entirely due to the reduction in time spent in the postsynaptic learning kernel.
+This kernel is where synaptic potentiation is applied using an additional column-major sparse matrix structure to select weights for updates in response to postsynaptic spikes, as outlined in section~\ref{sec:method/balanced_random}.
 We believe that two new features of the Volta architecture~\citep{Nvidia2017} used by the V100 GPU are playing a crucial role in accelerating this kernel.
-Firstly, Volta GPUs have \SI{6144}{\kibi\byte} of L2 cache compared to only \SI{1536}{\kibi\byte} in the older Kepler architecture used by the Tesla K40c, which helps overcome the cost of the non-coalesced accesses to synaptic weights.
-Additionally, Volta GPUs can now simultaneously execute integer and floating point operations, meaning that the pointer arithmetic required to calculate the indices into the synaptic weight matrix can be performed simultaneously with the actual learning rule update.
+Firstly, Volta GPUs have \SI{6144}{\kibi\byte} of L2 cache compared to
+only \SI{1536}{\kibi\byte} in the older Kepler architecture used by
+the Tesla K40c, which helps to mediate the cost of non-coalesced accesses to synaptic weights.
+Additionally, Volta GPUs can now simultaneously execute integer and floating point operations, meaning that the pointer arithmetic required to calculate the indices into the synaptic weight matrix can be performed simultaneously with the learning rule update itself.
 
 In our simulations of both models, we copy all spikes from the GPU to the host computer at the end of each simulation timestep -- accounting for the majority of the `overhead' shown in figures~\ref{fig:microcircuit_performance}~and~\ref{fig:stdp_performance}.
 Because the microcircuit model has four times as many neuronal populations as the balanced random network model, copying its spiking output requires more interactions with the GPU driver, resulting in the higher overhead seen in simulations of this model.
