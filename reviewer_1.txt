@@ -48,7 +48,7 @@ L238 ‘with of’
 > Thank you - we have fixed this
 
 L239 The term ‘dendritic delay ring buffer’ is used without introduction. From experience, these structures tend to consume a considerable amount of memory, and hence a description of how they’re distributed and interacted with would be useful.
-> **TODO** 
+> We have added sentences at lines XXX and YYY explaining the dendritic delay ring buffer and how the neuron and synapse kernels interact with it in more detail. Regarding its memory usage, the microcircuit model has 80000 neurons and a maximum of 43 delay slots resulting in a the memory usage of around 20mb which is pretty insignificant compared to the synaptic connectivity.
 
 Fig. 2 Would benefit from further explanation - is there anything different between the two thread blocks, if not, could this diagram be simplified?
 > This is a good suggestion - we have simplified this diagram to include only one thread block.

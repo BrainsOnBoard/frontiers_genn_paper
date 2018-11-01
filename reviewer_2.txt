@@ -22,11 +22,11 @@ Q3
 2. Sections 2.2 and 2.3. It took me a long time to realize that there were two simulations being developed and tested; A cortical microcircuit model and a balanced random network with STDP. Both sections kind of blended together. State this clearly at the start of the Methods section. Discuss why each simulation was chosen as a benchmark?
 
 3. In sections 2.2 and 2.3, provide simulation details. How many neurons and synapses were simulated? For how long? What are the inputs to these networks? Is it spontaneous activity or driven in some way?
+> We have included new figures 2 and 4 which provide more details on the number of neurons simulated and added sentences explaining how Poisson noise is injected into the model at line XXX.
 
 4. Section 2.2. Include a table with all the parameters settings. Provide justifications.
-
 5. Section 2.3. Include a table with all the parameters settings. Provide justifications.
-> **THOMAS** can you have a look at these? 
+> We have improved the specificity of our reference to the original papers to point directly to where the full parameters of the model are located and how they are derived. However we don't believe that repeating the table would be useful to our readers. **THOMAS** is this too blunt?
 
 6. Section 3.2. I am confused as to which results correspond to which simulations. Be specific. Subsections might help.
 > We have added subsubsections to the resuls sections where results from both models are included
@@ -47,7 +47,7 @@ Specific Comments
 -----------------
 
 1. Line 80. Why "embarrassingly".
-
+> An "embarrassingly parallel" problem is one, like updating neuron dynamics, where there is no commications between threads/processes but we have removed this phrase as we suspect it isn't meaningful to our readershi. **THOMAS** is this too patronising?
 
 2. Equations 1 and 2. Define and explain these terms. What drives this SNN? Is it the Poisson inputs? Is that the bias term?
 > Looking at it again, the variables in the equations were poorly described in general so we have added text around them all. 
