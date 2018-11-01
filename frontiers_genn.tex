@@ -128,8 +128,8 @@ However, although systems of this sort could theoretically be used to accelerate
 
 Alternatively, GPU architectures are designed for high throughput applications with large amounts of fine-grained parallelism.
 They swap the large coherent caches, relied upon by modern CPU architectures to improve performance, for large numbers of floating point arithmetic units connected to high-bandwidth external memory. 
-Programmable GPUs were originally developed to accelerate the rendering of 3D graphics where each pixel typically has the same independent computation applied to it -- for example to calculate its illumination.
-However GPU acceleration has subsequently proven to be a good fit for accelerating many applications including the training of deep learning systems and, as such, GPUs are used extensively in modern AI systems. 
+Programmable GPUs were originally developed to accelerate the rendering of 3D graphics which typically involves applying the same, independent computations to each pixel -- for example to calculate its illumination.
+However, GPU acceleration has proven to be very useful for accelerating many other tasks including the training of deep learning systems and GPUs are now used extensively in modern AI systems. 
 The application of GPU acceleration to SNN simulations is also promising and there are a number of active SNN simulator projects which target GPUs. 
 CARLsim~\citep{Chou2018} is a C++ based simulator using NVIDIA CUDA (Compute Unified Device Architecture) but, as CARLsim is not based on code generation, it is difficult for users without CUDA expertise to add new neuron and synapse models.
 EDLUT~\citep{Garrido2011} was initially an event-driven CPU based simulator for SNNs, but has evolved into a hybrid CPU/GPU system with support for both time and event-driven models.
@@ -146,12 +146,12 @@ We then compare to other recent benchmarks of the models \citep{VanAlbada2018} a
 \subsection{GPU architectures}
 \label{sec:method/gpu}
 In this section we will briefly discuss GPU hardware architectures and the Single Instruction Multiple Thread~(SIMT) paradigm typically used to program them.
-Because, in this paper we use NVIDIA hardware and because each manufacturer (confusingly) use their own terminology, we will refer to concepts using NVIDIA's terminology.
-However, GPUs built by other manufacturers are relatively similar so, for example, a `Stream Processor' on an AMD GPU is equivalent to a `CUDA core' on an NVIDIA GPU.
-Similarily, we will talk about SIMT programming in the context of CUDA because this is what GeNN is implemented in, but OpenCL is conceptually similar.
+All GPU manufacturers (confusingly) use their own terminology but because in this paper we use NVIDIA hardware, we will refer to concepts using NVIDIA's terminology.
+GPUs built by other manufacturers are relatively similar so that our description below applies to other GPUs after appropriate translation. For example, a `Stream Processor' on an AMD GPU is equivalent to a `CUDA core' on an NVIDIA GPU.
+Similarily, we will discuss SIMT programming in the context of CUDA because GeNN is implemented using CUDA, but OpenCL is conceptually quite similar.
 
 Figure~\ref{fig:gpu} shows a simplified diagram of the hardware architecture of a typical GPU.
-As discussed in the introduction, GPUs are designed primarily for high throughput computation and therefore the majority of their die area is given over to ALUs known as \textit{CUDA cores}.
+As discussed in the introduction, GPUs are designed primarily for high throughput computation and therefore the majority of their die area is used for arithmetic logic units (ALUs) known as \textit{CUDA cores}.
 Depending on the particular GPU, different CUDA cores might be dedicated to integer, single or double-precision floating point operations.
 While each CUDA core is independent, they have no capacity for directly executing instructions.
 Instead they are contained within \textit{Streaming multiprocessors}~(SMs) which schedule sequences of Single Instruction Multiple Data~(SIMD) instructions known as \textit{warps} to run on the CUDA cores using a piece of hardware known as a \textit{warp scheduler}.
@@ -166,7 +166,7 @@ Efficiently programming SIMD architectures often involves manually inserting int
 However, not only is this difficult but, if the underlying architecture and thus the intrinsics which drive it change, applications need to be re-written.
 NVIDIA CUDA solves this problem by instead presenting the programmer with a SIMT programming model where programmers write serial code to be executed in parallel across many virtual \textit{threads}.
 Threads are grouped into \textit{thread blocks} which are scheduled so that they can share data via the shared memory and the thread blocks are grouped into \textit{grids} which represent all the threads required to solve the entire problem.
-The CUDA compiler and GPU hardware take care of converting this representation into warps and scheduling them appropriately as well as enabling and disabling SIMD lanes within each warp when conditional control flow requires it.
+The CUDA compiler and GPU hardware take care of converting this representation into warps and scheduling them appropriately as well as enabling and disabling SIMD lanes within each warp when a conditional control flow requires it.
 For example, adding two vectors \lstinline{x} and \lstinline{y} of length \lstinline{n} could be implemented as follows using CUDA:
 \begin{lstlisting}
 __global__ void addVec(int n, const float *x, float *y)
@@ -181,7 +181,7 @@ where, aside from the \lstinline{__global__} function decorator which instructs 
 
 \subsection{GeNN}
 \label{sec:method/genn}
-As described by \citet{Yavuz2016}, GeNN is a code-generation based system that generates model- and platform-optimised CUDA code for GPU accelerated SNN simulations.
+As described by \citet{Yavuz2016}, GeNN is a code-generation based system that generates model- and platform-optimised CUDA code for GPU accelerated SNN simulations. In doing so, it abstracts the hardware and model dependent code choices mentioned above away from its users.
 GeNN neuron models are defined by writing a C++ class which defines the model parameters and snippets of C-like code that describe how it should be simulated.
 For example the following \lstinline{LIF} class describes a leaky integrate-and-fire neuron with normalised units, solved algebraically:
 %
@@ -262,7 +262,7 @@ A similar interface exist for SpineCreator and an interface to PyNN~\citep{Davis
     \label{fig:potjans_circuit}
 \end{figure}
 
-This model of \SI{1}{\milli\metre\cubed} of early-sensory cortex was developed by \citet{Potjans2012} and consists of around \num{80000} neurons, divided into layers 2/3, 4, 5 and 6.
+This model of \SI{1}{\milli\metre\cubed} of early-sensory cortex was developed by \citet{Potjans2012} and consists of around \num{80000} neurons, divided into separate populations representing cortical layers 2/3, 4, 5 and 6.
 Each layer is modelled by an excitatory and an inhibitory neuron population as shown in figure~\ref{fig:potjans_circuit}.
 Neurons in each population are connected randomly with population-specific densities derived from an extensive review of the anatomical literature resulting in a total of approximately \num{0.3E9} synapses.
 Beside this structured connectivity, all synaptic strengths and transmission delays are normally distributed.
@@ -272,7 +272,7 @@ The membrane voltage ($V_{j}$) of each neuron is modelled as a leaky integrate-a
     \tau_{m} \frac{dV_{j}}{dt} = & (V_{j} - V_{rest}) + R_{m} I_{{in}_{j}} \label{eq:lif_neuron}\\
 \end{align}
 %
-where $\tau_{m}$ and $R_{m}$ represent the time constant and resistance of the neuron's cell membrane, $V_{rest}$ defines the membrane voltage to which the neuron returns if it receives no synaptic input and $I_{{in}_{j}}$ represents the input current to the neuron.
+where $\tau_{m}$ and $R_{m}$ represent the time constant and resistance of the neurons' cell membrane, $V_{rest}$ defines the membrane voltage to which the neurons return if they do not receive synaptic input and $I_{{in}_{j}}$ represent the input current to each neuron.
 When the membrane voltage crosses a threshold~($V_{thresh}$) a spike is emitted, the membrane voltage is reset back to $V_{rest}$ and a countdown timer is started which, while running, disables the integration of further input thus providing a simulated refractory period.
 Incoming spikes induce an exponentially-shaped input current in $I_{{in}_{j}}$:
 %
@@ -281,21 +281,22 @@ Incoming spikes induce an exponentially-shaped input current in $I_{{in}_{j}}$:
 \end{align}
 %
 where $\tau_{syn}$ represents the time constant with which any spikes (modelled as Dirac delta functions $\delta$) from $n$ presynaptic input neurons occuring at time $t$ are integrated.
-In addition to their synaptic input, each neuron in the network also receives an independent Poisson input current $I_{p_{j}}$ which represents input from adjacent cortical regions.
+In addition to its synaptic input, each neuron in the network also receives an independent Poisson input current $I_{p_{j}}$ which represents input from adjacent cortical regions.
 Finally, $w_{ij}$ represents the peak synaptic input current of the synapse between the presynaptic neuron $i$ and the postsynaptic neuron $j$.
 For a full description of the model parameters please refer to \citet[tables 4 and 5]{Potjans2012}.
 In the remainder of this section we will concentrate on describing the strategies used to parallelise the initialisation and subsequent simulation of this network.
 
-Although the equations describing the neuron dynamics (equations~\ref{eq:lif_neuron}~and~\ref{eq:exp_neuron_input_current}) are coupled, in our GeNN model, the continuous terms of the two equations are solved separately so that the synaptic input current $I_{{in}_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
+Although the equations describing the neuron dynamics (equations~\ref{eq:lif_neuron}~and~\ref{eq:exp_neuron_input_current}) are coupled, in our GeNN model, the continuous terms of the two equations are solved separately so that the synaptic input current $I_{{in}_{j}}$ entering into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
 As \citet{Rotter1999} explain, this approach leads to a delay of one simulation timestep compared to the exact solution.
-However, by separating the solving of these equations, different types of input synapse with different dynamics can trivially be supported.
-For example, while a single exponential may be a good approximation of some inhibitory synapses, for other types of synapse the rise time of the post synaptic potential may be vital~\citep{VanVreeswijk1994}.
+However, by separating the solving of these equations, different types of input synapses with different dynamics can trivially be supported.
+For example, while a single exponential may be a good approximation of some inhibitory synapses, for other types of synapses the rise time of the post-synaptic potential may be vital~\citep{VanVreeswijk1994}.
 Additionally, from a software engineering point-of-view, separating solving these equations improves the encapsulation of neurons and synapses.
 
 Simulating a homogeneous \textit{population} of neurons is an ideal task for a SIMD or SIMT device such as a GPU: the neurons do not communicate with each other and, aside from the relatively rare times that they spike, each neuron will be simulated using exactly the same code path.
 Therefore, neural simulation can be trivially parallelised by simulating each neuron on a single thread that fetches the neuron's state variables from global memory into registers at the start of each timestep, advances the simulation state and writes back the state variables.
 The Poisson input current~($I_{p_{j}}$) is calculated by generating a Poisson deviate (using the technique described by \citet[p504]{DevroyeLuc2013}) every simulation timestep and multiplying this by a population-specific weight.
 As long as the state variables are laid out correctly in memory, the required memory operations can be coalesced so that a \SI{4}{\byte} state variable can be read for \num{32} neurons in a single \SI{128}{\byte} transaction -- the most efficient way to access the global memory.
+%JAMIE: IS THIS SPECIFIC TO THE 128 byte memory bus of teh K40? Do we need to be careful with that?
 When a neuron's spiking threshold condition is met, the thread simulating the neuron writes the index of the neuron within the population to a shared memory array.
 After all the neurons in a population have been updated, the shared memory arrays containing the indices of the neurons in each thread block which spiked are combined into a global memory array -- forming a record of all the neurons in the population which have spiked in the current simulation timestep.
 
@@ -330,9 +331,9 @@ This process is repeated until all incoming spikes are processed.
 While this parallelism strategy may seem counter-intuitive, it typically performs much better than the naïve approach of using one thread per incoming spike as it not only exposes much more parallelism, but also results in perfectly coalesced memory read operations.
 For example, in a simulation with a \SI{0.1}{\milli\second} timestep, a population of \num{10000} neurons firing at an average rate of \SI{10}{\hertz} will only, on average, emit \num{10} spikes in a single timestep.
 However, if this population is connected to another population of same size with a \SI{10}{\percent} connection probability, the connection matrix will have over \num{1000} columns resulting in 2 orders of magnitude more parallelism being exposed.
-Using the data structures described in this section, GeNN simulations of this model require \SI{3.1}{\giga\byte} of device memory.
+Using the data structures described in this section, a GeNN simulation of the cortical microcircuit model requires \SI{3.1}{\giga\byte} of device memory.
 
-An additional advantage of the data structure shown in figure~\ref{fig:ragged_matrix} is that, as long as we know the \textit{maximum} length of any row, memory can be allocated by the host without having to perform any further calculation, meaning that the connectivity itself can be initialised on the GPU.
+An additional advantage of the data structure shown in figure~\ref{fig:ragged_matrix} is that, as long as we know the \textit{maximum} length of any row, memory can be allocated by the host without having to perform any further calculations, meaning that the connectivity itself can be initialised on the GPU.
 In this model the density of the synaptic connections between a pair of neuronal populations is specified in terms of a total number of random synapses~($N_{\text{syn}}$) (a \lstinline{FixedNumberTotal} connector in PyNN).
 The maximum row length when connecting a presynaptic population with $N_{\text{pre}}$ neurons to a postsynaptic population with $N_{\text{post}}$ neurons using this connectivity can be obtained by evaluating the inverse cumulative distribution function~(CDF) of $\text{Binom}[N_{\text{syn}}, \frac{N_{\text{post}}}{N_{\text{post}} * N_{\text{pre}}}]$ at a suitably high probability (we use $P=0.9999^\frac{1}{N_{\text{pre}}}$).
 Once memory is allocated for the data structure, the first stage in initialising the connectivity is to determine how many of the total synapses $N_{\text{syn}}$ end up in each row by sampling from the multinomial distribution $\text{Mult}[N_{\text{pre}} * N_{\text{post}}, \{P_{row}, P_{row}, \ldots, P_{row}\}]$ where $P_{row} = \frac{N_{\text{post}}}{N_{\text{syn}}}$.
@@ -347,33 +348,19 @@ However, if $X \sim \text{Beta}[1, N_{\text{post}}]$, $1 - X \sim \text{Beta}[N_
 
 \subsection{Balanced random network with spike-timing dependent plasticity}
 \label{sec:method/balanced_random}
-The type of  online learning observed in nature is one of the features of biological neural networks that neuromorphic engineers aspire to emulate.
-Synaptic plasticity -- the family of mechanisms responsible for changing the strength of synaptic connections in response to neural activity -- has been shown to be fundamental to learning~\citep{Nabavi2014} and is therefore a key area of computational neuroscience research.
-Spike Timing Dependent Plasticity~(STDP)~\citep{Markram1997,Bi1998} is a popular theory which postulates that these changes are driven by the difference in timing between presynaptic spikes arriving at a synapse and the times at which the postsynaptic neuron itself spikes.
-In excitatory cortical~\citep{Markram1997} and Hippocampal~\citep{Bi1998} neurons, synapses at which a presynaptic spike is closely followed by a postsynaptic spike are strengthened, whereas those at which a postsynaptic spike precedes a presynaptic spike are weakened.
-The intuition behind this relationship is that synapses that are implicated in the firing of the postsynaptic neuron are strengthened and those that are irrelevant are weakened.
 
 \begin{figure}
     \begin{center}
         \includegraphics[width=85mm]{figures/circuit2}
     \end{center}
     \caption{Illustration of the balanced random network model.
-    Blue triangles represent excitatory populations, red circles represent inhibitory populations and the numbers beneath each symbol shows the number of neurons in each population.
+    The blue triangle represents the excitatory population, the red circle represents the inhibitory population, and the numbers beneath each symbol show the number of neurons in each population.
     Connection probabilities are shown in small bold numbers at the appropriate point in the connection matrix.
     All excitatory synaptic weights are initialised to \SI{0.04561}{\nano\ampere} and all inhibitory synaptic weights are initialised to \SI{0.22805}{\nano\ampere}.}
     \label{fig:balanced_random_circuit}
 \end{figure}
 
-However, adding STDP to spiking neural network simulations typically increases the computational cost of simulating them significantly. 
-\citet{Morrison2007} reported that adding plasticity to their simulations slowed them down by ``a factor of less than 10'' and \citet{Knight2016b} found that, in the \textbf{best} case, simple STDP plasticity reduced the performance of the SpiNNaker neuromorphic system by approximately $6\times$.
-Furthermore, the dynamics of neural systems with plasticity operating on biologically-plausible time scales take several orders of magnitude more time to stabilise meaning that longer simulations are required.
-%Perhaps because of these issues, there are relatively few large-scale network models with synaptic plasticity.
-However, \citeauthor{Morrison2007} argue that it is vital to perform experiments on STDP in models with full-scale connectivity, as simplifying connectivity typically results in fewer, stronger incoming synapses per neuron.
-These stronger synaptic inputs will increase the correlation between neurons and, because STDP is inherently sensitive to correlated neural activity, this is likely to cause artefacts in the learned synaptic weights.
-
-Balanced random networks have been shown to reproduce some of the dynamics seen in the neocortex~\citep{Brunel1999,Brunel2000}.
-On this basis, \citet{Morrison2007} developed the large balanced random network model shown in figure~\ref{fig:balanced_random_circuit} with \num{90000} excitatory and \num{22500} inhibitory neurons: the scale necessary to achieve a realistic number of incoming connections per neuron of $\approx 10000$~\citep{braitenberg2013cortex} with a biologically plausible connection probability of $\approx 0.1$.
-\citeauthor{Morrison2007} showed that adding STDP to this model did not disrupt its dynamics and, as long as a suitable STDP rule is used, the synaptic weights will settle into a stable unimodal distribution.
+This model, as illustrated in figure~\ref{fig:balanced_random_circuit}, consists of an exitatory neuron populations with \num{90000} excitatory neurons and an inhibitory populations containing \num{22500} inhibitory neurons. This scale is necessary to achieve a realistic number of incoming connections per neuron of $\approx 10000$~\citep{braitenberg2013cortex} with a biologically plausible connection probability of $\approx 0.1$.
 
 Similarly to the microcircuit model described in the previous section, this model uses LIF neurons with current inputs.
 However, rather than filtering the input current ($I_{{in}_{j}}$) using a single exponential, this model uses slightly more complex \textit{alpha} synapses~\citep{Rall1967} which provide a closer match to the dynamics of biological ion channels:
@@ -421,7 +408,7 @@ In order to implement the all-to-all spike pairing required for the model, rathe
     \frac{ds_{i}}{dt} & = -\frac{s_{i}}{\tau} + \sum_{t_{i}^{f}}\delta(t - t_{i}^{f}) \label{eq:stdp_trace}
 \end{align}
 %
-The value of these traces can be thought of as representing the sum of the exponential term from equation~\ref{eq:mad_stdp} if it were calculated for every pair or spikes.
+The value of these traces can be thought of as representing the sum of the exponential term from equation~\ref{eq:mad_stdp} if it were calculated for every pair of spikes.
 Therefore the potentiation~($\Delta w_{ij}^{+}$) induced by the spike pairs formed by a postsynaptic spike occuring at $t_{j}^{f}$ and all preceding presynaptic spikes can be calculated using the following single update:
 %
 \begin{align}
@@ -437,7 +424,7 @@ In GeNN, if a neuron has fired in the current timestep, its trace variables are 
 Synaptic depression is calculated by applying equation~\ref{eq:stdp_update_pre_pair} to each synaptic weight processed in the synapse kernel described in the previous section.
 Similarly, calculating synaptic potentiation involves applying equation~\ref{eq:stdp_update_post_pair} to each synapse targetting a spiking postsynaptic neuron.
 However this is tricky as while the data structure shown in figure~\ref{fig:ragged_matrix} supports efficient \textit{row-wise} access to the synapses associated with a presynaptic neuron, like many sparse matrix data structures, it does not support efficient \textit{column-wise} accesses to the synapses associated with a postsynaptic neuron.
-This is a problem faced by all SNN simulators that support STDP.
+This is a problem shared by all SNN simulators that support STDP \cite{Brette2012}.
 Some small-scale neuromorphic systems have solved this problem in hardware using custom SRAM memories which allow both column and row-wise accesses~\citep{Seo2011}.
 However, custom SRAMs are expensive in terms of silicon area, so many neuromorphic systems avoid the problem entirely by implementing synaptic plasticity rules which use the membrane voltage of the postsynaptic neuron rather than its spike times -- meaning that no updates triggered by postsynaptic spikes are required~\citep{Frenkel2018,Qiao2015}.
 Intel's Loihi system~\citep{Davies2018} and the SpiNNaker software developed by \citet{Galluppi2014a} take an alternative approach and defer all STDP updates until the end of a ``learning epoch'' after which time they are processed sequentially row by row.
@@ -529,6 +516,19 @@ Using this approach, generating fixed probability connectivity can be performed 
 \end{table}
 
 \section{Results}
+We implemented and tested two established computational neuroscience models. The first model is a model of a cortical microcircuit developed by \citet{PotjansXX}. It consists of eight populations of neurons, representing the excitatory and inhibitory populations of neurons in corctical leayers 2/3, 4, 5 and 6 of a micro-column. Neurons are connected with random connectivity of densities that follow experimental observations. The model has been shown to reproduce firing chraracteristics observed in cortex \citep{Potjans}. 
+
+The second model is a balanced random network with spike-timing dependent plasticity \citep{Morrison2007}. 
+Synaptic plasticity is a family of mechanisms responsible for changing the strength of synaptic connections in response to neural activity and has been shown to be fundamental to biological learning~\citep{Nabavi2014}.
+In particular, Spike Timing Dependent Plasticity~(STDP)~\citep{Markram1997,Bi1998} is a popular theory which postulates that these changes are driven by the difference in timing between presynaptic spikes arriving at a synapse and the times at which the postsynaptic neuron itself spikes.
+In excitatory cortical~\citep{Markram1997} and Hippocampal~\citep{Bi1998} neurons, synapses at which a presynaptic spike is closely followed by a postsynaptic spike are strengthened, whereas those at which a postsynaptic spike precedes a presynaptic spike are weakened, so introducing a causal learning rule.
+Adding STDP to spiking neural network simulations, however, typically increases the computational cost of simulating them significantly. 
+\citet{Morrison2007} reported that adding plasticity to their simulations slowed them down by ``a factor of less than 10'' and \citet{Knight2016b} found that, in the \textbf{best} case, simple STDP plasticity reduced the performance of the SpiNNaker neuromorphic system by approximately $6\times$.
+Furthermore, the dynamics of neural systems with plasticity operating on biologically-plausible time scales take several orders of magnitude more time to stabilise meaning that longer simulations are required and, as \citeauthor{Morrison2007} argue, it is vital to perform experiments on STDP in models with full-scale connectivity to avoid synchonrinzation artefacts.
+
+Balanced random networks such as this have been shown to reproduce some of the dynamics seen in the neocortex~\citep{Brunel1999,Brunel2000}. 
+\citeauthor{Morrison2007} showed that adding STDP to their model did not disrupt its dynamics and, as long as a suitable STDP rule is used, the synaptic weights will settle into a stable unimodal distribution.
+
 \subsection{Correctness}
 \label{sec:results/correctness}
 In this section we will focus on confirming the correctness of our simulations of the microcircuit model~\citep{Potjans2012} described in section~\ref{sec:method/microcircuit} using the methodology described by \citet{VanAlbada2018}.
@@ -828,7 +828,7 @@ The authors declare that the research was conducted in the absence of any commer
 JK and TN wrote the paper.
 TN is the original developer of GeNN.
 JK is currently the primary GeNN developer and was responsible for extending the code generation approach to the parallel initialisation of networks.
-JK performed the experiments and the analysis of their results which are presented in this work.
+JK performed the experiments and the analysis of the results that are presented in this work.
 
 \section*{Funding}
 This work was funded by the EPSRC (Brains on Board project, grant number EP/P006094/1).

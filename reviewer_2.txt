@@ -4,10 +4,10 @@ I find this to be a compelling study. It is well-thought out and suggests that G
 > This is heartening to read - this is exactly the aim of this paper!
 
 I found the Methods confusing. Details were missing. There was too much discussion and it was unclear to me what they planned on simulating.
-> Thank you for this feedback - looking at it again the methods section - it was lacking a number of details. We will highlight our changes in detail in the response to Q3.
+> Thank you for this feedback - looking at it again, the methods section was not well-structure and was lacking a number of details. We will highlight our changes in detail in the response to Q3.
 
 I think there should be additional simulations to push the simulator and hardware to its limits.
-> We have added a small section on the scaling behaviour of the microcircuit model, but this is not really the focus of this paper so we have instead added a sentance to point interested readers at Yavuz 2016 and the Stimberg 2018 which both contain more indepth analysis of the scaling properties of GeNN simulations. **THOMAS** is this ok?
+> We have added a short section on the scaling behaviour of the microcircuit model, including figure XXX, but detailed benchmarking of GeNN is not really the focus of this paper. We have instead added a sentence to point interested readers at Yavuz 2016 and Stimberg 2018, which both contain more in-depth analyses of the scaling properties of GeNN/Brian2GeNN simulations.
 
 The Discussion went in an unexpected direction and did not focus on the implications of the results presented. Why start the Discussion with Neurorobotics, which might be an interesting application, but not the main focus of the study?
 > Again - we totally agree - the order of discussion subsections was odd. We have re-ordered and added additional discussion which we will detail in our responses to Q3.
@@ -17,28 +17,30 @@ I will try to provide details in Q3.
 Q3
 ==
 1. Explain the memory structures of a GPU (cache, shared memory, global memory) and how simulation design is influenced by memory utilization choices. Does GENN abstract this from the user?
-> We have added a new methods section giving a brief overview of GPU architectures and CUDA - hopefully this will be informative and provide more context for our choice of methods.
+> We have added a new methods section giving a brief overview of GPU architectures and CUDA - hopefully this will be informative and provide more context for our choice of methods. GeNN does abstract memory usage choices away from its users, which is now mentioned in the GeNN introduction in the Methods.
 
 2. Sections 2.2 and 2.3. It took me a long time to realize that there were two simulations being developed and tested; A cortical microcircuit model and a balanced random network with STDP. Both sections kind of blended together. State this clearly at the start of the Methods section. Discuss why each simulation was chosen as a benchmark?
+
+> We have reorganised the Methods so that the two models are better separated. 
 
 3. In sections 2.2 and 2.3, provide simulation details. How many neurons and synapses were simulated? For how long? What are the inputs to these networks? Is it spontaneous activity or driven in some way?
 > We have included new figures 2 and 4 which provide more details on the number of neurons simulated and added sentences explaining how Poisson noise is injected into the model at line XXX.
 
 4. Section 2.2. Include a table with all the parameters settings. Provide justifications.
 5. Section 2.3. Include a table with all the parameters settings. Provide justifications.
-> We have improved the specificity of our reference to the original papers to point directly to where the full parameters of the model are located and how they are derived. However we don't believe that repeating the table would be useful to our readers. **THOMAS** is this too blunt?
+> These tables are available in the original publications and we used the exact same parameters. We have now included explicit references to these table in the text. The choices of parameters in the models are justified in the original publications in detail.
 
 6. Section 3.2. I am confused as to which results correspond to which simulations. Be specific. Subsections might help.
-> We have added subsubsections to the resuls sections where results from both models are included
+> We have added subsubsections to the results sections whenever results from both models are included.
 
 7. Section 3.2. I also would like to know how sensitive performance is to (a) network size and (b) spike rate. Please run additional simulations to show this tradeoff.
-> We have added an additional scaling plot of the microcircuit model which will hopefully prove informative. However this paper is more about functional models rather than scaling **THOMAS** again something referring to Yavuz 2018 or Brian2GeNN could be in order.
+> We have added an additional scaling plot for the microcircuit model which gives an overview of the scaling behaviour of runtimes. However, this paper is more about comparing full-size models of a biologically motivated size to published results from other research groups. For readers that are interested in the scaling of runtimes in GeNN (and Brian2GeNN) we have included additional explicit references to Yavuz 2016 and Stimberg 2018 which address these issues in detail.
 
 8. Section 3.3. I would like to know how these power numbers compare to IBM TrueNorth, Intel Loihi, and NSAT by Gert Cauwenberghs. Also, would like to hear your thoughts on putting SNNs on FPGAs. This may be more appropriate to put in the Discussion section.
-> This is an excellent point - we have added a new discussion section on neuromorphic hardware and include comparisons in terms of power. As far as we can tell, while NSAT looks like a very promising system, it is still at the FPGA prototype stage and thus has no power figures available.
+> This is an excellent point - we have added a new discussion section on neuromorphic hardware and include comparisons in terms of power. As far as we can tell, while NSAT looks like a very promising system, it is still at the FPGA prototype stage and thus has no relevant power figures available.
 
 9. Section 4. Discussion. Should not lead off with Neurorobotics. I can understand that a Jetson GPU with GENN might be beneficial for embedded applications. So, this should be part of the Discussion, but...
-> Looking at the paper again this makes no sense to me either! We have re-arranged so the discussion begins with GPUs and a new section on neuromorphic hardware before discussing robotics and interactive simulation.
+>  We have re-arranged so the discussion begins with GPUs and a new section on neuromorphic hardware before discussing robotics and interactive simulation.
 
 10. Section 4. Discussion. I would like a more detailed discussion of the implications of this study with regard to different computing platforms. When might GPUs be beneficial? What are the limitations of GPUs? What about multiple GPUs or GPU clusters? Discuss some of the existing neuromorphic platforms. Is there a benefit to using Spinnaker, TrueNorth, Loihi, Dynapse, etc?
 > See previous comment
@@ -47,19 +49,19 @@ Specific Comments
 -----------------
 
 1. Line 80. Why "embarrassingly".
-> An "embarrassingly parallel" problem is one, like updating neuron dynamics, where there is no commications between threads/processes but we have removed this phrase as we suspect it isn't meaningful to our readership. We have replaced this with a brief description for the pixel processing problem for which GPUs were originally developed. **THOMAS** is this too patronising?
+> The term "embarrassingly parallel" is sometimes used for tasks like updating neuron dynamics, where there is no communications between threads/processes and, hence, parallelisation is trivial; but we have now removed this phrase as it may not be meaningful to all readers. We have instead replaced this with a brief description of the pixel processing problem for which GPUs were originally developed. 
 
 2. Equations 1 and 2. Define and explain these terms. What drives this SNN? Is it the Poisson inputs? Is that the bias term?
 > Looking at it again, the variables in the equations were poorly described in general so we have added text around them all. 
 
 3. Line 210. Spell out SIMD and SIMT when first used. Briefly explain what they mean for GPUs and SNNs.
-> We explain these terms in more depth in our new methods section on GPU architectures and CIDA.
+> We explain these terms in more depth in our new methods section on GPU architectures and CUDA.
 
 4. Throughout. Should be "dependent" not "dependant".
 > This is embarrasing - thank you for spotting this
 
 5. Line 242. I don't understand why "one-shot, online learning" is brought up. STDP typically does not support one-shot learning.
-> This is a very good point - we have removed the "one-shot"!
+> This is a very good point - we have removed the "one-shot"! 
 
 6. Lines 268-277. There are run-on sentences and grammatical errors in this paragraph. Please re-write.
 > Apologies for this - we have re-written this paragraph
@@ -70,14 +72,14 @@ Specific Comments
 8. Lines 290-291. What do you mean by row-wise and column wise. Please explain.
 > We have added text explaining this terminology at line XXX
 
-9. LInes 292-305. Consider moving much of this to the Discussion section. It is good information, but is not specific to the implementation details.
-> We looked at this but, we feel that it is a little bit technical for discussion and is required to understand the choice of method we make.
+9. Lines 292-305. Consider moving much of this to the Discussion section. It is good information, but is not specific to the implementation details.
+> We looked at this carefully but we feel that it is a bit too technical for the discussion and, at the same time, is required to understand the choice of methods we describe within the methods section and hence is better left there.
 
 10. Lines 337-346. Similar to comment 9, this may be better placed in the Discussion section.
 > Agreed - we have moved this into the discussion section on GPUs at line YYY
 
 11. Figure 3. I couldn't see that there were 2 lines. Which is impressive and a good thing. But, is there another way to show how closely GENN matches NEST? Why isn't Spinnaker shown?
-> Apologies that this wasn't clear - we have clarified the role of NEST in `precise' mode as the ground truth. We do not have access to the data from Van Albada's SpiNNaker simulations but we have reproduced the KL divergences they reported in Figure 7 for comparison with our own results. **THOMAS** is this OK?
+> Apologies that this wasn't clear - we have clarified the role of NEST in 'precise' mode as representing the ground truth and that hence the comparison is only to NEST 'precise' mode. We do not have access to the data from Van Albada's SpiNNaker simulations but we have reproduced the KL divergences they have reported in our Figure 7 in order to compare them with our own results. 
 
 12. Figure 8. Are these simulations on GPUs with GENN compared with Spinnaker or NEST?
-> Again, apologies that this wasn't clear, this model would be tricky to run on SpiNNaker (we have included discussion to that effect at line XXX). We have included the run-times reported by Morrison 2007 on their HPC system at line YYY but do not include them in our conclusions as we don't feel that comparing against a 10 year old cluster would be a fair test.
+> Again, apologies that this wasn't more clear; this model would be tricky to run on SpiNNaker (we have included some discussion to that effect at line XXX). We have included the run-times reported by Morrison 2007 on their HPC system at line YYY but do not include them in our comparison figure as we don't feel that comparing against a 10 year old cluster would be fair.
