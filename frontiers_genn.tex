@@ -296,6 +296,9 @@ Simulating a homogeneous \textit{population} of neurons is an ideal task for a S
 Therefore, neural simulation can be trivially parallelised by simulating each neuron on a single thread that fetches the neuron's state variables from global memory into registers at the start of each timestep, advances the simulation state and writes back the state variables.
 The Poisson input current~($I_{p_{j}}$) is calculated by generating a Poisson deviate (using the technique described by \citet[p504]{DevroyeLuc2013}) every simulation timestep and multiplying this by a population-specific weight.
 As long as the state variables are laid out correctly in memory, the required memory operations can be coalesced so that a \SI{4}{\byte} state variable can be read for \num{32} neurons in a single \SI{128}{\byte} transaction -- the most efficient way to access the global memory.
+When a neuron's spiking threshold condition is met, the thread simulating the neuron writes its index within the population to a shared memory array.
+After all threads in the thread blocks used to simulate a population have completed, their shared memory arrays are combined together into a global memory array containing the indices of all the neurons in the population which have spiked during the current simulation timestep.
+
 %This same parallelism strategy is equally valid for neuron models whose dynamics can only be solved numerically -- the advancing of simulation state simply has to be implemented as for example a Runge-Kutta
 
 \begin{figure}
@@ -311,12 +314,12 @@ As long as the state variables are laid out correctly in memory, the required me
     \label{fig:ragged_matrix}
 \end{figure}
 
-Simulating the sparsely connected synapses between two populations of neurons is, at first glance, less suitable for GPU parallelism.
+Simulating the spikes propagating between two populations of neurons through sparsely connected synapses is, at first glance, less suitable for GPU parallelism.
 However, on modern GPU hardware, this can also be implemented in an efficient manner using the data structures shown in figure~\ref{fig:ragged_matrix}.
 This structure consists of multiple 2D arrays with rows representing the synapses coming from individual presynaptic neurons and with enough columns to contain the largest number of postsynaptic targets any presynaptic neuron connects to.
 One of these 2D arrays contains the indices of the postsynaptic neurons ($j$) and additional arrays are allocated for any individual synaptic state variables such as the synaptic weight~($w_{ij}$) or dendritic delay~($d_{ij}$).
 Each block of $N_{block}$ CUDA threads (in figure~\ref{fig:ragged_matrix} $N_{block}=4$) is responsible for processing $N_{block}$ columns of the matrix.
-Processing begins by using the $N_{block}$ threads to fetch the indices of $N_{block}$ presynaptic spikes ($i_{0},\ldots,i_{N_{block} - 1}$) and the lengths of the corresponding rows of the matrix ($l_{i_{0}},\ldots,l_{i_{N_{block} - 1}}$) into shared memory (so that these will be accessable to all threads in the block during the next phase).
+Processing begins by using the $N_{block}$ threads to fetch the indices of $N_{block}$ presynaptic spikes written to global memory by the presynaptic population's neuron kernel ($i_{0},\ldots,i_{N_{block} - 1}$) and the lengths of the corresponding rows of the matrix ($l_{i_{0}},\ldots,l_{i_{N_{block} - 1}}$) into shared memory (so that these will be accessable to all threads in the block during the next phase).
 Threads are then synchronised and loop through the $N_{block}$ rows with each thread processing the synapse in their column.
 In the case of the simple static synapses described by equation~\ref{eq:exp_neuron_input_current}, this processing simply consists of reading the index of the postsynaptic target neuron along with the weight $w_{ij}$ and delay $d_{ij}$ associated with the connection and using an atomic add operation to apply the weight to the correct address in the dendritic delay ring-buffer.
 This process is repeated until all incoming spikes are processed.
