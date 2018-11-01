@@ -275,6 +275,20 @@ The membrane voltage ($V_{j}$) of each neuron is modelled as a leaky integrate-a
 where $\tau_{m}$ and $R_{m}$ represent the time constant and resistance of the neuron's cell membrane, $V_{rest}$ defines the membrane voltage to which the neuron returns if it receives no synaptic input and $I_{{in}_{j}}$ represents the input current to the neuron.
 When the membrane voltage crosses a threshold~($V_{thresh}$) a spike is emitted, the membrane voltage is reset back to $V_{rest}$ and a countdown timer is started which, while running, disables the integration of further input thus providing a simulated refractory period.
 Incoming spikes induce an exponentially-shaped input current in $I_{{in}_{j}}$:
+
+\begin{figure}
+    \begin{center}
+        \includegraphics{figures/ragged_matrix}
+    \end{center}
+    \caption{GPU parallelisation of sparse synaptic matrix processing across two thread blocks each with \num{4} threads.
+    $i_{0},\ldots,i_{3}$ contain the indices of presynaptic spikes.
+    $l_{i_{0}},\ldots,l_{i_{3}}$ contain the lengths of the corresponding matrix rows.
+    $j$ contains the indices of the postsynaptic target neurons.
+    Snaking lines indicate CUDA threads.
+    Hatching indicates padding entries.}
+    \label{fig:ragged_matrix}
+\end{figure}
+
 %
 \begin{align}
     \tau_{syn} \frac{dI_{{in}_{j}}}{dt} = & -I_{{in}_{j}} + I_{p_{j}} + \sum_{i=0}^{n} w_{ij} \sum_{t_{i}^{f}}  \delta(t - t_{i}^{f})\label{eq:exp_neuron_input_current}
@@ -300,20 +314,6 @@ When a neuron's spiking threshold condition is met, the thread simulating the ne
 After all the neurons in a population have been updated, the shared memory arrays containing the indices of the neurons in each thread block which spiked are combined into a global memory array -- forming a record of all the neurons in the population which have spiked in the current simulation timestep.
 
 %This same parallelism strategy is equally valid for neuron models whose dynamics can only be solved numerically -- the advancing of simulation state simply has to be implemented as for example a Runge-Kutta
-
-\begin{figure}
-    \begin{center}
-        \includegraphics{figures/ragged_matrix}
-    \end{center}
-    \caption{GPU parallelisation of sparse synaptic matrix processing across two thread blocks each with \num{4} threads.
-    $i_{0},\ldots,i_{3}$ contain the indices of presynaptic spikes.
-    $l_{i_{0}},\ldots,l_{i_{3}}$ contain the lengths of the corresponding matrix rows.
-    $j$ contains the indices of the postsynaptic target neurons.
-    Snaking lines indicate CUDA threads.
-    Hatching indicates padding entries.}
-    \label{fig:ragged_matrix}
-\end{figure}
-
 Simulating the spikes propagating between two populations of neurons through sparsely connected synapses is, at first glance, less suitable for GPU parallelism.
 However, on modern GPU hardware, this can also be implemented in an efficient manner using the data structures shown in figure~\ref{fig:ragged_matrix}.
 This structure consists of multiple 2D arrays with rows representing the synapses coming from individual presynaptic neurons and with enough columns to contain the largest number of postsynaptic targets any presynaptic neuron connects to.
