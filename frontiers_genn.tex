@@ -286,16 +286,6 @@ Finally, $w_{ij}$ represents the peak synaptic input current of the synapse betw
 For a full description of the model please refer to \citeauthor{Potjans2012}.
 In the remainder of this section we will concentrate on describing the strategies used to parallelise the initialisation and subsequent simulation of this network.
 
-In this model the density of the synaptic connections between a pair of neuronal populations is specified in terms of a total number of random synapses (a \lstinline{FixedNumberTotal} connector in PyNN).
-The first stage in initialising such a connectivity between a presynaptic population with $N_{\text{pre}}$ neurons and a postsynaptic population with $N_{\text{post}}$ neurons is to determine how many of the total synapses $N_{\text{syn}}$ end up in each row by sampling from the multinomial distribution $\text{Mult}[N_{\text{pre}} * N_{\text{post}}, \{P_{row}, P_{row}, \ldots, P_{row}\}]$ where $P_{row} = \frac{N_{\text{post}}}{N_{\text{syn}}}$.
-This operation cannot be efficiently parallelised so must be performed on the host but, once the length of each row is determined, the postsynaptic targets of the synapses can be initialised in parallel by sampling from the discrete uniform distribution $\text{Unif}[0, N_{\text{post}}]$ using $N_{\text{pre}}$ CUDA threads.
-While this works mathematically, in order to improve the locality of memory accesses, synapses should be sorted into ascending order.
-This would be trivial to implement in CPU code but, without enough shared memory for each CUDA thread to store a copy of its corresponding row, an in-place sort in global memory would be very slow.
-It would be possible to use a more complex parallel sorting algorithm such as that proposed by \citet{Awan2016} but, as GPU architectures typically have very high floating point maths throughput, we instead take an alternative approach.
-Rather than sampling directly from $\text{Unif}[0, N_{\text{post}}]$ we sample from its 1st order statistic $\text{Beta}[1, N_{\text{post}}]$ -- essentially the next smallest value.
-In the general case the Beta distribution cannot be sampled from in constant time.
-However, if $X \sim \text{Beta}[1, N_{\text{post}}]$, $1 - X \sim \text{Beta}[N_{\text{post}}, 1]$ and therefore $-ln(1 - X) \sim \text{Exponential}[N_{\text{post}}]$ -- a much simpler problem as the exponential distribution can be sampled in constant time using the inversion method~\citep[p29]{DevroyeLuc2013}.
-
 Although the equations describing the neuron dynamics (equations~\ref{eq:lif_neuron}~and~\ref{eq:exp_neuron_input_current}) are coupled, in our GeNN model, the continuous terms of the two equations are solved separately so that the synaptic input current $I_{{in}_{j}}$ going into equation~\ref{eq:lif_neuron} is effectively treated as a constant during each simulation timestep.
 As \citet{Rotter1999} explain, this approach leads to a delay of one simulation timestep compared to the exact solution.
 However, by separating the solving of these equations, different types of input synapse with different dynamics can trivially be supported.
@@ -334,6 +324,19 @@ While this parallelism strategy may seem counter-intuitive, it typically perform
 For example, in a simulation with a \SI{0.1}{\milli\second} timestep, a population of \num{10000} neurons firing at an average rate of \SI{10}{\hertz} will only, on average, emit \num{10} spikes in a single timestep.
 However, if this population is connected to another population of same size with a \SI{10}{\percent} connection probability, the connection matrix will have over \num{1000} columns resulting in 2 orders of magnitude more parallelism being exposed.
 Using the data structures described in this section, GeNN simulations of this model require \SI{3.1}{\giga\byte} of device memory.
+
+An additional advantage of the data structure shown in figure~\ref{fig:ragged_matrix} is that, as long as we know the \textit{maximum} length of any row, memory can be allocated by the host without having to perform any further calculation, meaning that the connectivity itself can be initialised on the GPU.
+In this model the density of the synaptic connections between a pair of neuronal populations is specified in terms of a total number of random synapses~($N_{\text{syn}}$) (a \lstinline{FixedNumberTotal} connector in PyNN).
+The maximum row length when connecting a presynaptic population with $N_{\text{pre}}$ neurons to a postsynaptic population with $N_{\text{post}}$ neurons using this connectivity can be obtained by evaluating the inverse cumulative distribution function~(CDF) of $\text{Binom}[N_{\text{syn}}, \frac{N_{\text{post}}}{N_{\text{post}} * N_{\text{pre}}}]$ at a suitably high probability (we use $P=0.9999^\frac{1}{N_{\text{pre}}}$).
+Once memory is allocated for the data structure, the first stage in initialising the connectivity is to determine how many of the total synapses $N_{\text{syn}}$ end up in each row by sampling from the multinomial distribution $\text{Mult}[N_{\text{pre}} * N_{\text{post}}, \{P_{row}, P_{row}, \ldots, P_{row}\}]$ where $P_{row} = \frac{N_{\text{post}}}{N_{\text{syn}}}$.
+This operation cannot be efficiently parallelised so must be performed on the host but, once the length of each row is determined, the postsynaptic targets of the synapses can be initialised in parallel by sampling from the discrete uniform distribution $\text{Unif}[0, N_{\text{post}}]$ using $N_{\text{pre}}$ CUDA threads.
+While this works mathematically, in order to improve the locality of memory accesses, synapses should be sorted into ascending order.
+This would be trivial to implement in CPU code but, without enough shared memory for each CUDA thread to store a copy of its corresponding row, an in-place sort in global memory would be very slow.
+It would be possible to use a more complex parallel sorting algorithm such as that proposed by \citet{Awan2016} but, as GPU architectures typically have very high floating point maths throughput, we instead take an alternative approach.
+Rather than sampling directly from $\text{Unif}[0, N_{\text{post}}]$ we sample from its 1st order statistic $\text{Beta}[1, N_{\text{post}}]$ -- essentially the next smallest value.
+In the general case the Beta distribution cannot be sampled from in constant time.
+However, if $X \sim \text{Beta}[1, N_{\text{post}}]$, $1 - X \sim \text{Beta}[N_{\text{post}}, 1]$ and therefore $-ln(1 - X) \sim \text{Exponential}[N_{\text{post}}]$ -- a much simpler problem as the exponential distribution can be sampled in constant time using the inversion method~\citep[p29]{DevroyeLuc2013}.
+
 
 \subsection{Balanced random network with spike-timing dependent plasticity}
 \label{sec:method/balanced_random}
@@ -404,13 +407,6 @@ Finally $\tau$ defines the time constant of the STDP kernel and $\alpha$ control
 For the full description of this model, please refer to \citeauthor{Morrison2007}.
 In the remainder of this section we will concentrate on describing the additional steps required to parallelise models with synaptic plasticity using GeNN.
 
-The density of the synaptic connections in this model is described using a probability of connection $P$.
-Therefore whether a synapse exists between a pair of pre and postsynaptic neurons can be modelled using the Bernoulli distribution $\text{Bern}[P_{\text{conn}}]$.
-While the Bernoulli distribution can be sampled by repeatedly drawing from the uniform distribution $\text{Unif}[0, 1]$ and comparing each sample to $P$, this is innefficient for sparse connectivity.
-Instead we sample from the geometric distribution $\text{Geom}[P_{\text{conn}}]$ which describes how the number of Bernoulli trials required to get a success (i.e. a synapse) is distributed.
-The geometric distribution can be sampled in constant time by inverting the cumulative density function~(CDF) of the equivalent continuous distribution (the exponential distribution) to obtain $\frac{log(\text{Unif}[0, 1])}{log(1 - P_{\text{conn}})}$~\citep[p499]{DevroyeLuc2013}.
-Using this approach, generating fixed probability connectivity can be performed entirely in parallel by initialising each row of connectivity using an independent CUDA thread.
-
 In order to implement the all-to-all spike pairing required for the model, rather than repeatedly evaluating equation~\ref{eq:mad_stdp}, we calculate updates based on per-neuron \textit{spike traces}~\citep{Song2000, Morrison2007} with the following dynamics:
 %
 \begin{align}
@@ -459,6 +455,14 @@ For example, the connections between the excitatory (\num{90000} neurons) and in
 Using the bitmask the total amount of device memory required to simulate this model using GeNN from \SI{11.5}{\giga\byte} to \SI{10.2}{\giga\byte}.
 The bitmask data structure is processed using a CUDA thread to accumulate each postsynaptic neuron's input into a register every simulation timestep.
 Each of these threads loops through the incoming spikes stored in the shared memory data structure described in the previous section and, if the corresponding bit in the bitmask is set, adds the synaptic weight to the register.
+
+Similarly to the data structure shown in figure~\ref{fig:ragged_matrix}, the amount of memory required to store synapses in the bitmask data structure can be be calculated without any knowledge of the connectivity within, meaning that synapses stored in this format can also be initialised on the GPU.
+In this model, the density of the synaptic connections is described using a probability of connection $P$.
+Therefore, whether a synapse exists between a pair of pre and postsynaptic neurons can be described using a Bernoulli distribution $\text{Bern}[P_{\text{conn}}]$.
+While the Bernoulli distribution can be sampled by repeatedly drawing from the uniform distribution $\text{Unif}[0, 1]$ and comparing each sample to $P$, this is innefficient for sparse connectivity.
+Instead we sample from the geometric distribution $\text{Geom}[P_{\text{conn}}]$ which describes how the number of Bernoulli trials required to get a success (i.e. a synapse) is distributed.
+The geometric distribution can be sampled in constant time by inverting the cumulative density function~(CDF) of the equivalent continuous distribution (the exponential distribution) to obtain $\frac{log(\text{Unif}[0, 1])}{log(1 - P_{\text{conn}})}$~\citep[p499]{DevroyeLuc2013}.
+Using this approach, generating fixed probability connectivity can be performed entirely in parallel by initialising each row of connectivity using an independent CUDA thread.
 
 \begin{figure}
     \begin{center}
