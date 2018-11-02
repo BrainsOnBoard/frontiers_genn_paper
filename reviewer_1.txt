@@ -10,7 +10,7 @@ For example, several software design choices are taken which, if implemented on 
 
 These implementation choices are all valid in their own right, and it’s good to see there are ways to improve performance, but the paper does not clearly communicate the impact of these design choices.
 
-MISSING ANSWER
+> It is always tricky to seperate these two sources of differences in performance. In order to address this we have added an additional discussion section about neuromorphic hardware in which we discuss how transferrable some of our ideas are to programmable neuromorphic systems such as SpiNNaker and how future neuromorphic systems may improve on some of the limitations we highlight.
 
 2) The Discussion section could be much stronger. One of the strengths of the paper is that a range of GPU architectures are tested, showing large variability between the various task of initialisation, simulation, and power efficiency. Therefore, it would be useful to develop the discussion in the direction of what are the design features that make each GPU successful, and what would be the ideal configuration/architecture for a future SNN-specific GPU?
 
