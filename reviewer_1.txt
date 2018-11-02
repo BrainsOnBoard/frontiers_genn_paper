@@ -10,7 +10,7 @@ For example, several software design choices are taken which, if implemented on 
 
 These implementation choices are all valid in their own right, and it’s good to see there are ways to improve performance, but the paper does not clearly communicate the impact of these design choices.
 
-> It is always tricky to seperate these two sources of differences in performance. In order to address this we have added an additional discussion section about neuromorphic hardware in which we discuss how transferrable some of our ideas are to programmable neuromorphic systems such as SpiNNaker and how future neuromorphic systems may improve on some of the limitations we highlight.
+> It is notoriously difficult to seperate these two sources of differences in performance and it is often not practical and sometimes even impossible to disentangle the contribution of design choices to performance in numerical experiments. For example, as described in the paper, the microcircuit model would not fit into the GPU memory if bitmasked synapses were not used. We have added an additional section in the discussion about neuromorphic hardware, in which we discuss how transferable some of our ideas are to programmable neuromorphic systems such as SpiNNaker and how future neuromorphic systems may improve on some of the limitations we highlight.
 
 2) The Discussion section could be much stronger. One of the strengths of the paper is that a range of GPU architectures are tested, showing large variability between the various task of initialisation, simulation, and power efficiency. Therefore, it would be useful to develop the discussion in the direction of what are the design features that make each GPU successful, and what would be the ideal configuration/architecture for a future SNN-specific GPU?
 
@@ -83,7 +83,7 @@ Figs. 6 & 8. Can you comment on the 'overhead' which remains for the Tesla V100 
 4) Discussion
 
 Please see Q2 above. It would be good to expand the discussion to qualify which aspects of GPU architecture optimise them for SNN simulation. It would also be useful to discuss how other types of SNN with different topology and firing activity might map to the GPU hardware, and whether they would likely exhibit the same performance.
-> We have extended the GPU discussion section to include more thoughts on their suitability for SNN simulation. While we have added a small section on the scaling behaviour of the microcircuit model, this is not really the focus of this paper so we have instead added a sentance to point interested readers at Yavuz 2016 and the Stimberg 2018 which both contain more indepth analysis of the scaling properties of GeNN simulations. **THOMAS** is this ok?
+> We have extended the GPU discussion section to include more thoughts on their suitability for SNN simulation. While we have added a small section on the scaling behaviour of the microcircuit model, this is not really the focus of this paper so we have instead added a sentance to point interested readers at Yavuz 2016 and the Stimberg 2018 which both contain more indepth analysis of the scaling properties of GeNN simulations. 
 
 5) References
 
