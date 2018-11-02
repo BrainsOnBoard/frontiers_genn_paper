@@ -33,8 +33,7 @@ L145 – Use of the GPU's parallelism to improve network initialisation is clear
 > We have included more information on the time taken for downloading weights off the GPU post simulation and added some discussion to our extended GPU discussion section at line XXXXX.
 
 Sect 2.1 would benefit from a description of spike transmission between neurons. How is this achieved/what events are used/what overheads does this introduce to the system?
-
-MISSING ANSWER
+> This was indeed not very well explained in our methods - we have added some additonal sentences at line XXX to explain how, in the neuron kernel, spikes from each population are gathered into an array in global memory which is then read by the synapse kernel.
 
 L181 ‘the this’
 > Thank you - we have fixed this.
