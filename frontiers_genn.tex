@@ -593,22 +593,15 @@ However, memory is a harder constraint so, while all of the GPUs listed in table
 
 \begin{figure}
     \begin{center}
-        \includegraphics[width=85mm]{figures/microcircuit_performance}
+        \includegraphics[width=180mm]{figures/microcircuit_performance_merged}
     \end{center}
-    \caption{Simulation times of the microcircuit model running on various GPU hardware for \SI{10}{\second} of biological time.
+    \caption{\textbf{A} Simulation times of the microcircuit model running on various GPU hardware for \SI{10}{\second} of biological time.
     SpiNNaker and fastest HPC simulation times (12 nodes) presented by \citet{VanAlbada2018} included for comparison.
     `Overhead' in GPU simulations refers to time spent in simulation loop but not within CUDA kernels.
-    The dotted horizontal line indicates realtime performance.}
-    \label{fig:microcircuit_performance}
-\end{figure}
-
-\begin{figure}
-    \begin{center}
-        \includegraphics[width=85mm]{figures/microcircuit_init_performance}
-    \end{center}
-    \caption{Initialisation times of the microcircuit model running on various GPU hardware.
+    The dotted horizontal line indicates realtime performance.\\
+    \textbf{B} Initialisation times of the microcircuit model running on various GPU hardware.
     SpiNNaker and fastest HPC simulation times (32 nodes) presented by \citet{VanAlbada2018} included for comparison.}
-    \label{fig:microcircuit_init_performance}
+    \label{fig:microcircuit_performance}
 \end{figure}
 
 \begin{figure}
@@ -625,7 +618,7 @@ We measured the performance of both models by querying the \lstinline{std::chron
 
 \subsubsection{Cortical microcircuit model}
 \label{sec:results/performance/microcircuit}
-Figure~\ref{fig:microcircuit_performance} shows the simulation times of the microcircuit model running on each GPU for \SI{10}{\second} of biological time, including the times taken by neuron and synapse simulation kernels.
+Figure~\ref{fig:microcircuit_performance}A shows the simulation times of the microcircuit model running on each GPU for \SI{10}{\second} of biological time, including the times taken by neuron and synapse simulation kernels.
 Compared to the smaller point neuron benchmark presented by \citet{Yavuz2016}, even though each neuron in our model receives up to $10\times$ as many synaptic inputs, the simulation time is more evenly split between the simulation of neurons and synapses.
 This is partly because our simulations are running with a smaller \SI{0.1}{\milli\second} timestep meaning that less presynaptic spikes are processed each timestep.
 Additionally, in the newer version of GeNN used in this paper, the generation of Poisson noise takes place in the neuron kernel rather than in the separate kernel used by \citet{Yavuz2016}.
@@ -634,10 +627,10 @@ In general, as one would expect, the two Tesla GPUs perform best with the newer 
 However even the GeForce 1050ti -- which is a low-end gaming GPU -- can simulate the model faster than the SpiNNaker system.
 
 As discussed in section~\ref{sec:method/genn}, as well as parallelising neuron and synapse simulation code, the latest version of GeNN also parallelises the initialisation of model state variables and connectivity using the GPU.
-Figure~\ref{fig:microcircuit_init_performance} shows the initialisation time of the microcircuit simulation when initialisation is performed on the CPU compared to the GPU.
+Figure~\ref{fig:microcircuit_performance}B shows the initialisation time of the microcircuit simulation when initialisation is performed on the CPU compared to the GPU.
 Even on the two Tesla systems which have Intel Xeon CPUs with high single-threaded performance, using the GPU for initialisation, results in a speedup of around $20\times$ and on the Jetson TX2, with its much slower ARM A57 CPU, GPU initialisation is more than $150\times$ faster.
 
-Figure~\ref{fig:microcircuit_init_performance} also includes the initialisation times for SpiNNaker and the fastest HPC configuration presented by \citet{VanAlbada2018}.
+Figure~\ref{fig:microcircuit_performance}B also includes the initialisation times for SpiNNaker and the fastest HPC configuration presented by \citet{VanAlbada2018}.
 The scaling plot for HPC initialisation presented by \citeauthor{VanAlbada2018} confirms the trivially parallelisable nature of network initialisation compared to simulation -- performance continued to increase up to 32 nodes rather than just 12 in the simulation.
 However, all three desktop GPU systems still perform network initialisation in a shorter time than the HPC system.
 \citet{Diamond2018} concluded that initialisation and loading time was a big problem for neuromorphic systems and SpiNNaker clearly still has issues in this area as initialising and loading the microcircuit network onto the SpiNNaker system takes approximately \SI{10}{\hour}.
@@ -733,7 +726,7 @@ the Tesla K40c, which helps to mediate the cost of non-coalesced accesses to syn
 Additionally, Volta GPUs can now simultaneously execute integer and floating point operations, meaning that the pointer arithmetic required to calculate the indices into the synaptic weight matrix can be performed simultaneously with the learning rule update itself.
 
 In our simulations of both models, we copy all spikes from the GPU to the host computer at the end of each simulation timestep.
-Along with the overhead involved in launching CUDA kernels every simulation timestep, the copying of spikes accounts for the majority of the `overhead' shown in figures~\ref{fig:microcircuit_performance}~and~\ref{fig:stdp_performance}.
+Along with the overhead involved in launching CUDA kernels every simulation timestep, the copying of spikes accounts for the majority of the `overhead' shown in figures~\ref{fig:microcircuit_performance}A~and~\ref{fig:stdp_performance}.
 Furthermore, because the microcircuit model has four times as many neuronal populations as the balanced random network model, copying its spiking output requires more interactions with the GPU driver, resulting in the higher overhead seen in the simulations of this model.
 The overhead is particularly high on the GeForce 1050ti system which we believe is due to a combination of the slower PCI express bus in this machine (PCIe Gen 2 rather than Gen 3) and issues using CUDA on display devices under Windows.
 When simulating the microcircuit at smaller scales this problem is exacerbated so, at the smallest scale shown in figure~\ref{fig:microcircuit_performance_scaling}~(\num{19292} neurons), these overheads account for between $65-90\si{\percent}$ of the simulation time on the three desktop GPUs.
