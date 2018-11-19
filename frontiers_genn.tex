@@ -296,7 +296,7 @@ Incoming spikes induce an exponentially-shaped input current in $I_{{in}_{j}}$:
 \end{align}
 %
 where $\tau_{syn}$ represents the time constant with which any spikes (modelled as Dirac delta functions $\delta$) from $n$ presynaptic input neurons occuring at time $t$ are integrated.
-In addition to its synaptic input, each neuron in the network also receives an independent Poisson input current $I_{p_{j}}$ which represents input from adjacent cortical regions.
+In addition to its synaptic input, each neuron in the network also receives an independent Poisson input current $I_{p_{j}}$ (also exponentially shaped by equation~\ref{eq:exp_neuron_input_current}) which represents input from adjacent cortical regions.
 Finally, $w_{ij}$ represents the peak synaptic input current of the synapse between the presynaptic neuron $i$ and the postsynaptic neuron $j$.
 For a full description of the model parameters please refer to \citet[tables 4 and 5]{Potjans2012}.
 In the remainder of this section we will concentrate on describing the strategies used to parallelise the initialisation and subsequent simulation of this network.
