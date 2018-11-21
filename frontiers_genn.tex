@@ -805,8 +805,13 @@ While both the Dynapse and TrueNorth systems have a negligible power consumption
 Because SpiNNaker is built from programmable ARM cores, these can be repurposed for interfacing with robot hardware directly, for example using the interface board developed by \citet{Denk2013} which supports a variety of robots developed at the Technical University of Munich.
 However, the 48 chip SpiNNaker board used on the robot developed by \citet{Conradt2015} is around $10\times$ larger than a Jetson TX2, restricting its use to large ground-based robots whereas the Jetson TX2 is small and light enough to be used on both ground and aerial robots.
 %Additionally, figure~\ref{fig:microcircuit_performance_scaling} suggests that, due to the low cost of interactions between the CPU and GPU on the Jetson TX2, it 
-Therefore we believe that using GeNN to develop SNN-based controllers to run on embedded GPUs such as the Jetson TX2 is a very competitive approach for neuro robots.
-For example, the Brains on Board project~(\url{www.brainsonboard.co.uk}) is using Jetson TX1 and TX2 GPUs to build autonomous flying robots with navigational and learning abilities inspired by honeybees.
+GeNN allows developing SNN-based controllers that run on
+embedded GPUs such as the Jetson TX2 allowing to control mobile robots
+of comparably small form factors with simulated brain circuits. This
+offers a very competitive alternative approach 
+for neurorobotics research.
+For example, the ``Brains on Board''
+project~(\url{www.brainsonboard.co.uk}) is using GeNN on Jetson TX1 and TX2 GPUs to develop autonomous flying robots with navigational and learning abilities inspired by honeybees.
 
 \subsection{Interactive simulation}
 As discussed in the introduction, one of the major uses of SNN simulations in computational neuroscience is for characterising and exploring the subset of models' parameter spaces left under-constrained by experimental data.
