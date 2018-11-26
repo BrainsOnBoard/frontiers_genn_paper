@@ -617,7 +617,9 @@ However, memory is a harder constraint so, while all of the GPUs listed in table
     \label{fig:microcircuit_performance_scaling}
 \end{figure}
 
-We measured the performance of both models by querying the \lstinline{std::chrono::high_resolution_clock} around the simulation loop and by using CUDA's own event timing system~\citep[Section~3.2.5.6.2]{NVIDIACorporation2018} to record the time taken by the neuron and synapse simulation kernels as well as the postsynaptic learning kernel in the balanced random network model.
+We measured the performance of both models by querying the \lstinline{std::chrono::high_resolution_clock} around the simulation loop to obtain a total \textit{simulation time}.
+In order to analyse how time was spent in the different GPU kernels we also used used CUDA's own event timing system~\citep[Section~3.2.5.6.2]{NVIDIACorporation2018} to record the time taken by the neuron and synapse simulation kernels as well as the postsynaptic learning kernel in the balanced random network model.
+By dividing the simulation time by the length of the simulation in \textit{biological time}, we can then obtain an estimate of the average simulation performance relative to real-time.
 
 \subsubsection{Cortical microcircuit model}
 \label{sec:results/performance/microcircuit}
@@ -805,13 +807,9 @@ While both the Dynapse and TrueNorth systems have a negligible power consumption
 Because SpiNNaker is built from programmable ARM cores, these can be repurposed for interfacing with robot hardware directly, for example using the interface board developed by \citet{Denk2013} which supports a variety of robots developed at the Technical University of Munich.
 However, the 48 chip SpiNNaker board used on the robot developed by \citet{Conradt2015} is around $10\times$ larger than a Jetson TX2, restricting its use to large ground-based robots whereas the Jetson TX2 is small and light enough to be used on both ground and aerial robots.
 %Additionally, figure~\ref{fig:microcircuit_performance_scaling} suggests that, due to the low cost of interactions between the CPU and GPU on the Jetson TX2, it 
-GeNN allows the development of SNN-based controllers that run on
-embedded GPUs such as the Jetson TX2 allowing to control mobile robots
-of comparably small form factors with simulated brain circuits. This
-offers a very competitive alternative approach 
-for neurorobotics research.
-For example, the ``Brains on Board''
-project~(\url{www.brainsonboard.co.uk}) is using GeNN on Jetson TX1 and TX2 GPUs to develop autonomous flying robots with navigational and learning abilities inspired by honeybees.
+GeNN allows the development of SNN-based controllers that run on embedded GPUs such as the Jetson TX2 allowing to control mobile robots of comparably small form factors with simulated brain circuits.
+This offers a very competitive alternative approach for neurorobotics research.
+For example, the ``Brains on Board'' project~(\url{www.brainsonboard.co.uk}) is using GeNN on Jetson TX1 and TX2 GPUs to develop autonomous flying robots with navigational and learning abilities inspired by honeybees.
 
 \subsection{Interactive simulation}
 As discussed in the introduction, one of the major uses of SNN simulations in computational neuroscience is for characterising and exploring the subset of models' parameter spaces left under-constrained by experimental data.
