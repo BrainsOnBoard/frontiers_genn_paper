@@ -1,4 +1,4 @@
-# frontiers_genn_paper
+# GPUs Outperform Current HPC and Neuromorphic Solutions in Terms of Speed and Energy When Simulating a Highly-Connected Cortical Model
 Paper on using GeNN for simulating cortical models
 
 ## Building paper
