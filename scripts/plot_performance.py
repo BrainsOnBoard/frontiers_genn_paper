@@ -7,7 +7,7 @@ import plot_settings
 import utils
 
 def plot(data, filename, num_ref, calc_overhead, legend_text, real_time_s=None, group_size=None, log=False):
-    columns = zip(*data)
+    columns = list(zip(*data))
     device = np.asarray(columns[0],  dtype=str)
     group = None if group_size is None else np.asarray(columns[1],  dtype=str)
     time_col_start = 1 if group_size is None else 2
@@ -156,9 +156,10 @@ def plot(data, filename, num_ref, calc_overhead, legend_text, real_time_s=None, 
 # neuron simulation, synapse simulation, Total simulation time,
 microcircuit_data = [("Jetson TX2", 99570.4, 155284, 258350),
                      ("GeForce 1050ti", 20192.6, 21310.1, 137592),
+                     ("GeForce 1650", 23708.8, 23673.1, 101810),
                      ("Tesla K40c", 13636.2, 12431.8, 41911.5),
                      ("Tesla V100", 3215.88, 3927.9, 21645.4),
-                     #("Xeon E3-1240", 235891, 82275.2, 318456.0),
+                     ("Xeon E3-1240", 235891, 82275.2, 318456.0),
                      ("HPC\n(fastest)", 0.0, 0.0, 24296.0),
                      ("SpiNNaker", 0.0, 0.0, 200000)]
 
