@@ -197,7 +197,7 @@ isi_kl = []
 corr_kl = []
 for i, (spike_times, spike_ids, name, num, nest_spike_times, nest_spike_ids) in enumerate(pop_spikes):
     col = i % 2
-    row = i / 2
+    row = i // 2
 
     # Plot the spikes from every raster_plot_step neurons within time range
     plot_mask = ((spike_ids % raster_plot_step) == 0) & (spike_times > raster_plot_start_ms) & (spike_times <= raster_plot_end_ms)
