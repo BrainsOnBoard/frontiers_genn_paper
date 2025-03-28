@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/143159069.svg)](https://doi.org/10.5281/zenodo.15101745)
 # GPUs Outperform Current HPC and Neuromorphic Solutions in Terms of Speed and Energy When Simulating a Highly-Connected Cortical Model
 Paper on using GeNN for simulating cortical models
 
